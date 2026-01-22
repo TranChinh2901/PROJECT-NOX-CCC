@@ -1,0 +1,75 @@
+### Register new user
+POST http://localhost:4000/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "fullname": "Tesst new user ",
+  "email": "usernew@gmail.com",
+  "password": "123456",
+  "phone_number": "0763723475",
+  "gender": "male",
+  "date_of_birth": "1993-08-25",
+  "address": "123 Test Street"
+}
+
+### Login with admin account
+POST http://localhost:4000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "123456"
+}
+
+### Login with user account  
+POST http://localhost:4000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com", 
+  "password": "password123"
+}
+
+
+### Delete account
+DELETE http://localhost:4000/api/v1/auth/delete-account
+Authorization: Bearer yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzU4MjcxNjgyLCJleHAiOjE3NTgyNzM0ODJ9.y33cLdNqcKRF4WRp6RoNWlklMif6oKcqxM87QXbBo40
+Content-Type: application/json
+### Get current user profile (need token)
+GET http://localhost:4000/api/v1/auth/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjA4NDE2NzIsImV4cCI6MTc2MDg0MzQ3Mn0.KMg0nDKcTVHVj6b26GiexgLoCYYDLh8DcEOu5UJuRZA
+
+### Update profile
+PUT http://localhost:4000/api/v1/auth/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OCwiZW1haWwiOiJ1c2VyQGdtYWlsLmNvbSIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzU4MjcxMzg4LCJleHAiOjE3NTgyNzMxODh9.U7-yR28BrtJxI6cJm1BS3iIfX50bj72hPmNNk74y1cc
+Content-Type: application/json
+
+{
+  "fullname": "Tesst delete Updated Name",
+  "address": "123 New Address",
+  "phone_number": "09873654321"
+}
+
+### Refresh token
+POST http://localhost:4000/api/v1/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refresh_token": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+### Test admin access - Get all users (ADMIN only)
+GET http://localhost:4000/api/v1/users
+Authorization: Bearer YOUR_ADMIN_JWT_TOKEN_HERE
+
+### Test user access - Get user profile (USER can access)
+GET http://localhost:4000/api/v1/users/profile
+Authorization: Bearer YOUR_USER_JWT_TOKEN_HERE
+
+### Test unauthorized access (should fail)
+GET http://localhost:4000/api/v1/auth/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJUcmFuY2hpbmhAZ21haWwuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzU4NDY5NjU1LCJleHAiOjE3NTg0NzE0NTV9.DFlkAi_Mdr02xVXpJihJpL-SDQ_tg5vioqL-QG_B-8M
+
+### Logout
+POST http://localhost:4000/api/v1/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzU4NDcxMDY1LCJleHAiOjE3NTg0NzI4NjV9.1sYHojnxsIWKAVTfyM0kXVWz9-_Ml8a2IAbvAwuvz6U
