@@ -16,6 +16,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(requestLogger);
 initDatabase();
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use("/", router);
 
 app.use(exceptionHandler);
