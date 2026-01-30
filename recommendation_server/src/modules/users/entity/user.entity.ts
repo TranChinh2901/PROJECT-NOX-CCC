@@ -1,8 +1,9 @@
 
 
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { GenderType } from "../enum/user.enum";
 import { RoleType } from "@/modules/auth/enum/auth.enum";
+import { UserSession } from "./user-session";
 
 @Entity('users')
 export class User {
@@ -38,6 +39,9 @@ export class User {
 
   @Column({ type: 'enum', enum: RoleType, default: RoleType.USER })
   role!: RoleType;
+
+  @OneToMany(() => UserSession, (session) => session.user)
+  sessions?: UserSession[];
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at!: Date;

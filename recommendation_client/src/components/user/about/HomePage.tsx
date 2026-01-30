@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
 import { ProductImage } from '../../common/ProductImage';
+import { productApi, categoryApi, cartApi } from '@/lib/api';
+import { Product, Category } from '@/types';
+import toast from 'react-hot-toast';
 import { 
   Search, 
   ShoppingCart, 
@@ -21,177 +24,6 @@ import {
   Speaker
 } from 'lucide-react';
 
-const categories = [
-  { id: 'all', name: 'Tất Cả', icon: null },
-  { id: 'laptops', name: 'Laptop', icon: Laptop },
-  { id: 'smartphones', name: 'Điện Thoại', icon: Smartphone },
-  { id: 'desktops', name: 'Máy Tính Bàn', icon: Monitor },
-  { id: 'audio', name: 'Âm Thanh', icon: Headphones },
-  { id: 'wearables', name: 'Đồng Hồ Thông Minh', icon: Watch },
-  { id: 'cameras', name: 'Máy Ảnh', icon: Camera },
-  { id: 'gaming', name: 'Gaming', icon: Gamepad },
-  { id: 'speakers', name: 'Loa', icon: Speaker },
-];
-
-const products = [
-  {
-    id: 1,
-    name: 'Laptop Apex Pro',
-    category: 'laptops',
-    price: 62500000,
-    originalPrice: 69900000,
-    rating: 4.9,
-    reviews: 128,
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop',
-    badge: 'Bán Chạy',
-    specs: ['M3 Max', '32GB RAM', '1TB SSD'],
-    inStock: true,
-  },
-  {
-    id: 2,
-    name: 'Điện Thoại Nova X',
-    category: 'smartphones',
-    price: 32475000,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 256,
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop',
-    badge: 'Mới',
-    specs: ['A18 Pro', '256GB', 'Titanium'],
-    inStock: true,
-  },
-  {
-    id: 3,
-    name: 'Máy Tính Titan Pro',
-    category: 'desktops',
-    price: 124975000,
-    originalPrice: 137250000,
-    rating: 5.0,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=500&h=500&fit=crop',
-    badge: 'Cao Cấp',
-    specs: ['RTX 4090', '64GB RAM', '4TB SSD'],
-    inStock: true,
-  },
-  {
-    id: 4,
-    name: 'Tai Nghe Sonic Pro',
-    category: 'audio',
-    price: 8750000,
-    originalPrice: 11225000,
-    rating: 4.7,
-    reviews: 432,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop',
-    badge: 'Giảm Giá',
-    specs: ['ANC', '40 Giờ', 'Spatial Audio'],
-    inStock: true,
-  },
-  {
-    id: 5,
-    name: 'Đồng Hồ Chrono',
-    category: 'wearables',
-    price: 19975000,
-    originalPrice: null,
-    rating: 4.6,
-    reviews: 312,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&h=500&fit=crop',
-    badge: null,
-    specs: ['Health AI', '7 Ngày', 'GPS'],
-    inStock: true,
-  },
-  {
-    id: 6,
-    name: 'Máy Ảnh Vision Pro',
-    category: 'cameras',
-    price: 47475000,
-    originalPrice: 54975000,
-    rating: 4.8,
-    reviews: 67,
-    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&h=500&fit=crop',
-    badge: 'Pro',
-    specs: ['8K Video', 'IBIS', 'Mirrorless'],
-    inStock: false,
-  },
-  {
-    id: 7,
-    name: 'Máy Chơi Game X',
-    category: 'gaming',
-    price: 14975000,
-    originalPrice: null,
-    rating: 4.9,
-    reviews: 892,
-    image: 'https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=500&h=500&fit=crop',
-    badge: 'Hot',
-    specs: ['4K Gaming', '1TB SSD', 'Ray Tracing'],
-    inStock: true,
-  },
-  {
-    id: 8,
-    name: 'Loa BassMaster',
-    category: 'speakers',
-    price: 7475000,
-    originalPrice: 9975000,
-    rating: 4.5,
-    reviews: 234,
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500&h=500&fit=crop',
-    badge: 'Giảm Giá',
-    specs: ['360° Sound', '24 Giờ', 'Chống Nước'],
-    inStock: true,
-  },
-  {
-    id: 9,
-    name: 'Laptop Apex Air',
-    category: 'laptops',
-    price: 32475000,
-    originalPrice: null,
-    rating: 4.7,
-    reviews: 445,
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=500&fit=crop',
-    badge: null,
-    specs: ['M3', '16GB RAM', '512GB SSD'],
-    inStock: true,
-  },
-  {
-    id: 10,
-    name: 'Điện Thoại Nova Lite',
-    category: 'smartphones',
-    price: 17475000,
-    originalPrice: 19975000,
-    rating: 4.4,
-    reviews: 678,
-    image: 'https://images.unsplash.com/photo-1598327775667-6fe3a7c2d091?w=500&h=500&fit=crop',
-    badge: 'Giá Tốt',
-    specs: ['A17', '128GB', 'Nhôm'],
-    inStock: true,
-  },
-  {
-    id: 11,
-    name: 'Màn Hình Studio 5K',
-    category: 'desktops',
-    price: 39975000,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 156,
-    image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&h=500&fit=crop',
-    badge: 'Mới',
-    specs: ['5K Retina', 'P3 Color', 'USB-C'],
-    inStock: true,
-  },
-  {
-    id: 12,
-    name: 'Tai Nghe Buds Pro',
-    category: 'audio',
-    price: 6225000,
-    originalPrice: 7475000,
-    rating: 4.6,
-    reviews: 892,
-    image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&h=500&fit=crop',
-    badge: 'Phổ Biến',
-    specs: ['ANC', '30 Giờ', 'Spatial Audio'],
-    inStock: true,
-  },
-];
-
 const featuredDeals = [
   { title: 'Giảm đến 30% Laptop', subtitle: 'Tiết kiệm cho thiết bị cao cấp', color: '#CA8A04', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&h=400&fit=crop' },
   { title: 'Bộ Sưu Tập Âm Thanh Mới', subtitle: 'Trải nghiệm âm thanh sống động', color: '#3B82F6', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=400&fit=crop' },
@@ -207,59 +39,140 @@ const formatPrice = (price: number) => {
 };
 
 export default function HomePage() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<{id: number, quantity: number}[]>([]);
   const [sortBy, setSortBy] = useState('featured');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [productsData, categoriesData] = await Promise.all([
+          productApi.getAllProducts({ limit: 50 }),
+          categoryApi.getAllCategories()
+        ]);
+        setProducts(productsData.data || []);
+        setCategories(categoriesData || []);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        toast.error('Không thể tải dữ liệu sản phẩm');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
     
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
+    if (selectedCategory !== null) {
+      filtered = filtered.filter(p => p.category_id === selectedCategory);
     }
     
     if (searchQuery) {
       filtered = filtered.filter(p => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.specs.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
+        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     
     switch (sortBy) {
       case 'price-low':
-        filtered = [...filtered].sort((a, b) => a.price - b.price);
+        filtered = [...filtered].sort((a, b) => a.base_price - b.base_price);
         break;
       case 'price-high':
-        filtered = [...filtered].sort((a, b) => b.price - a.price);
+        filtered = [...filtered].sort((a, b) => b.base_price - a.base_price);
         break;
-      case 'rating':
-        filtered = [...filtered].sort((a, b) => b.rating - a.rating);
-        break;
-      case 'reviews':
-        filtered = [...filtered].sort((a, b) => b.reviews - a.reviews);
+      case 'newest':
+        filtered = [...filtered].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
         break;
     }
     
     return filtered;
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy]);
 
-  const addToCart = (productId: number) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === productId);
-      if (existing) {
-        return prev.map(item => 
-          item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
-        );
+  const addToCart = async (product: Product) => {
+    try {
+      if (!product.variants || product.variants.length === 0) {
+        toast.error('Sản phẩm không có phiên bản nào khả dụng');
+        return;
       }
-      return [...prev, { id: productId, quantity: 1 }];
-    });
+      
+      const defaultVariant = product.variants[0];
+      await cartApi.addToCart({
+        variant_id: defaultVariant.id,
+        quantity: 1
+      });
+      
+      toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
+      
+      setCart(prev => {
+        const existing = prev.find(item => item.id === product.id);
+        if (existing) {
+          return prev.map(item => 
+            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          );
+        }
+        return [...prev, { id: product.id, quantity: 1 }];
+      });
+    } catch (err: any) {
+      console.error('Error adding to cart:', err);
+      if (err.response?.status === 401) {
+        toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+      } else {
+        toast.error('Không thể thêm vào giỏ hàng');
+      }
+    }
   };
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#CA8A04] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-600">Đang tải sản phẩm...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h3 className="text-xl font-heading font-bold text-gray-900 mb-2">
+            Có lỗi xảy ra
+          </h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-[#CA8A04] text-white rounded-lg hover:bg-[#B47B04] transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 mt-7">
       <Header cartItemCount={cartItemCount} />
       
       <section className="relative bg-gradient-to-br from-white via-gray-50 to-white pt-28 pb-12">
@@ -320,6 +233,16 @@ export default function HomePage() {
       <section className="sticky top-24 z-40 bg-white/95 backdrop-blur-lg border-b border-gray-200 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+                selectedCategory === null
+                  ? 'bg-[#CA8A04] text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span className="text-sm font-medium">Tất Cả</span>
+            </button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -330,7 +253,6 @@ export default function HomePage() {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {cat.icon && <cat.icon className="w-4 h-4" />}
                 <span className="text-sm font-medium">{cat.name}</span>
               </button>
             ))}
@@ -343,7 +265,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-heading font-bold text-gray-900">
-                {selectedCategory === 'all' ? 'Tất Cả Sản Phẩm' : categories.find(c => c.id === selectedCategory)?.name}
+                {selectedCategory === null ? 'Tất Cả Sản Phẩm' : categories.find(c => c.id === selectedCategory)?.name}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 {filteredProducts.length} sản phẩm
@@ -373,7 +295,7 @@ export default function HomePage() {
               <ProductCard 
                 key={product.id} 
                 product={product} 
-                onAddToCart={() => addToCart(product.id)}
+                onAddToCart={() => addToCart(product)}
               />
             ))}
           </div>
@@ -403,22 +325,26 @@ function ProductCard({
   product, 
   onAddToCart 
 }: { 
-  product: typeof products[0]; 
+  product: Product; 
   onAddToCart: () => void;
 }) {
-  const discount = product.originalPrice 
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  const discount = product.compare_at_price 
+    ? Math.round(((product.compare_at_price - product.base_price) / product.compare_at_price) * 100)
     : null;
+
+  const primaryImage = product.images?.find(img => img.is_primary)?.image_url || 
+                       product.images?.[0]?.image_url ||
+                       'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg">
-      {product.badge && (
+      {product.is_featured && (
         <div className="absolute top-3 left-3 z-10 px-3 py-1 rounded-full bg-[#CA8A04] text-white text-xs font-semibold shadow-sm">
-          {product.badge}
+          Nổi Bật
         </div>
       )}
       
-  10{discount && (
+      {discount && (
         <div className="absolute top-3 right-3 z-10 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-semibold shadow-sm">
           -{discount}%
         </div>
@@ -426,7 +352,7 @@ function ProductCard({
 
       <a href={`/product/${product.id}`} className="block aspect-square bg-gray-50 overflow-hidden">
         <img 
-          src={product.image} 
+          src={primaryImage} 
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
@@ -434,52 +360,39 @@ function ProductCard({
       </a>
 
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-[#CA8A04] text-[#CA8A04]" />
-            <span className="text-sm font-medium text-gray-900">{product.rating}</span>
-          </div>
-          <span className="text-xs text-gray-500">({product.reviews} đánh giá)</span>
-        </div>
-
         <a href={`/product/${product.id}`}>
           <h3 className="font-heading font-bold text-gray-900 mb-2 line-clamp-1 hover:text-[#CA8A04] transition-colors">
             {product.name}
           </h3>
         </a>
 
-        <div className="flex flex-wrap gap-1 mb-3">
-          {product.specs.slice(0, 2).map((spec, i) => (
-            <span 
-              key={i}
-              className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-600"
-            >
-              {spec}
-            </span>
-          ))}
-        </div>
+        {product.short_description && (
+          <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+            {product.short_description}
+          </p>
+        )}
 
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg font-bold text-gray-900">
-            {formatPrice(product.price)}
+            {formatPrice(product.base_price)}
           </span>
-          {product.originalPrice && (
+          {product.compare_at_price && (
             <span className="text-sm text-gray-400 line-through">
-              {formatPrice(product.originalPrice)}
+              {formatPrice(product.compare_at_price)}
             </span>
           )}
         </div>
 
         <button
           onClick={onAddToCart}
-          disabled={!product.inStock}
+          disabled={!product.is_active}
           className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-            product.inStock
+            product.is_active
               ? 'bg-[#CA8A04] text-white hover:bg-[#B47B04] active:scale-95 shadow-sm'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
-          {product.inStock ? (
+          {product.is_active ? (
             <>
               <ShoppingCart className="w-4 h-4" />
               Thêm Vào Giỏ

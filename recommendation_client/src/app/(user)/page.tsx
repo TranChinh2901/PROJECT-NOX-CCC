@@ -1,4 +1,4 @@
-import HomePages from "@/src/components/user/about/HomePage"
+import HomePages from "@/components/user/about/HomePage"
 
 
 const page = () => {
