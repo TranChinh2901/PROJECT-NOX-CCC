@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Cormorant, Montserrat } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 
 const cormorant = Cormorant({
   variable: "--font-heading",
@@ -32,7 +34,11 @@ export default function RootLayout({
       <body
         className={`${cormorant.variable} ${montserrat.variable} antialiased bg-background text-text font-body`}
       >
-        {children}
+        <AuthProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </AuthProvider>
         <Toaster 
           position="top-right"
           toastOptions={{
