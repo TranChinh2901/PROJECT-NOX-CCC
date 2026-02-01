@@ -11,12 +11,20 @@ import { Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function CartPage() {
-  const { cart, isLoading, updateQuantity, removeItem } = useCart();
+  const { cart, isLoading, updateQuantity, removeItem, refreshCart } = useCart();
 
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // Refresh cart from server on mount (handles cases where cart was cleared by server)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshCart();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [refreshCart]);
 
   // Derived state
   const isSelectAll = cart?.items && cart.items.length > 0 && selectedItems.size === cart.items.length;
@@ -59,15 +67,15 @@ export default function CartPage() {
   const confirmBulkDelete = async () => {
     setIsBulkDeleting(true);
     const itemsToDelete = Array.from(selectedItems);
-    
+
     try {
       const results = await Promise.allSettled(
         itemsToDelete.map(id => removeItem(id))
       );
-      
+
       const failures = results.filter(r => r.status === 'rejected');
       const successes = results.filter(r => r.status === 'fulfilled');
-      
+
       if (failures.length === 0) {
         toast.success(`Đã xóa ${successes.length} sản phẩm khỏi giỏ hàng`);
         clearSelection();
@@ -111,13 +119,13 @@ export default function CartPage() {
   // Close dialog on Escape key
   useEffect(() => {
     if (!showConfirmDialog) return;
-    
+
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isBulkDeleting) {
         cancelBulkDelete();
       }
     };
-    
+
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showConfirmDialog, isBulkDeleting]);

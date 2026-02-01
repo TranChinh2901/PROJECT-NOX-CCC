@@ -1,11 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { CartContextType, Cart, AddToCartDto, UpdateCartItemDto, CartItem, Product, ProductVariant, CartItemVariant } from '@/types';
 import { CartStatus } from '@/types/order.types';
 import { cartApi, productApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Storage keys
 const CART_STORAGE_KEY = 'cart:state';
 const CART_USER_KEY = 'cart:user_id';
 
@@ -20,16 +21,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [itemCount, setItemCount] = useState(0);
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
-  const wasAuthenticated = React.useRef<boolean | null>(null);
+  const prevUserId = useRef<number | null>(null);
 
-  const calculateItemCount = (cartData: Cart | null): number => {
-    if (!cartData || !cartData.items) {
-      return 0;
-    }
+  // Calculate total items in cart
+  const calculateItemCount = useCallback((cartData: Cart | null): number => {
+    if (!cartData?.items) return 0;
     return cartData.items.reduce((sum, item) => sum + item.quantity, 0);
-  };
+  }, []);
 
-  const persistCart = (cartData: Cart | null) => {
+  // Persist cart to localStorage
+  const persistCart = useCallback((cartData: Cart | null) => {
     try {
       if (cartData) {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
@@ -39,28 +40,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to persist cart to localStorage:', error);
     }
-  };
+  }, []);
 
-  const clearLocalCart = useCallback(() => {
-    setCart(null);
-    setItemCount(0);
+  // Clear local cart storage
+  const clearLocalCartStorage = useCallback(() => {
     try {
       localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(CART_USER_KEY);
     } catch (error) {
       console.error('Failed to clear cart from localStorage:', error);
     }
   }, []);
 
+  // Load cart from localStorage
   const loadCartFromStorage = useCallback(() => {
     try {
-      if (user?.id) {
-        const storedUserId = localStorage.getItem(CART_USER_KEY);
-        if (storedUserId && storedUserId !== String(user.id)) {
-          clearLocalCart();
-          localStorage.setItem(CART_USER_KEY, String(user.id));
-          return;
-        }
-      }
       const stored = localStorage.getItem(CART_STORAGE_KEY);
       if (stored) {
         const parsedCart: Cart = JSON.parse(stored);
@@ -72,9 +66,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to load cart from localStorage:', error);
+      setCart(null);
+      setItemCount(0);
     }
-  }, [clearLocalCart, user]);
+  }, [calculateItemCount]);
 
+  // Sync cart with server
   const syncWithAPI = useCallback(async (): Promise<Cart | null> => {
     setIsLoading(true);
     try {
@@ -103,10 +100,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             ? { ...baseVariant, product }
             : null;
 
-          return {
-            ...item,
-            variant: variantWithProduct,
-          };
+          return { ...item, variant: variantWithProduct };
         })
       );
 
@@ -128,16 +122,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [loadCartFromStorage]);
+  }, [calculateItemCount, persistCart, loadCartFromStorage]);
 
+  // Merge local cart to server
+  const mergeLocalCartToServer = useCallback(async (): Promise<void> => {
+    try {
+      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      if (!stored) return;
+
+      const localCart: Cart = JSON.parse(stored);
+      if (!localCart.items?.length) {
+        localStorage.removeItem(CART_STORAGE_KEY);
+        return;
+      }
+
+      setIsLoading(true);
+      const validItems = localCart.items.filter(item => item.variant_id && item.variant_id > 0);
+
+      if (validItems.length === 0) {
+        localStorage.removeItem(CART_STORAGE_KEY);
+        return;
+      }
+
+      // Add all items in parallel
+      await Promise.all(
+        validItems.map(item =>
+          cartApi.addToCart({ variant_id: item.variant_id, quantity: item.quantity })
+        )
+      );
+
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to merge local cart with API:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Add item to cart
   const addToCart = useCallback(async (data: AddToCartDto, product?: Product, variant?: ProductVariant): Promise<Cart> => {
     const safeQuantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
     const now = new Date();
-    const variantWithProduct = variant && product ? {
-      ...variant,
-      product: product
-    } : undefined;
-
     const unitPrice = variant?.final_price || product?.base_price || 0;
     let updatedCart: Cart | null = null;
 
@@ -152,7 +177,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           total_price: unitPrice * safeQuantity,
           added_at: now,
           updated_at: now,
-          variant: variantWithProduct,
+          variant: variant && product ? { ...variant, product } : undefined,
         };
 
         updatedCart = {
@@ -166,46 +191,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           updated_at: now,
         };
       } else {
-        const existingItemIndex = currentCart.items?.findIndex(
-          item => item.variant_id === data.variant_id
-        );
+        const existingIndex = currentCart.items?.findIndex(item => item.variant_id === data.variant_id);
+        const nowInner = now;
 
-        let updatedItems: CartItemWithVariant[];
-
-        if (existingItemIndex !== undefined && existingItemIndex >= 0 && currentCart.items) {
-          updatedItems = [...currentCart.items] as CartItemWithVariant[];
-          const existingItem = updatedItems[existingItemIndex];
-        const newQuantity = existingItem.quantity + safeQuantity;
-        updatedItems[existingItemIndex] = {
-          ...existingItem,
-          quantity: newQuantity,
-          total_price: unitPrice * newQuantity,
-          updated_at: now,
-        };
-      } else {
-        const newItem: CartItemWithVariant = {
-          id: Date.now(),
-          cart_id: currentCart.id,
-          variant_id: data.variant_id,
-          quantity: safeQuantity,
-          unit_price: unitPrice,
-          total_price: unitPrice * safeQuantity,
-          added_at: now,
-          updated_at: now,
-          variant: variantWithProduct,
-        };
-          updatedItems = [...(currentCart.items || []), newItem] as CartItemWithVariant[];
+        if (existingIndex !== undefined && existingIndex >= 0 && currentCart.items) {
+          const updatedItems = [...currentCart.items] as CartItemWithVariant[];
+          const existingItem = updatedItems[existingIndex];
+          const newQuantity = existingItem.quantity + safeQuantity;
+          updatedItems[existingIndex] = {
+            ...existingItem,
+            quantity: newQuantity,
+            total_price: unitPrice * newQuantity,
+            updated_at: nowInner,
+          };
+          updatedCart = {
+            ...currentCart,
+            items: updatedItems,
+            item_count: calculateItemCount({ ...currentCart, items: updatedItems }),
+            total_amount: updatedItems.reduce((sum, item) => sum + item.total_price, 0),
+            updated_at: nowInner,
+          };
+        } else {
+          const newItem: CartItemWithVariant = {
+            id: Date.now(),
+            cart_id: currentCart.id,
+            variant_id: data.variant_id,
+            quantity: safeQuantity,
+            unit_price: unitPrice,
+            total_price: unitPrice * safeQuantity,
+            added_at: now,
+            updated_at: now,
+            variant: variant && product ? { ...variant, product } : undefined,
+          };
+          updatedCart = {
+            ...currentCart,
+            items: [...(currentCart.items || []), newItem],
+            item_count: calculateItemCount({ ...currentCart, items: [...(currentCart.items || []), newItem] }),
+            total_amount: (currentCart.items || []).reduce((sum, item) => sum + item.total_price, 0) + unitPrice * safeQuantity,
+            updated_at: now,
+          };
         }
-
-        const totalAmount = updatedItems.reduce((sum, item) => sum + item.total_price, 0);
-
-        updatedCart = {
-          ...currentCart,
-          items: updatedItems,
-          item_count: calculateItemCount({ ...currentCart, items: updatedItems }),
-          total_amount: totalAmount,
-          updated_at: now,
-        };
       }
 
       setItemCount(calculateItemCount(updatedCart));
@@ -213,49 +238,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updatedCart;
     });
 
-    if (!updatedCart) {
-      throw new Error('Failed to update cart');
-    }
+    if (!updatedCart) throw new Error('Failed to update cart');
 
-    if (!isAuthenticated) {
-      return updatedCart;
-    }
+    if (!isAuthenticated) return updatedCart;
 
     try {
-      await cartApi.addToCart({
-        variant_id: data.variant_id,
-        quantity: safeQuantity,
-      });
+      await cartApi.addToCart({ variant_id: data.variant_id, quantity: safeQuantity });
       const synced = await syncWithAPI();
       return synced ?? updatedCart;
     } catch (error) {
       console.error('Failed to sync addToCart with API:', error);
       return updatedCart;
     }
-  }, [isAuthenticated, syncWithAPI]);
+  }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
 
+  // Update item quantity
   const updateQuantity = useCallback(async (itemId: number, data: UpdateCartItemDto): Promise<Cart> => {
     let updatedCart: Cart | null = null;
-    
+    const now = new Date();
+
     setCart((currentCart) => {
-      if (!currentCart || !currentCart.items) {
-        throw new Error('Cart is empty');
-      }
+      if (!currentCart?.items) throw new Error('Cart is empty');
 
-      const now = new Date();
       const itemIndex = currentCart.items.findIndex(item => item.id === itemId);
-
-      if (itemIndex === -1) {
-        throw new Error('Item not found in cart');
-      }
+      if (itemIndex === -1) throw new Error('Item not found in cart');
 
       const updatedItems = [...currentCart.items];
-      const item = updatedItems[itemIndex];
-
       updatedItems[itemIndex] = {
-        ...item,
+        ...updatedItems[itemIndex],
         quantity: data.quantity,
-        total_price: item.unit_price * data.quantity,
+        total_price: updatedItems[itemIndex].unit_price * data.quantity,
         updated_at: now,
       };
 
@@ -271,13 +283,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updatedCart;
     });
 
-    if (!updatedCart) {
-      throw new Error('Failed to update cart');
-    }
+    if (!updatedCart) throw new Error('Failed to update cart');
 
-    if (!isAuthenticated) {
-      return updatedCart;
-    }
+    if (!isAuthenticated) return updatedCart;
 
     try {
       await cartApi.updateCartItem(itemId, data);
@@ -287,19 +295,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to sync updateQuantity with API:', error);
       return updatedCart;
     }
-  }, [isAuthenticated, syncWithAPI]);
+  }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
 
+  // Remove item from cart
   const removeItem = useCallback(async (itemId: number): Promise<Cart> => {
     let updatedCart: Cart | null = null;
-    
+    const now = new Date();
+
     setCart((currentCart) => {
-      if (!currentCart || !currentCart.items) {
-        throw new Error('Cart is empty');
-      }
+      if (!currentCart?.items) throw new Error('Cart is empty');
 
-      const now = new Date();
       const updatedItems = currentCart.items.filter(item => item.id !== itemId);
-
       updatedCart = {
         ...currentCart,
         items: updatedItems,
@@ -312,41 +318,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updatedCart;
     });
 
-    if (!updatedCart) {
-      throw new Error('Failed to update cart');
-    }
+    if (!updatedCart) throw new Error('Failed to update cart');
 
-    if (!isAuthenticated) {
-      return updatedCart;
-    }
+    if (!isAuthenticated) return updatedCart;
 
     try {
       await cartApi.removeCartItem(itemId);
       const synced = await syncWithAPI();
       return synced ?? updatedCart;
     } catch (error) {
+      // Check if error is 403 (cart locked/expired after order)
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        // Cart was likely converted to order, clear local state
+        console.warn('Cart is locked (possibly converted to order), clearing local state');
+        setCart(null);
+        setItemCount(0);
+        clearLocalCartStorage();
+        persistCart(null);
+        throw new Error('Cart has been processed. Please refresh to continue.');
+      }
       console.error('Failed to sync removeItem with API:', error);
-      // Re-throw the error so Promise.allSettled can catch it as rejected
-      throw error;
+      // Return local cart state for other errors
+      return updatedCart;
     }
-  }, [isAuthenticated, syncWithAPI]);
+  }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart, clearLocalCartStorage]);
 
+  // Clear cart
   const clearCart = useCallback(async (): Promise<void> => {
+    // Clear state first (optimistic)
     setCart(null);
     setItemCount(0);
+    clearLocalCartStorage();
     persistCart(null);
 
-    if (!isAuthenticated) {
-      return;
-    }
+    // Skip next auto-sync to prevent fetching stale cart
+    skipNextSync.current = true;
+
+    if (!isAuthenticated) return;
 
     try {
       await cartApi.clearCart();
     } catch (error) {
-      console.error('Failed to clear cart on API:', error);
+      // If API fails, still keep local cart cleared
+      console.warn('Failed to clear cart on API, but local cart is cleared:', error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearLocalCartStorage, persistCart]);
 
+  // Refresh cart
   const refreshCart = useCallback(async (): Promise<Cart | null> => {
     if (isAuthenticated) {
       return await syncWithAPI();
@@ -359,76 +378,72 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return currentCart;
   }, [isAuthenticated, syncWithAPI]);
 
-  const mergeLocalCartToServer = useCallback(async () => {
-    try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
-      if (!stored) {
-        return;
-      }
-      const localCart: Cart = JSON.parse(stored);
-      if (!localCart.items || localCart.items.length === 0) {
-        return;
-      }
+  // Flag to prevent auto-sync after checkout (e.g., when cart was cleared by server)
+  const skipNextSync = useRef(false);
 
-      setIsLoading(true);
-      for (const item of localCart.items) {
-        // Skip items without valid variant_id to prevent 400 errors
-        if (!item.variant_id || item.variant_id <= 0) {
-          console.warn('Skipping cart item with invalid variant_id:', item);
-          continue;
-        }
-        await cartApi.addToCart({ variant_id: item.variant_id, quantity: item.quantity });
-      }
-      localStorage.removeItem(CART_STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to merge local cart with API:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // Auth state change effect
   useEffect(() => {
-    if (isAuthLoading) {
-      return;
-    }
+    if (isAuthLoading) return;
 
-    const didLogout = wasAuthenticated.current === true && !isAuthenticated;
-    
-    wasAuthenticated.current = isAuthenticated;
+    const currentUserId = user?.id ?? null;
+    const prevUser = prevUserId.current;
+    const didLogout = prevUser !== null && !isAuthenticated;
+    const didSwitchUser = prevUser !== null && currentUserId !== null && prevUser !== currentUserId;
+
+    prevUserId.current = currentUserId;
+
+    // Handle logout or user switch
+    if (didLogout || didSwitchUser) {
+      clearLocalCartStorage();
+      setCart(null);
+      setItemCount(0);
+    }
 
     if (!isAuthenticated) {
       if (didLogout) {
-        clearLocalCart();
         try {
           localStorage.removeItem(CART_USER_KEY);
         } catch (error) {
           console.error('Failed to clear cart user key from localStorage:', error);
         }
-      } else {
+      } else if (!didSwitchUser) {
         loadCartFromStorage();
       }
       return;
     }
 
-    const syncAuthenticatedCart = async () => {
-      if (user?.id) {
-        try {
-          const storedUserId = localStorage.getItem(CART_USER_KEY);
-          if (storedUserId && storedUserId !== String(user.id)) {
-            clearLocalCart();
-          }
-          localStorage.setItem(CART_USER_KEY, String(user.id));
-        } catch (error) {
-          console.error('Failed to sync cart user key in localStorage:', error);
+    // Handle authenticated user
+    const syncCart = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Check if we should skip this sync (e.g., after checkout)
+        if (skipNextSync.current) {
+          skipNextSync.current = false;
+          // Still sync to get fresh server cart
+          await syncWithAPI();
+          return;
         }
+
+        // Check if user switched - clear old cart if so
+        const storedUserId = localStorage.getItem(CART_USER_KEY);
+        if (storedUserId && storedUserId !== String(user.id)) {
+          clearLocalCartStorage();
+        }
+
+        // Update stored user id
+        localStorage.setItem(CART_USER_KEY, String(user.id));
+
+        // Merge local cart to server then sync
+        await mergeLocalCartToServer();
+        await syncWithAPI();
+      } catch (error) {
+        console.error('Failed to sync cart for authenticated user:', error);
       }
-      await mergeLocalCartToServer();
-      await syncWithAPI();
     };
 
-    void syncAuthenticatedCart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isAuthLoading]);
+    void syncCart();
+  }, [isAuthenticated, isAuthLoading, user?.id, loadCartFromStorage, clearLocalCartStorage, mergeLocalCartToServer, syncWithAPI]);
 
   const value: CartContextType = {
     cart,
