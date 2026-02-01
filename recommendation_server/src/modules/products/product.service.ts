@@ -68,7 +68,13 @@ export class ProductService {
     }
 
     if (category_id) {
-      queryBuilder = queryBuilder.andWhere('product.category_id = :category_id', { category_id });
+      const childCategories = await this.categoryRepository.find({
+        select: ['id'],
+        where: { parent_id: category_id, is_active: true }
+      });
+      const categoryIds = [category_id, ...childCategories.map(cat => cat.id)];
+
+      queryBuilder = queryBuilder.andWhere('product.category_id IN (:...categoryIds)', { categoryIds });
     }
 
     if (brand_id) {

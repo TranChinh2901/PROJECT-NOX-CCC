@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
 import { Address } from '@/types';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 interface SavedAddress extends Address {
   id: string;
@@ -191,265 +193,269 @@ export default function AddressesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Addresses</h1>
-          <p className="mt-2 text-gray-600">Add and manage your delivery addresses</p>
-        </div>
-
-        {!isFormOpen && (
-          <div className="mb-6">
-            <Button
-              variant="primary"
-              onClick={() => setIsFormOpen(true)}
-              leftIcon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              }
-            >
-              Add New Address
-            </Button>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gray-50 py-8 pt-32">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Manage Addresses</h1>
+            <p className="mt-2 text-gray-600">Add and manage your delivery addresses</p>
           </div>
-        )}
 
-        {isFormOpen && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {editingId ? 'Edit Address' : 'Add New Address'}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+          {!isFormOpen && (
+            <div className="mb-6">
+              <Button
+                variant="primary"
+                onClick={() => setIsFormOpen(true)}
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                }
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput
-                  label="Full Name"
-                  type="text"
-                  value={formData.fullname}
-                  onChange={(e) => handleInputChange('fullname', e.target.value)}
-                  error={errors.fullname}
-                  placeholder="Enter full name"
-                  required
-                />
-
-                <FormInput
-                  label="Phone Number"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  error={errors.phone}
-                  placeholder="0123456789"
-                  required
-                />
-              </div>
-
-              <FormInput
-                label="Address"
-                type="text"
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                error={errors.address}
-                placeholder="Street address, building, apartment"
-                required
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput
-                  label="City"
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  error={errors.city}
-                  placeholder="Enter city"
-                  required
-                />
-
-                <FormInput
-                  label="District"
-                  type="text"
-                  value={formData.district || ''}
-                  onChange={(e) => handleInputChange('district', e.target.value)}
-                  error={errors.district}
-                  placeholder="Enter district (optional)"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput
-                  label="Ward"
-                  type="text"
-                  value={formData.ward || ''}
-                  onChange={(e) => handleInputChange('ward', e.target.value)}
-                  error={errors.ward}
-                  placeholder="Enter ward (optional)"
-                />
-
-                <FormInput
-                  label="Postal Code"
-                  type="text"
-                  value={formData.postal_code || ''}
-                  onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                  error={errors.postal_code}
-                  placeholder="Enter postal code (optional)"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isDefault"
-                  checked={formData.isDefault}
-                  onChange={(e) => handleInputChange('isDefault', e.target.checked)}
-                  className="w-4 h-4 text-[#CA8A04] border-gray-300 rounded focus:ring-[#CA8A04]"
-                />
-                <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700">
-                  Set as default address
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={isLoading}
-                  disabled={isLoading}
-                >
-                  {editingId ? 'Update Address' : 'Save Address'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetForm}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {addresses.length === 0 && !isFormOpen && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No addresses yet</h3>
-              <p className="mt-2 text-gray-600">Add your first delivery address to get started</p>
+                Add New Address
+              </Button>
             </div>
           )}
 
-          {addresses.map((address) => (
-            <div
-              key={address.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative"
-            >
-              {address.isDefault && (
-                <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#CA8A04] text-white">
-                    Default
-                  </span>
-                </div>
-              )}
-
-              <div className="pr-20">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {address.fullname}
-                </h3>
-                <div className="space-y-1 text-gray-600">
-                  <p>{address.phone}</p>
-                  <p>{address.address}</p>
-                  <p>
-                    {[address.ward, address.district, address.city, address.postal_code]
-                      .filter(Boolean)
-                      .join(', ')}
-                  </p>
-                </div>
+          {isFormOpen && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {editingId ? 'Edit Address' : 'Add New Address'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(address)}
-                  disabled={isLoading}
-                >
-                  Edit
-                </Button>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Full Name"
+                    type="text"
+                    value={formData.fullname}
+                    onChange={(e) => handleInputChange('fullname', e.target.value)}
+                    error={errors.fullname}
+                    placeholder="Enter full name"
+                    required
+                  />
 
-                {!address.isDefault && (
+                  <FormInput
+                    label="Phone Number"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    error={errors.phone}
+                    placeholder="0123456789"
+                    required
+                  />
+                </div>
+
+                <FormInput
+                  label="Address"
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  error={errors.address}
+                  placeholder="Street address, building, apartment"
+                  required
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="City"
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    error={errors.city}
+                    placeholder="Enter city"
+                    required
+                  />
+
+                  <FormInput
+                    label="District"
+                    type="text"
+                    value={formData.district || ''}
+                    onChange={(e) => handleInputChange('district', e.target.value)}
+                    error={errors.district}
+                    placeholder="Enter district (optional)"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Ward"
+                    type="text"
+                    value={formData.ward || ''}
+                    onChange={(e) => handleInputChange('ward', e.target.value)}
+                    error={errors.ward}
+                    placeholder="Enter ward (optional)"
+                  />
+
+                  <FormInput
+                    label="Postal Code"
+                    type="text"
+                    value={formData.postal_code || ''}
+                    onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                    error={errors.postal_code}
+                    placeholder="Enter postal code (optional)"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isDefault"
+                    checked={formData.isDefault}
+                    onChange={(e) => handleInputChange('isDefault', e.target.checked)}
+                    className="w-4 h-4 text-[#CA8A04] border-gray-300 rounded focus:ring-[#CA8A04]"
+                  />
+                  <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700">
+                    Set as default address
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-4">
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSetDefault(address.id)}
+                    type="submit"
+                    variant="primary"
+                    loading={isLoading}
                     disabled={isLoading}
                   >
-                    Set as Default
+                    {editingId ? 'Update Address' : 'Save Address'}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {addresses.length === 0 && !isFormOpen && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No addresses yet</h3>
+                <p className="mt-2 text-gray-600">Add your first delivery address to get started</p>
+              </div>
+            )}
+
+            {addresses.map((address) => (
+              <div
+                key={address.id}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative"
+              >
+                {address.isDefault && (
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#CA8A04] text-white">
+                      Default
+                    </span>
+                  </div>
                 )}
 
-                {deleteConfirmId === address.id ? (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(address.id)}
-                      disabled={isLoading}
-                    >
-                      Confirm Delete
-                    </Button>
+                <div className="pr-20">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {address.fullname}
+                  </h3>
+                  <div className="space-y-1 text-gray-600">
+                    <p>{address.phone}</p>
+                    <p>{address.address}</p>
+                    <p>
+                      {[address.ward, address.district, address.city, address.postal_code]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(address)}
+                    disabled={isLoading}
+                  >
+                    Edit
+                  </Button>
+
+                  {!address.isDefault && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteConfirmId(null)}
+                      onClick={() => handleSetDefault(address.id)}
                       disabled={isLoading}
                     >
-                      Cancel
+                      Set as Default
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteConfirmId(address.id)}
-                    disabled={isLoading}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </Button>
-                )}
+                  )}
+
+                  {deleteConfirmId === address.id ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(address.id)}
+                        disabled={isLoading}
+                      >
+                        Confirm Delete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteConfirmId(null)}
+                        disabled={isLoading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteConfirmId(address.id)}
+                      disabled={isLoading}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }

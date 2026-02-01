@@ -22,6 +22,7 @@ export type {
   AddToCartDto,
   UpdateCartItemDto,
   CartContextType,
+  CartItemVariant,
 } from './cart.types';
 
 export type {

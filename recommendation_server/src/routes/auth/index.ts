@@ -24,7 +24,7 @@ router.post('/refresh-token',
 );
 
 router.post('/logout', 
-  authMiddleware, 
+  authMiddleware(), 
   asyncHandle(authController.logout)
 );
 

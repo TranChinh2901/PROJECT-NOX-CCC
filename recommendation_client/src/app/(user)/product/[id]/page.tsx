@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
-import { productApi, reviewApi, cartApi } from '@/lib/api';
+import { productApi, reviewApi } from '@/lib/api';
+import { useCart } from '@/contexts/CartContext';
 import { Product, Review } from '@/types';
 import toast from 'react-hot-toast';
 import { 
@@ -69,6 +70,8 @@ export default function ProductPage() {
     fetchData();
   }, [productId]);
 
+  const { addToCart: addToCartContext } = useCart();
+
   const addToCart = async () => {
     if (!product) return;
     
@@ -79,10 +82,14 @@ export default function ProductPage() {
       }
       
       const defaultVariant = product.variants[0];
-      await cartApi.addToCart({
-        variant_id: defaultVariant.id,
-        quantity
-      });
+      await addToCartContext(
+        {
+          variant_id: defaultVariant.id,
+          quantity
+        },
+        product,
+        defaultVariant
+      );
       
       toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
       
@@ -123,7 +130,7 @@ export default function ProductPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white mt-10">
-        <Header cartItemCount={cartItemCount} />
+        <Header />
         <main className="pt-24 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -142,7 +149,7 @@ export default function ProductPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-white mt-10">
-        <Header cartItemCount={cartItemCount} />
+        <Header />
         <main className="pt-24 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -165,7 +172,7 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-white mt-10">
-      <Header cartItemCount={cartItemCount} />
+      <Header />
       
       <main className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -28,6 +28,22 @@ export class CartService {
     this.variantRepository = AppDataSource.getRepository(ProductVariant);
   }
 
+  private async validateAndClaimCartAccess(cart: Cart, userId: number): Promise<void> {
+    if (cart.user_id === null || cart.user_id === undefined) {
+      cart.user_id = userId;
+      await this.cartRepository.save(cart);
+      return;
+    }
+
+    if (cart.user_id !== userId) {
+      throw new AppError(
+        'Unauthorized access to cart',
+        HttpStatusCode.FORBIDDEN,
+        ErrorCode.FORBIDDEN
+      );
+    }
+  }
+
   async getOrCreateCart(userId: number, sessionId?: number) {
     let cart = await this.cartRepository.findOne({
       where: [
@@ -46,6 +62,9 @@ export class CartService {
         item_count: 0,
         currency: 'VND'
       });
+      await this.cartRepository.save(cart);
+    } else if (cart.user_id === null || cart.user_id === undefined) {
+      cart.user_id = userId;
       await this.cartRepository.save(cart);
     }
 
@@ -93,6 +112,9 @@ export class CartService {
         item_count: 0,
         currency: 'VND'
       });
+      await this.cartRepository.save(cart);
+    } else if (cart.user_id === null || cart.user_id === undefined) {
+      cart.user_id = userId;
       await this.cartRepository.save(cart);
     }
 
@@ -143,13 +165,7 @@ export class CartService {
       );
     }
 
-    if (cartItem.cart.user_id !== userId) {
-      throw new AppError(
-        'Unauthorized access to cart item',
-        HttpStatusCode.FORBIDDEN,
-        ErrorCode.FORBIDDEN
-      );
-    }
+    await this.validateAndClaimCartAccess(cartItem.cart, userId);
 
     cartItem.quantity = quantity;
     cartItem.total_price = Number(cartItem.unit_price) * quantity;
@@ -174,13 +190,7 @@ export class CartService {
       );
     }
 
-    if (cartItem.cart.user_id !== userId) {
-      throw new AppError(
-        'Unauthorized access to cart item',
-        HttpStatusCode.FORBIDDEN,
-        ErrorCode.FORBIDDEN
-      );
-    }
+    await this.validateAndClaimCartAccess(cartItem.cart, userId);
 
     await this.cartItemRepository.remove(cartItem);
     await this.recalculateCartTotals(cartItem.cart_id);

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
 import { ProductImage } from '../../common/ProductImage';
-import { productApi, categoryApi, cartApi } from '@/lib/api';
+import { productApi, categoryApi } from '@/lib/api';
+import { useCart } from '@/contexts/CartContext';
 import { Product, Category } from '@/types';
 import toast from 'react-hot-toast';
 import { 
@@ -38,45 +39,139 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
+function FlyToCartAnimation({ 
+  startRect, 
+  imageUrl, 
+  onComplete 
+}: { 
+  startRect: DOMRect; 
+  imageUrl: string; 
+  onComplete: () => void;
+}) {
+  const [position, setPosition] = useState({ x: 0, y: 0, scale: 1, opacity: 1 });
+  
+  useEffect(() => {
+    const cartIcon = document.querySelector('[data-cart-icon]');
+    const endRect = cartIcon?.getBoundingClientRect();
+    
+    if (!endRect) {
+      onComplete();
+      return;
+    }
+    
+    const startX = startRect.left + startRect.width / 2;
+    const startY = startRect.top + startRect.height / 2;
+    const endX = endRect.left + endRect.width / 2;
+    const endY = endRect.top + endRect.height / 2;
+    
+    const duration = 800;
+    const startTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      
+      const currentX = startX + (endX - startX) * easeOut;
+      const currentY = startY + (endY - startY) * easeOut;
+      const scale = 1 - (0.7 * easeOut);
+      const opacity = 1 - (0.3 * progress);
+      
+      setPosition({ 
+        x: currentX - startX, 
+        y: currentY - startY, 
+        scale, 
+        opacity 
+      });
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setTimeout(onComplete, 100);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [startRect, onComplete]);
+  
+  return (
+    <div
+      className="fixed z-50 pointer-events-none"
+      style={{
+        left: startRect.left + startRect.width / 2,
+        top: startRect.top + startRect.height / 2,
+        width: startRect.width,
+        height: startRect.height,
+        transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%) scale(${position.scale})`,
+        opacity: position.opacity,
+        transition: 'none',
+      }}
+    >
+      <img 
+        src={imageUrl} 
+        alt="Flying product"
+        className="w-full h-full object-cover rounded-lg shadow-2xl"
+      />
+    </div>
+  );
+}
+
 export default function HomePage() {
+  const { addToCart: addToCartContext, itemCount } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [cart, setCart] = useState<{id: number, quantity: number}[]>([]);
   const [sortBy, setSortBy] = useState('featured');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  const productImageRefs = useRef<Map<number, HTMLImageElement>>(new Map());
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        setLoading(true);
-        const [productsData, categoriesData] = await Promise.all([
-          productApi.getAllProducts({ limit: 50 }),
-          categoryApi.getAllCategories()
-        ]);
-        setProducts(productsData.data || []);
+        const categoriesData = await categoryApi.getAllCategories();
         setCategories(categoriesData || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching categories:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        toast.error('Không thể tải danh mục');
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const productsData = await productApi.getAllProducts({
+          limit: 50,
+          category_id: selectedCategory ?? undefined
+        });
+        setProducts(productsData.data || []);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching products:', err);
         setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
         toast.error('Không thể tải dữ liệu sản phẩm');
       } finally {
         setLoading(false);
+        setIsInitialLoad(false);
       }
     };
 
-    fetchData();
-  }, []);
+    fetchProducts();
+  }, [selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
-    
-    if (selectedCategory !== null) {
-      filtered = filtered.filter(p => p.category_id === selectedCategory);
-    }
     
     if (searchQuery) {
       filtered = filtered.filter(p => 
@@ -100,9 +195,9 @@ export default function HomePage() {
     }
     
     return filtered;
-  }, [products, selectedCategory, searchQuery, sortBy]);
+  }, [products, searchQuery, sortBy]);
 
-  const addToCart = async (product: Product) => {
+  const handleAddToCart = useCallback(async (product: Product, imageElement: HTMLImageElement | null) => {
     try {
       if (!product.variants || product.variants.length === 0) {
         toast.error('Sản phẩm không có phiên bản nào khả dụng');
@@ -110,35 +205,35 @@ export default function HomePage() {
       }
       
       const defaultVariant = product.variants[0];
-      await cartApi.addToCart({
+
+      if (imageElement) {
+        const rect = imageElement.getBoundingClientRect();
+        const imageUrl = imageElement.src;
+
+        setFlyingItems(prev => [...prev, {
+          id: Date.now(),
+          rect,
+          imageUrl
+        }]);
+      }
+
+      await addToCartContext({
         variant_id: defaultVariant.id,
         quantity: 1
       });
       
       toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
-      
-      setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
-        if (existing) {
-          return prev.map(item => 
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-          );
-        }
-        return [...prev, { id: product.id, quantity: 1 }];
-      });
     } catch (err: any) {
       console.error('Error adding to cart:', err);
-      if (err.response?.status === 401) {
-        toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
-      } else {
-        toast.error('Không thể thêm vào giỏ hàng');
-      }
+      toast.error('Không thể thêm vào giỏ hàng');
     }
-  };
+  }, [addToCartContext]);
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const removeFlyingItem = useCallback((id: number) => {
+    setFlyingItems(prev => prev.filter(item => item.id !== id));
+  }, []);
 
-  if (loading) {
+  if (loading && isInitialLoad) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -173,7 +268,16 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 mt-7">
-      <Header cartItemCount={cartItemCount} />
+      <Header />
+
+      {flyingItems.map((item) => (
+        <FlyToCartAnimation
+          key={item.id}
+          startRect={item.rect}
+          imageUrl={item.imageUrl}
+          onComplete={() => removeFlyingItem(item.id)}
+        />
+      ))}
       
       <section className="relative bg-gradient-to-br from-white via-gray-50 to-white pt-28 pb-12">
         <div className="absolute inset-0 overflow-hidden">
@@ -291,16 +395,30 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onAddToCart={() => addToCart(product)}
-              />
-            ))}
+            {loading ? (
+              <div className="col-span-full flex items-center justify-center py-16">
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-3 border-4 border-[#CA8A04] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-gray-600">Đang tải sản phẩm...</p>
+                </div>
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onAddToCart={(imageEl) => handleAddToCart(product, imageEl)}
+                  imageRef={(el) => {
+                    if (el) {
+                      productImageRefs.current.set(product.id, el);
+                    }
+                  }}
+                />
+              ))
+            )}
           </div>
 
-          {filteredProducts.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                 <Search className="w-8 h-8 text-gray-400" />
@@ -323,11 +441,14 @@ export default function HomePage() {
 
 function ProductCard({ 
   product, 
-  onAddToCart 
+  onAddToCart,
+  imageRef
 }: { 
   product: Product; 
-  onAddToCart: () => void;
+  onAddToCart: (imageEl: HTMLImageElement | null) => void;
+  imageRef?: (el: HTMLImageElement | null) => void;
 }) {
+  const localImageRef = useRef<HTMLImageElement>(null);
   const discount = product.compare_at_price 
     ? Math.round(((product.compare_at_price - product.base_price) / product.compare_at_price) * 100)
     : null;
@@ -335,6 +456,10 @@ function ProductCard({
   const primaryImage = product.images?.find(img => img.is_primary)?.image_url || 
                        product.images?.[0]?.image_url ||
                        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
+
+  const handleAddToCart = () => {
+    onAddToCart(localImageRef.current);
+  };
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg">
@@ -352,6 +477,10 @@ function ProductCard({
 
       <a href={`/product/${product.id}`} className="block aspect-square bg-gray-50 overflow-hidden">
         <img 
+          ref={(el) => {
+            localImageRef.current = el;
+            imageRef?.(el);
+          }}
           src={primaryImage} 
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -384,7 +513,7 @@ function ProductCard({
         </div>
 
         <button
-          onClick={onAddToCart}
+          onClick={handleAddToCart}
           disabled={!product.is_active}
           className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
             product.is_active

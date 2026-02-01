@@ -101,12 +101,20 @@ export class AuthService {
      
     });
     const savedUser = await this.userRepository.save(newUser);
+    const tokens = this.generateToken(savedUser);
     return {
       message: "Registration successful",
+      ...tokens,
       user: {
         id: savedUser.id,
         fullname: savedUser.fullname,
         email: savedUser.email,
+        phone_number: savedUser.phone_number,
+        address: savedUser.address,
+        gender: savedUser.gender,
+        date_of_birth: savedUser.date_of_birth,
+        avatar: savedUser.avatar,
+        is_verified: savedUser.is_verified,
         role: savedUser.role
       }
     };

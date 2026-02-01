@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+import ProfileSkeleton from '@/components/common/ProfileSkeleton';
 
 const ProfilePage: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -12,9 +15,11 @@ const ProfilePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#CA8A04]"></div>
-      </div>
+      <>
+        <Header />
+        <ProfileSkeleton />
+        <Footer />
+      </>
     );
   }
 
@@ -24,15 +29,17 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">Manage your personal information</p>
-        </div>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gray-50 py-8 pt-32">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+            <p className="text-gray-600 mt-1">Manage your personal information</p>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-[#CA8A04] to-[#B47B04] px-8 py-12">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#CA8A04] to-[#B47B04] px-8 py-12">
             <div className="flex items-center gap-6">
               <div className="relative">
                 {user.avatar ? (
@@ -206,8 +213,10 @@ const ProfilePage: React.FC = () => {
             </div>
           </Link>
         </div>
+        </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 };
 

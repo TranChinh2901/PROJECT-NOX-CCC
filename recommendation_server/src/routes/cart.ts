@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import cartController from '@/modules/cart/cart.controller';
 import { authMiddleware } from '@/middlewares/auth.middleware';
+import { asyncHandle } from '@/utils/handle-error';
 
 const router = Router();
 
-router.get('/', authMiddleware, cartController.getCart);
-router.post('/add', authMiddleware, cartController.addToCart);
-router.put('/items/:itemId', authMiddleware, cartController.updateCartItem);
-router.delete('/items/:itemId', authMiddleware, cartController.removeCartItem);
-router.delete('/clear', authMiddleware, cartController.clearCart);
+router.get('/', authMiddleware(), asyncHandle(cartController.getCart));
+router.post('/add', authMiddleware(), asyncHandle(cartController.addToCart));
+router.put('/items/:itemId', authMiddleware(), asyncHandle(cartController.updateCartItem));
+router.delete('/items/:itemId', authMiddleware(), asyncHandle(cartController.removeCartItem));
+router.delete('/clear', authMiddleware(), asyncHandle(cartController.clearCart));
 
 export default router;

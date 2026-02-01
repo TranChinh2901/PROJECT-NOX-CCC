@@ -1,4 +1,5 @@
 /node_modules
+/dist
 /.env
 /API_TEST.md
 /DATABASE_UPDATE_STATUS.md

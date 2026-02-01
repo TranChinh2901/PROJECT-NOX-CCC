@@ -4,6 +4,8 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -51,8 +53,10 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
+   return (
+     <>
+       <Header />
+       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 pt-32">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="text-center mb-8">
@@ -140,7 +144,9 @@ export default function ForgotPasswordPage() {
             Privacy Policy
           </Link>
         </p>
+       </div>
       </div>
-    </div>
-  );
-}
+      <Footer />
+     </>
+   );
+ }

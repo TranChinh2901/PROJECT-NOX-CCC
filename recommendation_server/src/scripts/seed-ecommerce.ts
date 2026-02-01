@@ -81,11 +81,11 @@ async function seedDatabase() {
     console.log("Seeding categories...");
     const categories: Category[] = [];
     const categoryData = [
-      { name: "Men's Clothing", subs: ["T-Shirts", "Shirts", "Pants", "Jackets"] },
-      { name: "Women's Clothing", subs: ["Dresses", "Tops", "Pants", "Skirts"] },
-      { name: "Kids' Clothing", subs: ["Boys", "Girls", "Baby"] },
-      { name: "Accessories", subs: ["Bags", "Hats", "Belts", "Jewelry"] },
-      { name: "Shoes", subs: ["Sneakers", "Boots", "Sandals", "Formal"] },
+      { name: "Thời Trang Nam", subs: ["Áo Thun", "Áo Sơ Mi", "Quần Dài", "Áo Khoác"] },
+      { name: "Thời Trang Nữ", subs: ["Váy Đầm", "Áo Kiều", "Quần Nữ", "Chân Váy"] },
+      { name: "Thời Trang Trẻ Em", subs: ["Bé Trai", "Bé Gái", "Sơ Sinh"] },
+      { name: "Phụ Kiện", subs: ["Túi Xách", "Mũ Nón", "Thắt Lưng", "Trang Sức"] },
+      { name: "Giày Dép", subs: ["Giày Thể Thao", "Giày Bốt", "Dép Sandal", "Giày Tây"] },
     ];
 
     for (const cat of categoryData) {

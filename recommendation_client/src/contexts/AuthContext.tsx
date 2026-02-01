@@ -66,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(STORAGE_KEYS.legacyAccessToken);
     localStorage.removeItem(STORAGE_KEYS.legacyRefreshToken);
     localStorage.removeItem(STORAGE_KEYS.legacyUser);
+    localStorage.removeItem('cart:state');
+    localStorage.removeItem('cart:user_id');
   }, []);
 
   const login = useCallback(

@@ -11,7 +11,11 @@ export const cartApi = {
   },
 
   async addToCart(data: AddToCartDto): Promise<Cart> {
-    return await apiClient.post<Cart>('/cart/add', data);
+    const quantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
+    return await apiClient.post<Cart>('/cart/add', {
+      variant_id: data.variant_id,
+      quantity,
+    });
   },
 
   async updateCartItem(itemId: number, data: UpdateCartItemDto): Promise<Cart> {

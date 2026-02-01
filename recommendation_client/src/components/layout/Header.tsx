@@ -67,39 +67,41 @@ export const Header: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              {isAuthenticated ? (
+              {isAuthenticated && user ? (
                 <div 
-                  className="hidden sm:flex relative"
+                  className="relative"
                   onMouseEnter={() => setShowUserDropdown(true)}
                   onMouseLeave={() => setShowUserDropdown(false)}
                 >
-                  <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                    {user?.avatar ? (
-                      <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200">
-                        <Image 
-                          src={user.avatar} 
-                          alt={user.fullname || 'User'} 
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#CA8A04] to-[#B47B04] flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">
-                          {user?.fullname?.[0]?.toUpperCase() || 'U'}
+                  <div className="flex">
+                    <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors pb-2">
+                      {user?.avatar ? (
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200">
+                          <Image 
+                            src={user.avatar} 
+                            alt={user.fullname || 'User'} 
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#CA8A04] to-[#B47B04] flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">
+                            {user?.fullname?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs">Xin chào</span>
+                        <span className="font-medium text-gray-900 max-w-[100px] truncate">
+                          {user?.fullname || user?.email?.split('@')[0]}
                         </span>
                       </div>
-                    )}
-                    <div className="flex flex-col items-start">
-                      <span className="text-xs">Xin chào</span>
-                      <span className="font-medium text-gray-900 max-w-[100px] truncate">
-                        {user?.fullname || user?.email?.split('@')[0]}
-                      </span>
-                    </div>
-                  </button>
+                    </button>
+                  </div>
 
                   {showUserDropdown && (
-                    <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-2xl py-2 z-50">
+                    <div className="absolute top-full right-0 w-56 bg-white rounded-xl border border-gray-200 shadow-2xl py-2 z-50">
                       <Link 
                         href="/account/profile"
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -152,13 +154,13 @@ export const Header: React.FC = () => {
                 </div>
               )}
 
-              <Link 
+              <Link
                 href="/cart"
                 className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 onMouseEnter={() => setShowCartPreview(true)}
                 onMouseLeave={() => setShowCartPreview(false)}
               >
-                <div className="relative">
+                <div className="relative" data-cart-icon>
                   <ShoppingCart className="w-6 h-6" />
                   {itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#CA8A04] rounded-full text-xs text-white flex items-center justify-center font-bold">

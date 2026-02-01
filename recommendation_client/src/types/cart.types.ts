@@ -1,12 +1,17 @@
 import { CartStatus } from './order.types';
-import { ProductVariant } from './product.types';
+import { ProductVariant, Product, ProductImage } from './product.types';
 import { User } from './auth.types';
+
+// Extended ProductVariant that includes the parent product
+export interface CartItemVariant extends ProductVariant {
+  product?: Product;
+}
 
 export interface CartItem {
   id: number;
   cart_id: number;
   variant_id: number;
-  variant?: ProductVariant;
+  variant?: CartItemVariant | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -56,7 +61,7 @@ export interface CartContextType {
   /** Derived count for the header cart badge. */
   itemCount: number;
 
-  addToCart(data: AddToCartDto): Promise<Cart>;
+  addToCart(data: AddToCartDto, product?: Product, variant?: ProductVariant): Promise<Cart>;
 
   updateQuantity(itemId: number, data: UpdateCartItemDto): Promise<Cart>;
 
