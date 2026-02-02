@@ -858,11 +858,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Tests: `src/modules/promotions/entity/promotion.spec.ts`, `promotion-usage.spec.ts` created
-- [ ] Tests fail
+- [x] Tests: `src/modules/promotions/entity/promotion.spec.ts`, `promotion-usage.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] Promotion entity fields:
+- [x] Promotion entity fields:
   - id, code: string (50, unique) - e.g., "SUMMER25"
   - name: string (100)
   - description: text (nullable)
@@ -877,19 +877,19 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - applies_to: enum ('all', 'categories', 'products')
   - applicable_ids: json (nullable) - array of category/product IDs
   - created_at, updated_at, deleted_at
-- [ ] PromotionUsage entity fields:
+- [x] PromotionUsage entity fields:
   - id, promotion_id (FK to Promotion)
   - order_id (FK to Order)
   - user_id (FK to User)
   - discount_amount: decimal(10,2)
   - used_at: timestamp
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: code (unique), is_active, starts_at, ends_at
-- [ ] Add check constraints: value >= 0, usage limits > 0 if set
-- [ ] Tests still pass
+- [x] Add indexes: code (unique), is_active, starts_at, ends_at
+- [x] Add check constraints: value >= 0, usage limits > 0 if set
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(promotions): add Promotion and PromotionUsage entities`
