@@ -380,11 +380,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/users/entity/user-session.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/users/entity/user-session.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] UserSession entity fields:
+- [x] UserSession entity fields:
   - id, user_id (FK to users, nullable for guest sessions)
   - session_token: string (255, unique, indexed) - for anonymous tracking
   - ip_address: string (45, nullable) - supports IPv6
@@ -393,13 +393,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - started_at, ended_at: timestamps
   - is_active: boolean (default true)
   - created_at, updated_at
-- [ ] Add relationship: UserSession → User: ManyToOne
-- [ ] Add relationship: User → UserSessions: OneToMany
-- [ ] Tests pass
+- [x] Add relationship: UserSession → User: ManyToOne
+- [x] Add relationship: User → UserSessions: OneToMany
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add index on session_token, user_id, is_active
-- [ ] Tests still pass
+- [x] Add index on session_token, user_id, is_active
+- [x] Tests still pass
 
 **Commit**: YES (grouped with Task 1)
 - Message: `feat(users): add UserSession entity for behavior tracking`
