@@ -1072,11 +1072,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/inventory/entity/inventory-log.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/inventory/entity/inventory-log.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] InventoryLog entity fields:
+- [x] InventoryLog entity fields:
   - id, inventory_id (FK to Inventory)
   - variant_id (FK to ProductVariant) - denormalized for easier queries
   - warehouse_id (FK to Warehouse) - denormalized
@@ -1089,13 +1089,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - notes: text (nullable)
   - performed_by: string (100, nullable) - user or system
   - created_at
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: inventory_id, variant_id, action_type, created_at
-- [ ] Add check constraint: quantity_before + quantity_change = quantity_after
-- [ ] Tests still pass
+- [x] Add indexes: inventory_id, variant_id, action_type, created_at
+- [x] Add check constraint: quantity_before + quantity_change = quantity_after
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(inventory): add InventoryLog for audit trail`
