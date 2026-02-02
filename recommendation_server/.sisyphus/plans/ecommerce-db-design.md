@@ -812,24 +812,24 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/wishlist/entity/wishlist-item.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/wishlist/entity/wishlist-item.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] WishlistItem entity fields:
+- [x] WishlistItem entity fields:
   - id, user_id (FK to User)
   - variant_id (FK to ProductVariant)
   - notes: string (500, nullable) - personal notes
   - priority: enum ('low', 'medium', 'high', default 'medium')
   - added_at: timestamp
   - created_at, updated_at
-- [ ] Unique constraint: (user_id, variant_id) - no duplicates
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Unique constraint: (user_id, variant_id) - no duplicates
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: user_id, variant_id
-- [ ] Tests still pass
+- [x] Add indexes: user_id, variant_id
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(wishlist): add WishlistItem entity`
