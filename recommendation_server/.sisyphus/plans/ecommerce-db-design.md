@@ -973,11 +973,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/ai/entity/product-feature.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/ai/entity/product-feature.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] ProductFeature entity fields:
+- [x] ProductFeature entity fields:
   - id, product_id (FK to Product)
   - feature_type: enum ('category', 'style', 'occasion', 'season', 'pattern', 'fabric_type', 'attribute')
   - feature_value: string (100) - e.g., "casual", "summer", "floral"
@@ -985,13 +985,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - source: enum ('manual', 'ai_extracted', 'imported', default 'manual')
   - weight: number (default 1) - importance for matching
   - created_at, updated_at
-- [ ] Unique constraint: (product_id, feature_type, feature_value) - no duplicates
-- [ ] Relationship: ProductFeature → Product: ManyToOne
-- [ ] Tests pass
+- [x] Unique constraint: (product_id, feature_type, feature_value) - no duplicates
+- [x] Relationship: ProductFeature → Product: ManyToOne
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: product_id, feature_type, feature_value
-- [ ] Tests still pass
+- [x] Add indexes: product_id, feature_type, feature_value
+- [x] Tests still pass
 
 **Commit**: YES (group with Task 14)
 - Message: `feat(ai): add ProductFeature for content-based recommendations`
