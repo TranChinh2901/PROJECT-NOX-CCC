@@ -337,21 +337,21 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/inventory/entity/warehouse.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/inventory/entity/warehouse.spec.ts` created
+- [x] Tests fail - SKIPPED (entity already exists)
 
 **GREEN Phase**:
-- [ ] Warehouse entity fields:
+- [x] Warehouse entity fields:
   - id, name (100), code (20, unique), address (255)
   - city (100), country (100, default 'Vietnam')
   - contact_name, contact_phone, contact_email
   - is_active (default true), is_default (default false)
   - created_at, updated_at, deleted_at
-- [ ] Tests pass
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add unique constraint: only one warehouse can be is_default=true
-- [ ] Tests still pass
+- [x] Add unique constraint: only one warehouse can be is_default=true
+- [x] Tests still pass
 
 **Commit**: YES (grouped with Task 1)
 - Message: `feat(inventory): add Warehouse entity`
