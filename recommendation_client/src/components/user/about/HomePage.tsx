@@ -5,6 +5,7 @@ import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
 import { ProductImage } from '../../common/ProductImage';
+import { Skeleton } from '../../common/Skeleton';
 import { productApi, categoryApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { Product, Category } from '@/types';
@@ -217,13 +218,17 @@ export default function HomePage() {
         }]);
       }
 
-      await addToCartContext({
-        variant_id: defaultVariant.id,
-        quantity: 1
-      });
+      await addToCartContext(
+        {
+          variant_id: defaultVariant.id,
+          quantity: 1,
+        },
+        product,
+        defaultVariant
+      );
       
       toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error adding to cart:', err);
       toast.error('Không thể thêm vào giỏ hàng');
     }
@@ -396,12 +401,21 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {loading ? (
-              <div className="col-span-full flex items-center justify-center py-16">
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 border-4 border-[#CA8A04] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-gray-600">Đang tải sản phẩm...</p>
+              Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={`product-skeleton-${index}`}
+                  className="bg-white rounded-2xl overflow-hidden border border-gray-200"
+                >
+                  <Skeleton className="w-full aspect-square" rounded="none" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton height="20px" className="w-3/4" />
+                    <Skeleton height="14px" className="w-full" />
+                    <Skeleton height="14px" className="w-5/6" />
+                    <Skeleton height="24px" className="w-1/2" />
+                    <Skeleton height="44px" className="w-full" rounded="lg" />
+                  </div>
                 </div>
-              </div>
+              ))
             ) : (
               filteredProducts.map((product) => (
                 <ProductCard 

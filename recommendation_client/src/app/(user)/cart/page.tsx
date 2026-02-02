@@ -274,7 +274,8 @@ export default function CartPage() {
               {cart.items.map((item) => {
                 const variant = item.variant;
                 const product = variant?.product;
-                const price = variant?.final_price || item.unit_price || 0;
+                
+                const price = variant?.final_price ?? product?.base_price ?? item.unit_price ?? 0;
                 const itemTotal = price * item.quantity;
                 const productName = product?.name || variant?.sku || 'Sản phẩm';
                 const productImage = product?.images?.find(img => img.is_primary)?.image_url 

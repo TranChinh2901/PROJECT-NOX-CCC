@@ -52,14 +52,51 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+<<<<<<< HEAD
   // Load cart from localStorage
   const loadCartFromStorage = useCallback(() => {
+=======
+  const loadCartFromStorage = useCallback(async () => {
+>>>>>>> 160527c (test(cart): move Cart and CartItem entity tests to standard location)
     try {
       const stored = localStorage.getItem(CART_STORAGE_KEY);
       if (stored) {
         const parsedCart: Cart = JSON.parse(stored);
-        setCart(parsedCart);
-        setItemCount(calculateItemCount(parsedCart));
+        
+        const enrichedItems = await Promise.all(
+          (parsedCart.items || []).map(async (item) => {
+            const variant = item.variant;
+            const productId = variant?.product_id;
+            
+            if (productId && (!variant?.product || !variant.product.base_price)) {
+              try {
+                const product = await productApi.getProductById(productId);
+                const variantFromProduct = product?.variants?.find((v) => v.id === item.variant_id);
+                const enrichedVariant = variantFromProduct ?? variant;
+                
+                return {
+                  ...item,
+                  variant: enrichedVariant ? { ...enrichedVariant, product } : variant,
+                  unit_price: enrichedVariant?.final_price ?? product?.base_price ?? item.unit_price ?? 0,
+                };
+              } catch (error) {
+                console.error('Failed to enrich cart item from storage:', error);
+                return item;
+              }
+            }
+            
+            return item;
+          })
+        );
+        
+        const enrichedCart = {
+          ...parsedCart,
+          items: enrichedItems,
+        };
+        
+        setCart(enrichedCart);
+        setItemCount(calculateItemCount(enrichedCart));
+        persistCart(enrichedCart);
       } else {
         setCart(null);
         setItemCount(0);
@@ -163,7 +200,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback(async (data: AddToCartDto, product?: Product, variant?: ProductVariant): Promise<Cart> => {
     const safeQuantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
     const now = new Date();
+<<<<<<< HEAD
     const unitPrice = variant?.final_price || product?.base_price || 0;
+=======
+    const variantWithProduct = variant && product ? {
+      ...variant,
+      product: product
+    } : undefined;
+
+    const unitPrice = variant?.final_price ?? product?.base_price ?? 0;
+>>>>>>> 160527c (test(cart): move Cart and CartItem entity tests to standard location)
     let updatedCart: Cart | null = null;
 
     setCart((currentCart) => {
@@ -406,8 +452,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error('Failed to clear cart user key from localStorage:', error);
         }
+<<<<<<< HEAD
       } else if (!didSwitchUser) {
         loadCartFromStorage();
+=======
+      } else {
+        void loadCartFromStorage();
+>>>>>>> 160527c (test(cart): move Cart and CartItem entity tests to standard location)
       }
       return;
     }
@@ -442,8 +493,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+<<<<<<< HEAD
     void syncCart();
   }, [isAuthenticated, isAuthLoading, user?.id, loadCartFromStorage, clearLocalCartStorage, mergeLocalCartToServer, syncWithAPI]);
+=======
+    void syncAuthenticatedCart();
+  }, [isAuthenticated, isAuthLoading, loadCartFromStorage, clearLocalCart, user, mergeLocalCartToServer, syncWithAPI]);
+>>>>>>> 160527c (test(cart): move Cart and CartItem entity tests to standard location)
 
   const value: CartContextType = {
     cart,

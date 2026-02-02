@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { CartItem } from '../../../src/modules/cart/entity/cart-item';
-import { Cart } from '../../../src/modules/cart/entity/cart';
-import { ProductVariant } from '../../../src/modules/products/entity/product-variant';
+import { CartItem } from './cart-item';
+import { Cart } from './cart';
+import { ProductVariant } from '@/modules/products/entity/product-variant';
 
 describe('CartItem Entity', () => {
   describe('Schema Validation', () => {

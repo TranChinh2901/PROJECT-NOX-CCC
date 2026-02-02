@@ -1,9 +1,9 @@
 import 'reflect-metadata';
-import { Cart } from '../../../src/modules/cart/entity/cart';
-import { CartItem } from '../../../src/modules/cart/entity/cart-item';
-import { User } from '../../../src/modules/users/entity/user.entity';
-import { UserSession } from '../../../src/modules/users/entity/user-session';
-import { CartStatus } from '../../../src/modules/cart/enum/cart.enum';
+import { Cart } from './cart';
+import { CartItem } from './cart-item';
+import { User } from '@/modules/users/entity/user.entity';
+import { UserSession } from '@/modules/users/entity/user-session';
+import { CartStatus } from '../enum/cart.enum';
 
 describe('Cart Entity', () => {
   describe('Schema Validation', () => {

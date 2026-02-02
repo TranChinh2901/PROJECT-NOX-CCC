@@ -45,11 +45,15 @@ export class CartService {
   }
 
   async getOrCreateCart(userId: number, sessionId?: number) {
+    const whereConditions: Array<{ user_id: number; status: CartStatus } | { session_id: number; status: CartStatus }> = [
+      { user_id: userId, status: CartStatus.ACTIVE }
+    ];
+    if (sessionId !== undefined && sessionId !== null) {
+      whereConditions.push({ session_id: sessionId, status: CartStatus.ACTIVE });
+    }
+
     let cart = await this.cartRepository.findOne({
-      where: [
-        { user_id: userId, status: CartStatus.ACTIVE },
-        { session_id: sessionId, status: CartStatus.ACTIVE }
-      ],
+      where: whereConditions,
       relations: ['items', 'items.variant', 'items.variant.product', 'items.variant.product.images']
     });
 
@@ -66,6 +70,12 @@ export class CartService {
     } else if (cart.user_id === null || cart.user_id === undefined) {
       cart.user_id = userId;
       await this.cartRepository.save(cart);
+    } else if (cart.user_id !== userId) {
+      throw new AppError(
+        'Unauthorized access to cart',
+        HttpStatusCode.FORBIDDEN,
+        ErrorCode.FORBIDDEN
+      );
     }
 
     return this.formatCartResponse(cart);
@@ -95,11 +105,15 @@ export class CartService {
       );
     }
 
+    const whereConditions: Array<{ user_id: number; status: CartStatus } | { session_id: number; status: CartStatus }> = [
+      { user_id: userId, status: CartStatus.ACTIVE }
+    ];
+    if (sessionId !== undefined && sessionId !== null) {
+      whereConditions.push({ session_id: sessionId, status: CartStatus.ACTIVE });
+    }
+
     let cart = await this.cartRepository.findOne({
-      where: [
-        { user_id: userId, status: CartStatus.ACTIVE },
-        { session_id: sessionId, status: CartStatus.ACTIVE }
-      ],
+      where: whereConditions,
       relations: ['items', 'items.variant']
     });
 
@@ -116,6 +130,12 @@ export class CartService {
     } else if (cart.user_id === null || cart.user_id === undefined) {
       cart.user_id = userId;
       await this.cartRepository.save(cart);
+    } else if (cart.user_id !== userId) {
+      throw new AppError(
+        'Unauthorized access to cart',
+        HttpStatusCode.FORBIDDEN,
+        ErrorCode.FORBIDDEN
+      );
     }
 
     const existingItem = cart.items?.find(item => item.variant_id === variant_id);

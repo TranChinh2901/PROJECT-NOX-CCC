@@ -580,11 +580,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Tests: `src/modules/cart/entity/cart.spec.ts`, `cart-item.spec.ts` created
-- [ ] Tests fail
+- [x] Tests: `src/modules/cart/entity/cart.spec.ts`, `cart-item.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] Cart entity fields:
+- [x] Cart entity fields:
   - id, user_id (FK to User, nullable)
   - session_id (FK to UserSession, nullable) - for anonymous carts
   - status: enum ('active', 'converted', 'abandoned', default 'active')
@@ -593,7 +593,7 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - currency: string (3, default 'VND')
   - expires_at: timestamp (nullable) - cart expiration
   - created_at, updated_at, deleted_at
-- [ ] CartItem entity fields:
+- [x] CartItem entity fields:
   - id, cart_id (FK to Cart)
   - variant_id (FK to ProductVariant)
   - quantity: number (default 1)
@@ -601,17 +601,17 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - total_price: decimal(10,2) - calculated
   - added_at: timestamp
   - updated_at, deleted_at
-- [ ] Relationships defined:
+- [x] Relationships defined:
   - Cart → CartItems: OneToMany
   - CartItem → Cart: ManyToOne
   - CartItem → ProductVariant: ManyToOne
-- [ ] Unique constraint: (cart_id, variant_id) - one line per variant
-- [ ] Tests pass
+- [x] Unique constraint: (cart_id, variant_id) - one line per variant
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: user_id, session_id, status, variant_id
-- [ ] Add check constraints: quantity > 0, prices >= 0
-- [ ] Tests still pass
+- [x] Add indexes: user_id, session_id, status, variant_id
+- [x] Add check constraints: quantity > 0, prices >= 0
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(cart): add Cart and CartItem entities`
