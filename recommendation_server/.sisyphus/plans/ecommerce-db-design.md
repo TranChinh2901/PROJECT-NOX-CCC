@@ -710,24 +710,24 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/orders/entity/order-status-history.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/orders/entity/order-status-history.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] OrderStatusHistory entity fields:
+- [x] OrderStatusHistory entity fields:
   - id, order_id (FK to Order)
   - status: enum ('pending', 'confirmed', etc.) - new status
   - previous_status: enum (nullable) - old status
   - changed_by: string (100, nullable) - user/system who changed
   - notes: text (nullable)
   - created_at
-- [ ] Relationship: OrderStatusHistory → Order: ManyToOne
-- [ ] Relationship: Order → OrderStatusHistories: OneToMany
-- [ ] Tests pass
+- [x] Relationship: OrderStatusHistory → Order: ManyToOne
+- [x] Relationship: Order → OrderStatusHistories: OneToMany
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add index on order_id
-- [ ] Tests still pass
+- [x] Add index on order_id
+- [x] Tests still pass
 
 **Commit**: YES (group with Task 9)
 - Message: `feat(orders): add OrderStatusHistory for audit trail`
@@ -756,11 +756,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Tests: `src/modules/reviews/entity/review.spec.ts`, `review-helpful.spec.ts` created
-- [ ] Tests fail
+- [x] Tests: `src/modules/reviews/entity/review.spec.ts`, `review-helpful.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] Review entity fields:
+- [x] Review entity fields:
   - id, product_id (FK to Product)
   - user_id (FK to User)
   - order_item_id (FK to OrderItem) - verified purchase
@@ -772,19 +772,19 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - helpful_count: number (default 0)
   - not_helpful_count: number (default 0)
   - created_at, updated_at, deleted_at
-- [ ] ReviewHelpful entity fields:
+- [x] ReviewHelpful entity fields:
   - id, review_id (FK to Review)
   - user_id (FK to User)
   - is_helpful: boolean - true=helpful, false=not helpful
   - created_at
-- [ ] Unique constraint: (review_id, user_id) - one vote per user per review
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Unique constraint: (review_id, user_id) - one vote per user per review
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: product_id, user_id, rating, is_approved
-- [ ] Add check constraint: rating between 1 and 5
-- [ ] Tests still pass
+- [x] Add indexes: product_id, user_id, rating, is_approved
+- [x] Add check constraint: rating between 1 and 5
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(reviews): add Review and ReviewHelpful entities`
