@@ -529,11 +529,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/inventory/entity/inventory.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/inventory/entity/inventory.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] Inventory entity fields:
+- [x] Inventory entity fields:
   - id, variant_id (FK to ProductVariant)
   - warehouse_id (FK to Warehouse)
   - quantity_available: number (default 0) - sellable stock
@@ -543,15 +543,15 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - reorder_quantity: number (nullable) - suggested reorder amount
   - last_counted_at: timestamp (nullable)
   - created_at, updated_at
-- [ ] Unique constraint: (variant_id, warehouse_id) - one inventory record per variant per warehouse
-- [ ] Relationship: Inventory → ProductVariant: ManyToOne
-- [ ] Relationship: Inventory → Warehouse: ManyToOne
-- [ ] Tests pass
+- [x] Unique constraint: (variant_id, warehouse_id) - one inventory record per variant per warehouse
+- [x] Relationship: Inventory → ProductVariant: ManyToOne
+- [x] Relationship: Inventory → Warehouse: ManyToOne
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: variant_id, warehouse_id, quantity_available
-- [ ] Add check constraints: quantities >= 0
-- [ ] Tests still pass
+- [x] Add indexes: variant_id, warehouse_id, quantity_available
+- [x] Add check constraints: quantities >= 0
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(inventory): add Inventory entity for multi-warehouse stock`
