@@ -1020,11 +1020,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/ai/entity/recommendation-cache.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/ai/entity/recommendation-cache.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] RecommendationCache entity fields:
+- [x] RecommendationCache entity fields:
   - id, user_id (FK to User, nullable) - null = global recommendations
   - product_id (FK to Product, nullable) - for "similar products" type
   - recommendation_type: enum ('similar', 'personalized', 'trending', 'complementary', 'frequently_bought_together')
@@ -1036,14 +1036,14 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - cache_hit_count: number (default 0) - usage tracking
   - is_active: boolean (default true)
   - created_at, updated_at
-- [ ] Unique constraint: (user_id, product_id, recommendation_type) - one cache entry per context
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Unique constraint: (user_id, product_id, recommendation_type) - one cache entry per context
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: user_id, product_id, recommendation_type, expires_at, is_active
-- [ ] Add partial index: is_active=true and expires_at > now (for active cache queries)
-- [ ] Tests still pass
+- [x] Add indexes: user_id, product_id, recommendation_type, expires_at, is_active
+- [x] Add partial index: is_active=true and expires_at > now (for active cache queries)
+- [x] Tests still pass
 
 **Commit**: YES (group with Task 14)
 - Message: `feat(ai): add RecommendationCache for batch-computed suggestions`
