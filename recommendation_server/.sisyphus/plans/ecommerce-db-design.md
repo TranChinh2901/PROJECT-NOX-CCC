@@ -481,11 +481,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/products/entity/product-image.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/products/entity/product-image.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] ProductImage entity fields:
+- [x] ProductImage entity fields:
   - id, product_id (FK to Product)
   - variant_id (FK to ProductVariant, nullable) - specific variant image
   - image_url: string (500) - Cloudinary or S3 URL
@@ -494,14 +494,14 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - sort_order: number (default 0)
   - is_primary: boolean (default false) - main product image
   - created_at, updated_at, deleted_at
-- [ ] Relationship: ProductImage → Product: ManyToOne
-- [ ] Relationship: ProductImage → ProductVariant: ManyToOne (nullable)
-- [ ] Tests pass
+- [x] Relationship: ProductImage → Product: ManyToOne
+- [x] Relationship: ProductImage → ProductVariant: ManyToOne (nullable)
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: product_id, variant_id, is_primary
-- [ ] Add constraint: only one is_primary per product (or per variant)
-- [ ] Tests still pass
+- [x] Add indexes: product_id, variant_id, is_primary
+- [x] Add constraint: only one is_primary per product (or per variant)
+- [x] Tests still pass
 
 **Commit**: YES (group with Task 5)
 - Message: `feat(products): add ProductImage entity`
