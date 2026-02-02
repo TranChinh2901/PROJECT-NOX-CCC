@@ -216,13 +216,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test file: `src/modules/products/entity/category.spec.ts` created
-- [ ] Test file: `src/modules/products/entity/product.spec.ts` created
-- [ ] Tests define expected columns: id, name, slug, description, etc.
-- [ ] `npm test -- category.spec.ts` → FAIL (entities don't exist)
+- [x] Test file: `src/modules/products/entity/category.spec.ts` created
+- [x] Test file: `src/modules/products/entity/product.spec.ts` created
+- [x] Tests define expected columns: id, name, slug, description, etc.
+- [x] `npm test -- category.spec.ts` → FAIL (entities don't exist) - SKIPPED (entities already exist)
 
 **GREEN Phase**:
-- [ ] Category entity created with fields:
+- [x] Category entity created with fields:
   - id: number (PK, auto-increment)
   - name: string (100 chars, unique)
   - slug: string (100 chars, unique, indexed)
@@ -232,7 +232,7 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - sort_order: number (default 0)
   - is_active: boolean (default true)
   - created_at, updated_at, deleted_at: timestamps
-- [ ] Product entity created with fields:
+- [x] Product entity created with fields:
   - id: number (PK, auto-increment)
   - category_id: number (FK to category)
   - brand_id: number (FK to brand - nullable for now)
@@ -249,18 +249,18 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - is_featured: boolean (default false)
   - meta_title, meta_description: SEO fields (nullable)
   - created_at, updated_at, deleted_at: timestamps
-- [ ] Relationships defined:
+- [x] Relationships defined:
   - Category → Products: OneToMany
   - Product → Category: ManyToOne
   - Category → Parent Category: ManyToOne (self-referential)
   - Category → Child Categories: OneToMany (self-referential)
-- [ ] `npm test -- category.spec.ts` → PASS
-- [ ] `npm test -- product.spec.ts` → PASS
+- [x] `npm test -- category.spec.ts` → PASS
+- [x] `npm test -- product.spec.ts` → PASS
 
 **REFACTOR Phase**:
-- [ ] Add indexes: slug (unique), category_id, brand_id, is_active, is_featured
-- [ ] Add check constraints: base_price >= 0
-- [ ] `npm test` → All tests still pass
+- [x] Add indexes: slug (unique), category_id, brand_id, is_active, is_featured
+- [x] Add check constraints: base_price >= 0
+- [x] `npm test` → All tests still pass
 
 **Commit**: YES
 - Message: `feat(products): add Category and Product entities with relationships`
@@ -296,20 +296,20 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/products/entity/brand.spec.ts` created
-- [ ] Tests fail (entity doesn't exist)
+- [x] Test: `src/modules/products/entity/brand.spec.ts` created
+- [x] Tests fail (entity doesn't exist) - SKIPPED (entity already exists)
 
 **GREEN Phase**:
-- [ ] Brand entity fields:
+- [x] Brand entity fields:
   - id, name (100, unique), slug (100, unique), description (text, nullable)
   - logo_url (255, nullable), website_url (255, nullable)
   - is_active (default true), created_at, updated_at, deleted_at
-- [ ] Update Product entity to add Brand relationship
-- [ ] Tests pass
+- [x] Update Product entity to add Brand relationship
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes on slug
-- [ ] Tests still pass
+- [x] Add indexes on slug
+- [x] Tests still pass
 
 **Commit**: YES (grouped with Task 1)
 - Message: `feat(products): add Brand entity`
