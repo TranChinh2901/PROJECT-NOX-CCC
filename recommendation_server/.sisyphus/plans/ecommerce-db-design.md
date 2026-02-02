@@ -428,11 +428,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/products/entity/product-variant.spec.ts` created
-- [ ] Tests define expected variant structure
+- [x] Test: `src/modules/products/entity/product-variant.spec.ts` created
+- [x] Tests define expected variant structure
 
 **GREEN Phase**:
-- [ ] ProductVariant entity fields:
+- [x] ProductVariant entity fields:
   - id, product_id (FK to Product)
   - sku: string (100, unique)
   - size: string (50, nullable) - e.g., "S", "M", "L", "XL", "42", "43"
@@ -446,13 +446,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - is_active: boolean (default true)
   - sort_order: number (default 0)
   - created_at, updated_at, deleted_at
-- [ ] Relationship: ProductVariant → Product: ManyToOne
-- [ ] Relationship: Product → ProductVariants: OneToMany
-- [ ] Tests pass
+- [x] Relationship: ProductVariant → Product: ManyToOne
+- [x] Relationship: Product → ProductVariants: OneToMany
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: product_id, sku (unique), barcode (unique), is_active
-- [ ] Add check constraint: final_price >= 0
+- [x] Add indexes: product_id, sku (unique), barcode (unique), is_active
+- [x] Add check constraint: final_price >= 0
 - [ ] Tests still pass
 
 **Commit**: YES
