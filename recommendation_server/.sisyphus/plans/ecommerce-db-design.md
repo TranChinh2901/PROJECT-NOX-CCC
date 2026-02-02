@@ -918,11 +918,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Test: `src/modules/ai/entity/user-behavior-log.spec.ts` created
-- [ ] Tests fail
+- [x] Test: `src/modules/ai/entity/user-behavior-log.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] UserBehaviorLog entity fields:
+- [x] UserBehaviorLog entity fields:
   - id, session_id (FK to UserSession)
   - user_id (FK to User, nullable)
   - action_type: enum ('view', 'click', 'add_to_cart', 'remove_from_cart', 'purchase', 'search', 'wishlist_add', 'review_view')
@@ -938,13 +938,13 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - ip_address: string (45, nullable)
   - session_duration_seconds: number (nullable)
   - created_at
-- [ ] Relationships defined
-- [ ] Tests pass
+- [x] Relationships defined
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: session_id, user_id, action_type, product_id, created_at (composite for time-series queries)
-- [ ] Add index on search_query (for search analytics)
-- [ ] Tests still pass
+- [x] Add indexes: session_id, user_id, action_type, product_id, created_at (composite for time-series queries)
+- [x] Add index on search_query (for search analytics)
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(ai): add UserBehaviorLog for recommendation training data`
