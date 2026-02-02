@@ -640,11 +640,11 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
 **Acceptance Criteria**:
 
 **RED Phase**:
-- [ ] Tests: `src/modules/orders/entity/order.spec.ts`, `order-item.spec.ts` created
-- [ ] Tests fail
+- [x] Tests: `src/modules/orders/entity/order.spec.ts`, `order-item.spec.ts` created
+- [x] Tests fail
 
 **GREEN Phase**:
-- [ ] Order entity fields:
+- [x] Order entity fields:
   - id, order_number: string (20, unique) - human-readable order ID (e.g., ORD-2025-000001)
   - user_id (FK to User)
   - cart_id (FK to Cart, nullable) - reference to source cart
@@ -664,7 +664,7 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - tracking_number: string (100, nullable)
   - shipped_at, delivered_at: timestamps (nullable)
   - created_at, updated_at, deleted_at
-- [ ] OrderItem entity fields:
+- [x] OrderItem entity fields:
   - id, order_id (FK to Order)
   - variant_id (FK to ProductVariant)
   - product_snapshot: json - product name, variant details at time of order
@@ -673,16 +673,16 @@ Task 1 → Task 5 → Task 8 → Task 9 → Task 18
   - total_price: decimal(10,2)
   - discount_amount: decimal(10,2, default 0)
   - created_at, updated_at
-- [ ] Relationships defined:
+- [x] Relationships defined:
   - Order → OrderItems: OneToMany
   - OrderItem → Order: ManyToOne
   - OrderItem → ProductVariant: ManyToOne
-- [ ] Tests pass
+- [x] Tests pass
 
 **REFACTOR Phase**:
-- [ ] Add indexes: order_number (unique), user_id, status, payment_status
-- [ ] Add check constraints: amounts >= 0, quantity > 0
-- [ ] Tests still pass
+- [x] Add indexes: order_number (unique), user_id, status, payment_status
+- [x] Add check constraints: amounts >= 0, quantity > 0
+- [x] Tests still pass
 
 **Commit**: YES
 - Message: `feat(orders): add Order and OrderItem entities`
