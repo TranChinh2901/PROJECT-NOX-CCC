@@ -27,3 +27,48 @@ export const validateBody = (schema: ObjectSchema) => {
     next();
   };
 };
+
+export const validateQuery = (schema: ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { error, value } = schema.validate(req.query, { abortEarly: false });
+    if (error) {
+      const errorDetails = error.details.map((err) => {
+        return {
+          field: err.context?.label,
+          message: err.message,
+        };
+      });
+      throw new AppError(
+        ErrorMessages.VALIDATION.VALIDATION_FAILED,
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR,
+        errorDetails
+      );
+    }
+    req.query = value;
+    next();
+  };
+};
+
+export const validateParams = (schema: ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { error, value } = schema.validate(req.params, { abortEarly: false });
+    if (error) {
+      const errorDetails = error.details.map((err) => {
+        return {
+          field: err.context?.label,
+          message: err.message,
+        };
+      });
+      throw new AppError(
+        ErrorMessages.VALIDATION.VALIDATION_FAILED,
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR,
+        errorDetails
+      );
+    }
+    req.params = value;
+    next();
+  };
+};
+
