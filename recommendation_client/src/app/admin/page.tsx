@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DollarSign, Users, ShoppingCart, Package, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { StatCard } from '@/components/admin/StatCard';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { adminApi, type DashboardStats, type AnalyticsData, type AdminOrder } from '@/lib/api/admin.api';
 
@@ -237,110 +238,49 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <GlassCard hover className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Revenue</p>
-              <p className="text-2xl font-bold mt-1">{formatCurrency(stats.totalRevenue)}</p>
-              <div className="flex items-center mt-2">
-                {stats.revenueChange >= 0 ? (
-                  <>
-                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                    <span className="text-sm text-green-500">+{stats.revenueChange}%</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                    <span className="text-sm text-red-500">{stats.revenueChange}%</span>
-                  </>
-                )}
-                <span className="text-sm text-slate-500 ml-1">from last month</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-green-500" />
-            </div>
-          </div>
-        </GlassCard>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Revenue"
+          subtitle="Last 30 days"
+          value={formatCurrency(stats.totalRevenue)}
+          change={stats.revenueChange}
+          sparklineData={analytics?.revenueByDay?.map(d => d.revenue) || []}
+          icon={<DollarSign className="w-6 h-6" />}
+          iconColor="text-[#10B981]"
+          loading={loading}
+        />
 
-        <GlassCard hover className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Orders</p>
-              <p className="text-2xl font-bold mt-1">{stats.totalOrders}</p>
-              <div className="flex items-center mt-2">
-                {stats.ordersChange >= 0 ? (
-                  <>
-                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                    <span className="text-sm text-green-500">+{Math.abs(stats.ordersChange)}%</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                    <span className="text-sm text-red-500">{stats.ordersChange}%</span>
-                  </>
-                )}
-                <span className="text-sm text-slate-500 ml-1">from last month</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-blue-500" />
-            </div>
-          </div>
-        </GlassCard>
+        <StatCard
+          title="Total Orders"
+          subtitle="Last 30 days"
+          value={stats.totalOrders}
+          change={stats.ordersChange}
+          sparklineData={analytics?.revenueByDay?.map(d => d.orders) || []}
+          icon={<ShoppingCart className="w-6 h-6" />}
+          iconColor="text-[#3B82F6]"
+          loading={loading}
+        />
 
-        <GlassCard hover className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Customers</p>
-              <p className="text-2xl font-bold mt-1">{stats.totalUsers}</p>
-              <div className="flex items-center mt-2">
-                {stats.usersChange >= 0 ? (
-                  <>
-                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                    <span className="text-sm text-green-500">+{stats.usersChange}%</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                    <span className="text-sm text-red-500">{stats.usersChange}%</span>
-                  </>
-                )}
-                <span className="text-sm text-slate-500 ml-1">from last month</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-500" />
-            </div>
-          </div>
-        </GlassCard>
+        <StatCard
+          title="Total Customers"
+          subtitle="Active users"
+          value={stats.totalUsers}
+          change={stats.usersChange}
+          sparklineData={analytics?.userGrowth?.map(d => d.users) || []}
+          icon={<Users className="w-6 h-6" />}
+          iconColor="text-[#7C3AED]"
+          loading={loading}
+        />
 
-        <GlassCard hover className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Products</p>
-              <p className="text-2xl font-bold mt-1">{stats.totalProducts}</p>
-              <div className="flex items-center mt-2">
-                {stats.productsChange >= 0 ? (
-                  <>
-                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                    <span className="text-sm text-green-500">+{stats.productsChange}%</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                    <span className="text-sm text-red-500">{stats.productsChange}%</span>
-                  </>
-                )}
-                <span className="text-sm text-slate-500 ml-1">from last month</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-orange-500" />
-            </div>
-          </div>
-        </GlassCard>
+        <StatCard
+          title="Total Products"
+          subtitle="In catalog"
+          value={stats.totalProducts}
+          change={stats.productsChange}
+          icon={<Package className="w-6 h-6" />}
+          iconColor="text-[#F97316]"
+          loading={loading}
+        />
       </div>
 
       {/* Charts Section */}

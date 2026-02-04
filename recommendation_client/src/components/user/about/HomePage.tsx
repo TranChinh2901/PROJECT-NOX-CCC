@@ -10,6 +10,7 @@ import { productApi, categoryApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { Product, Category } from '@/types';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
   ShoppingCart, 
@@ -120,6 +121,7 @@ function FlyToCartAnimation({
 
 export default function HomePage() {
   const { addToCart: addToCartContext, itemCount } = useCart();
+  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
@@ -129,6 +131,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   
   const productImageRefs = useRef<Map<number, HTMLImageElement>>(new Map());
 
@@ -171,15 +174,75 @@ export default function HomePage() {
     fetchProducts();
   }, [selectedCategory]);
 
+  useEffect(() => {
+    const queryParam = searchParams.get('q') || '';
+    setSearchQuery(queryParam);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const trimmedQuery = searchQuery.trim();
+
+    if (!trimmedQuery) {
+      const fetchDefaultProducts = async () => {
+        try {
+          setLoading(true);
+          const productsData = await productApi.getAllProducts({
+            limit: 50,
+            category_id: selectedCategory ?? undefined
+          });
+          setProducts(productsData.data || []);
+          setError(null);
+        } catch (err) {
+          console.error('Error fetching products:', err);
+          setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+          toast.error('Không thể tải dữ liệu sản phẩm');
+        } finally {
+          setLoading(false);
+          setIsInitialLoad(false);
+        }
+      };
+
+      fetchDefaultProducts();
+      return;
+    }
+
+    if (trimmedQuery.length < 2) {
+      setProducts([]);
+      return;
+    }
+
+    let isActive = true;
+
+    const runSearch = async () => {
+      try {
+        setIsSearching(true);
+        const response = await productApi.searchProducts(trimmedQuery, 50);
+        if (isActive) {
+          setProducts(response.data || []);
+          setError(null);
+        }
+      } catch (err) {
+        if (isActive) {
+          console.error('Error searching products:', err);
+          setError('Không thể tìm kiếm sản phẩm. Vui lòng thử lại sau.');
+          toast.error('Không thể tìm kiếm sản phẩm');
+        }
+      } finally {
+        if (isActive) {
+          setIsSearching(false);
+        }
+      }
+    };
+
+    runSearch();
+
+    return () => {
+      isActive = false;
+    };
+  }, [searchQuery]);
+
   const filteredProducts = useMemo(() => {
     let filtered = products;
-    
-    if (searchQuery) {
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
     
     switch (sortBy) {
       case 'price-low':
@@ -196,7 +259,7 @@ export default function HomePage() {
     }
     
     return filtered;
-  }, [products, searchQuery, sortBy]);
+  }, [products, sortBy]);
 
   const handleAddToCart = useCallback(async (product: Product, imageElement: HTMLImageElement | null) => {
     try {
@@ -376,10 +439,10 @@ export default function HomePage() {
               <h2 className="text-2xl font-heading font-bold text-gray-900">
                 {selectedCategory === null ? 'Tất Cả Sản Phẩm' : categories.find(c => c.id === selectedCategory)?.name}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {filteredProducts.length} sản phẩm
-              </p>
-            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              {filteredProducts.length} sản phẩm
+            </p>
+          </div>
             
             <div className="flex items-center gap-4">
               <div className="relative">

@@ -1,0 +1,228 @@
+import { Repository } from 'typeorm';
+import {
+  IUserBehaviorRepository,
+  UserBehaviorLog as DomainUserBehaviorLog,
+  BehaviorType,
+} from '../../domain/repositories/IUserBehaviorRepository';
+import { UserPreference } from '../../domain/entities/UserPreference';
+import { UserBehaviorLog } from '../../../ai/entity/user-behavior-log';
+import { AppDataSource } from '@/config/database.config';
+import { UserActionType } from '../../../ai/enum/user-behavior.enum';
+
+/**
+ * Adapter: TypeORM User Behavior Repository
+ *
+ * Maps between domain models and TypeORM persistence entities.
+ */
+export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
+  private repository: Repository<UserBehaviorLog>;
+
+  constructor() {
+    this.repository = AppDataSource.getRepository(UserBehaviorLog);
+  }
+
+  async logBehavior(log: DomainUserBehaviorLog): Promise<void> {
+    const entity = this.repository.create({
+      user_id: log.userId,
+      product_id: log.productId,
+      action_type: this.mapBehaviorTypeToAction(log.behaviorType),
+      metadata: log.metadata as any,
+      created_at: log.timestamp,
+      // Required fields with defaults
+      session_id: 0, // TODO: Get from context
+      device_type: 'desktop' as any,
+      page_url: '',
+    });
+
+    await this.repository.save(entity);
+  }
+
+  async getBehaviorHistory(
+    userId: number,
+    limit: number,
+    behaviorTypes?: BehaviorType[]
+  ): Promise<DomainUserBehaviorLog[]> {
+    const queryBuilder = this.repository
+      .createQueryBuilder('log')
+      .where('log.user_id = :userId', { userId })
+      .orderBy('log.created_at', 'DESC')
+      .limit(limit);
+
+    if (behaviorTypes && behaviorTypes.length > 0) {
+      const actionTypes = behaviorTypes.map((bt) => this.mapBehaviorTypeToAction(bt));
+      queryBuilder.andWhere('log.action_type IN (:...actionTypes)', { actionTypes });
+    }
+
+    const logs = await queryBuilder.getMany();
+
+    return logs.map((log) => ({
+      userId: log.user_id!,
+      productId: log.product_id,
+      categoryId: undefined, // TODO: Join with product to get category
+      behaviorType: this.mapActionToBehaviorType(log.action_type),
+      metadata: log.metadata as any,
+      timestamp: log.created_at,
+    }));
+  }
+
+  async deriveUserPreferences(userId: number): Promise<UserPreference> {
+    // Get user's recent behavior (last 90 days)
+    const recentLogs = await this.repository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.product', 'product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .where('log.user_id = :userId', { userId })
+      .andWhere('log.created_at >= :since', {
+        since: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+      })
+      .orderBy('log.created_at', 'DESC')
+      .limit(500)
+      .getMany();
+
+    // Extract categories and brands from behavior
+    const categoryMap = new Map<number, number>();
+    const brandMap = new Map<number, number>();
+    const prices: number[] = [];
+
+    for (const log of recentLogs) {
+      if (log.product) {
+        // Count category occurrences
+        const categoryId = (log.product as any).category_id;
+        if (categoryId) {
+          categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+        }
+
+        // Count brand occurrences
+        const brandId = (log.product as any).brand_id;
+        if (brandId) {
+          brandMap.set(brandId, (brandMap.get(brandId) || 0) + 1);
+        }
+
+        // Track prices
+        if ((log.product as any).price) {
+          prices.push((log.product as any).price);
+        }
+      }
+    }
+
+    // Get top categories (sorted by frequency)
+    const preferredCategories = Array.from(categoryMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([categoryId]) => categoryId);
+
+    // Get top brands (sorted by frequency)
+    const preferredBrands = Array.from(brandMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([brandId]) => brandId);
+
+    // Calculate price range (25th to 75th percentile)
+    let priceRangeMin = 0;
+    let priceRangeMax = Number.MAX_SAFE_INTEGER;
+
+    if (prices.length > 0) {
+      prices.sort((a, b) => a - b);
+      const p25 = Math.floor(prices.length * 0.25);
+      const p75 = Math.floor(prices.length * 0.75);
+      priceRangeMin = prices[p25] || 0;
+      priceRangeMax = prices[p75] || Number.MAX_SAFE_INTEGER;
+    }
+
+    return UserPreference.create(
+      userId,
+      preferredCategories,
+      preferredBrands,
+      priceRangeMin,
+      priceRangeMax
+    );
+  }
+
+  async getPopularProducts(limit: number, categoryId?: number): Promise<number[]> {
+    const queryBuilder = this.repository
+      .createQueryBuilder('log')
+      .select('log.product_id', 'productId')
+      .addSelect('COUNT(*)', 'count')
+      .where('log.product_id IS NOT NULL')
+      .andWhere('log.created_at >= :since', {
+        since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+      })
+      .groupBy('log.product_id')
+      .orderBy('count', 'DESC')
+      .limit(limit);
+
+    if (categoryId) {
+      queryBuilder
+        .leftJoin('log.product', 'product')
+        .andWhere('product.category_id = :categoryId', { categoryId });
+    }
+
+    const results = await queryBuilder.getRawMany();
+    return results.map((r) => r.productId);
+  }
+
+  async findSimilarUsers(userId: number, limit: number): Promise<number[]> {
+    // Simplified: Find users who interacted with same products
+    const userProducts = await this.repository
+      .createQueryBuilder('log')
+      .select('DISTINCT log.product_id')
+      .where('log.user_id = :userId', { userId })
+      .andWhere('log.product_id IS NOT NULL')
+      .getRawMany();
+
+    const productIds = userProducts.map((p) => p.product_id);
+
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const similarUsers = await this.repository
+      .createQueryBuilder('log')
+      .select('log.user_id', 'userId')
+      .addSelect('COUNT(DISTINCT log.product_id)', 'commonProducts')
+      .where('log.product_id IN (:...productIds)', { productIds })
+      .andWhere('log.user_id != :userId', { userId })
+      .andWhere('log.user_id IS NOT NULL')
+      .groupBy('log.user_id')
+      .orderBy('commonProducts', 'DESC')
+      .limit(limit)
+      .getRawMany();
+
+    return similarUsers.map((u) => u.userId);
+  }
+
+  /**
+   * Map domain BehaviorType to persistence UserActionType
+   */
+  private mapBehaviorTypeToAction(behaviorType: BehaviorType): UserActionType {
+    const mapping: Record<BehaviorType, UserActionType> = {
+      [BehaviorType.VIEW]: UserActionType.VIEW,
+      [BehaviorType.ADD_TO_CART]: UserActionType.ADD_TO_CART,
+      [BehaviorType.PURCHASE]: UserActionType.PURCHASE,
+      [BehaviorType.REVIEW]: UserActionType.REVIEW_VIEW,
+      [BehaviorType.WISHLIST]: UserActionType.WISHLIST_ADD,
+      [BehaviorType.SEARCH]: UserActionType.SEARCH,
+    };
+
+    return mapping[behaviorType];
+  }
+
+  /**
+   * Map persistence UserActionType to domain BehaviorType
+   */
+  private mapActionToBehaviorType(actionType: UserActionType): BehaviorType {
+    const mapping: Record<UserActionType, BehaviorType> = {
+      [UserActionType.VIEW]: BehaviorType.VIEW,
+      [UserActionType.CLICK]: BehaviorType.VIEW,
+      [UserActionType.ADD_TO_CART]: BehaviorType.ADD_TO_CART,
+      [UserActionType.REMOVE_FROM_CART]: BehaviorType.ADD_TO_CART,
+      [UserActionType.PURCHASE]: BehaviorType.PURCHASE,
+      [UserActionType.SEARCH]: BehaviorType.SEARCH,
+      [UserActionType.WISHLIST_ADD]: BehaviorType.WISHLIST,
+      [UserActionType.REVIEW_VIEW]: BehaviorType.REVIEW,
+    };
+
+    return mapping[actionType] || BehaviorType.VIEW;
+  }
+}

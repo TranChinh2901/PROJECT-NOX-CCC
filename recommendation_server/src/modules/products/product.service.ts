@@ -10,6 +10,7 @@ import { Inventory } from "@/modules/inventory/entity/inventory";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
+import Fuse from "fuse.js";
 
 export interface ProductFilterOptions {
   category_id?: number;
@@ -248,31 +249,46 @@ export class ProductService {
       return { data: [], suggestions: [] };
     }
 
-    const searchTerm = `%${query.trim()}%`;
+    const products = await this.productRepository.find({
+      where: { is_active: true },
+      relations: ['category', 'brand', 'variants', 'images']
+    });
 
-    const products = await this.productRepository
-      .createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.brand', 'brand')
-      .leftJoinAndSelect('product.variants', 'variants')
-      .leftJoinAndSelect('product.images', 'images')
-      .where('product.is_active = :is_active', { is_active: true })
-      .andWhere(
-        '(product.name LIKE :search OR product.description LIKE :search OR product.sku LIKE :search)',
-        { search: searchTerm }
-      )
-      .take(limit)
-      .getMany();
+    const fuse = new Fuse(products, {
+      keys: [
+        { name: 'name', weight: 2 },
+        { name: 'description', weight: 1 },
+        { name: 'short_description', weight: 1.5 },
+        { name: 'sku', weight: 1.2 },
+        { name: 'brand.name', weight: 1.5 },
+        { name: 'category.name', weight: 1.3 },
+        { name: 'variants.color', weight: 0.8 },
+        { name: 'variants.size', weight: 0.8 },
+        { name: 'variants.material', weight: 0.8 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      minMatchCharLength: 2
+    });
+
+    const searchResults = fuse.search(query.trim());
+    
+    const limitedResults = searchResults.slice(0, limit);
+    const matchedProducts = limitedResults.map(result => result.item);
+
+    const suggestions = Array.from(
+      new Set(searchResults.slice(0, 5).map(result => result.item.name))
+    );
 
     return {
-      data: products.map(product => this.formatProductResponse(product)),
-      suggestions: products.slice(0, 5).map(p => p.name)
+      data: matchedProducts.map(product => this.formatProductResponse(product)),
+      suggestions
     };
   }
 
   private formatProductResponse(product: Product) {
     const primaryImage = product.images?.find(img => img.is_primary)?.image_url ||
-                         product.images?.[0]?.image_url || null;
+      product.images?.[0]?.image_url || null;
 
     return {
       id: product.id,

@@ -218,6 +218,48 @@ export class CartService {
     return this.getCart(cartItem.cart_id);
   }
 
+  async bulkRemoveItems(userId: number, itemIds: number[]) {
+    if (!itemIds || itemIds.length === 0) {
+      throw new AppError(
+        'Item IDs are required',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const cartItems = await this.cartItemRepository.find({
+      where: itemIds.map(id => ({ id })),
+      relations: ['cart']
+    });
+
+    if (cartItems.length === 0) {
+      throw new AppError(
+        'No cart items found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.CART_ITEM_NOT_FOUND
+      );
+    }
+
+    const cartId = cartItems[0].cart_id;
+    const cart = cartItems[0].cart;
+
+    await this.validateAndClaimCartAccess(cart, userId);
+
+    const allItemsBelongToSameCart = cartItems.every(item => item.cart_id === cartId);
+    if (!allItemsBelongToSameCart) {
+      throw new AppError(
+        'All items must belong to the same cart',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    await this.cartItemRepository.remove(cartItems);
+    await this.recalculateCartTotals(cartId);
+
+    return this.getCart(cartId);
+  }
+
   async getCart(cartId: number) {
     const cart = await this.cartRepository.findOne({
       where: { id: cartId },

@@ -56,6 +56,8 @@ export interface CartContextType {
 
   removeItem(itemId: number): Promise<Cart>;
 
+  bulkRemoveItems(itemIds: number[]): Promise<Cart>;
+
   clearCart(): Promise<void>;
 
   refreshCart(): Promise<Cart | null>;

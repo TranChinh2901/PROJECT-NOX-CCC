@@ -1,4 +1,5 @@
 :root {
+  /* User-facing site colors */
   --color-primary: #FFFFFF;
   --color-secondary: #F3F4F6;
   --color-cta: #CA8A04;
@@ -10,6 +11,40 @@
   --color-glass-border: rgba(0, 0, 0, 0.08);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
+
+  /* Admin Dashboard Design System */
+  --admin-primary: 59 130 246; /* #3B82F6 - Blue */
+  --admin-secondary: 96 165 250; /* #60A5FA - Light Blue */
+  --admin-accent: 249 115 22; /* #F97316 - Orange */
+  --admin-background: 248 250 252; /* #F8FAFC - Off-white */
+  --admin-surface: 255 255 255; /* #FFFFFF - White */
+  --admin-border: 226 232 240; /* #E2E8F0 - Light gray */
+  --admin-text: 30 41 59; /* #1E293B - Dark slate */
+  --admin-text-muted: 100 116 139; /* #64748B - Slate */
+
+  /* Semantic Colors for Admin */
+  --admin-success: 16 185 129; /* #10B981 - Green */
+  --admin-warning: 245 158 11; /* #F59E0B - Amber */
+  --admin-error: 239 68 68; /* #EF4444 - Red */
+  --admin-info: 59 130 246; /* #3B82F6 - Blue */
+
+  /* Spacing System (8px base) */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* Shadow Depths */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 }
 
 @import "tailwindcss";

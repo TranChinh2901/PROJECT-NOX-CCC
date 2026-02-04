@@ -26,6 +26,12 @@ export const cartApi = {
     return await apiClient.delete<Cart>(`/cart/items/${itemId}`);
   },
 
+  async bulkRemoveItems(itemIds: number[]): Promise<Cart> {
+    return await apiClient.delete<Cart>('/cart/items/bulk', {
+      data: { item_ids: itemIds }
+    });
+  },
+
   async clearCart(): Promise<void> {
     await apiClient.delete('/cart/clear');
   },

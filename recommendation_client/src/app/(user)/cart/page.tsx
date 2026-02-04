@@ -11,7 +11,7 @@ import { Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function CartPage() {
-  const { cart, isLoading, updateQuantity, removeItem, refreshCart } = useCart();
+  const { cart, isLoading, updateQuantity, removeItem, bulkRemoveItems, refreshCart } = useCart();
 
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -69,29 +69,12 @@ export default function CartPage() {
     const itemsToDelete = Array.from(selectedItems);
 
     try {
-      const results = await Promise.allSettled(
-        itemsToDelete.map(id => removeItem(id))
-      );
-
-      const failures = results.filter(r => r.status === 'rejected');
-      const successes = results.filter(r => r.status === 'fulfilled');
-
-      if (failures.length === 0) {
-        toast.success(`Đã xóa ${successes.length} sản phẩm khỏi giỏ hàng`);
-        clearSelection();
-      } else if (successes.length > 0) {
-        toast.error(
-          `Đã xóa ${successes.length}/${itemsToDelete.length} sản phẩm. ${failures.length} sản phẩm không thể xóa.`
-        );
-        // Keep only failed items selected
-        const failedIds = itemsToDelete.filter((_, i) => results[i].status === 'rejected');
-        setSelectedItems(new Set(failedIds));
-      } else {
-        toast.error('Không thể xóa sản phẩm. Vui lòng thử lại.');
-      }
+      await bulkRemoveItems(itemsToDelete);
+      toast.success(`Đã xóa ${itemsToDelete.length} sản phẩm khỏi giỏ hàng`);
+      clearSelection();
     } catch (error) {
       console.error('Bulk delete error:', error);
-      toast.error('Đã xảy ra lỗi khi xóa sản phẩm');
+      toast.error('Không thể xóa sản phẩm. Vui lòng thử lại.');
     } finally {
       setIsBulkDeleting(false);
       setShowConfirmDialog(false);

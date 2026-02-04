@@ -381,6 +381,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart, clearLocalCartStorage]);
 
+  // Bulk remove items from cart
+  const bulkRemoveItems = useCallback(async (itemIds: number[]): Promise<Cart> => {
+    let updatedCart: Cart | null = null;
+    const now = new Date();
+
+    setCart((currentCart) => {
+      if (!currentCart?.items) throw new Error('Cart is empty');
+
+      const itemIdsSet = new Set(itemIds);
+      const updatedItems = currentCart.items.filter(item => !itemIdsSet.has(item.id));
+      updatedCart = {
+        ...currentCart,
+        items: updatedItems,
+        item_count: calculateItemCount({ ...currentCart, items: updatedItems }),
+        updated_at: now,
+      };
+
+      setItemCount(calculateItemCount(updatedCart));
+      persistCart(updatedCart);
+      return updatedCart;
+    });
+
+    if (!updatedCart) throw new Error('Failed to update cart');
+
+    if (!isAuthenticated) return updatedCart;
+
+    try {
+      const result = await cartApi.bulkRemoveItems(itemIds);
+      // Update with server response
+      setCart(result);
+      setItemCount(calculateItemCount(result));
+      persistCart(result);
+      return result;
+    } catch (error) {
+      console.error('Failed to bulk remove items from API:', error);
+      // Return local cart state on error
+      return updatedCart;
+    }
+  }, [isAuthenticated, calculateItemCount, persistCart]);
+
   // Clear cart
   const clearCart = useCallback(async (): Promise<void> => {
     // Clear state first (optimistic)
@@ -489,6 +529,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     addToCart,
     updateQuantity,
     removeItem,
+    bulkRemoveItems,
     clearCart,
     refreshCart,
     syncWithAPI,

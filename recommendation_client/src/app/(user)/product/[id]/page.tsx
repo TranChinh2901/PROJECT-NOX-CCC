@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
@@ -9,11 +9,11 @@ import { productApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { Product, Review } from '@/types';
 import toast from 'react-hot-toast';
-import { 
-  Star, 
-  ShoppingCart, 
-  Heart, 
-  Share2, 
+import {
+  Star,
+  ShoppingCart,
+  Heart,
+  Share2,
   Check,
   ChevronRight,
   Truck,
@@ -32,6 +32,84 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
+function FlyToCartAnimation({
+  startRect,
+  imageUrl,
+  onComplete
+}: {
+  startRect: DOMRect;
+  imageUrl: string;
+  onComplete: () => void;
+}) {
+  const [position, setPosition] = useState({ x: 0, y: 0, scale: 1, opacity: 1 });
+
+  useEffect(() => {
+    const cartIcon = document.querySelector('[data-cart-icon]');
+    const endRect = cartIcon?.getBoundingClientRect();
+
+    if (!endRect) {
+      onComplete();
+      return;
+    }
+
+    const startX = startRect.left + startRect.width / 2;
+    const startY = startRect.top + startRect.height / 2;
+    const endX = endRect.left + endRect.width / 2;
+    const endY = endRect.top + endRect.height / 2;
+
+    const duration = 800;
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      const currentX = startX + (endX - startX) * easeOut;
+      const currentY = startY + (endY - startY) * easeOut;
+      const scale = 1 - (0.7 * easeOut);
+      const opacity = 1 - (0.3 * progress);
+
+      setPosition({
+        x: currentX - startX,
+        y: currentY - startY,
+        scale,
+        opacity
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setTimeout(onComplete, 100);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [startRect, onComplete]);
+
+  return (
+    <div
+      className="fixed z-50 pointer-events-none"
+      style={{
+        left: startRect.left + startRect.width / 2,
+        top: startRect.top + startRect.height / 2,
+        width: startRect.width,
+        height: startRect.height,
+        transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%) scale(${position.scale})`,
+        opacity: position.opacity,
+        transition: 'none',
+      }}
+    >
+      <img
+        src={imageUrl}
+        alt="Flying product"
+        className="w-full h-full object-cover rounded-lg shadow-2xl"
+      />
+    </div>
+  );
+}
+
 export default function ProductPage() {
   const params = useParams();
   const productId = Number(params.id);
@@ -42,6 +120,8 @@ export default function ProductPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
+  const productImageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,15 +152,31 @@ export default function ProductPage() {
 
   const { addToCart: addToCartContext } = useCart();
 
+  const removeFlyingItem = useCallback((id: number) => {
+    setFlyingItems(prev => prev.filter(item => item.id !== id));
+  }, []);
+
   const addToCart = async () => {
     if (!product) return;
-    
+
     try {
       if (!product.variants || product.variants.length === 0) {
         toast.error('Sản phẩm không có phiên bản nào khả dụng');
         return;
       }
-      
+
+      // Trigger flying animation
+      if (productImageRef.current) {
+        const rect = productImageRef.current.getBoundingClientRect();
+        const imageUrl = productImageRef.current.src;
+
+        setFlyingItems(prev => [...prev, {
+          id: Date.now(),
+          rect,
+          imageUrl
+        }]);
+      }
+
       const defaultVariant = product.variants[0];
       await addToCartContext(
         {
@@ -90,13 +186,13 @@ export default function ProductPage() {
         product,
         defaultVariant
       );
-      
+
       toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
-      
+
       setCart(prev => {
         const existing = prev.find(item => item.id === product.id);
         if (existing) {
-          return prev.map(item => 
+          return prev.map(item =>
             item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
           );
         }
@@ -111,8 +207,6 @@ export default function ProductPage() {
       }
     }
   };
-
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Calculate discount and rating from API data
   const discount = product?.compare_at_price && product?.base_price
@@ -173,7 +267,16 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-white mt-10">
       <Header />
-      
+
+      {flyingItems.map((item) => (
+        <FlyToCartAnimation
+          key={item.id}
+          startRect={item.rect}
+          imageUrl={item.imageUrl}
+          onComplete={() => removeFlyingItem(item.id)}
+        />
+      ))}
+
       <main className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
@@ -188,8 +291,9 @@ export default function ProductPage() {
             <div className="relative">
               <GlassCard className="aspect-square overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/5 to-transparent z-10" />
-                <img 
-                  src={primaryImage} 
+                <img
+                  ref={productImageRef}
+                  src={primaryImage}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />

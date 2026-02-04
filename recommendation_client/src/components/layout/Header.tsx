@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,11 +11,14 @@ import { useAuth } from '@/contexts/AuthContext';
 export const Header: React.FC = () => {
   const { itemCount } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showCartPreview, setShowCartPreview] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +27,17 @@ export const Header: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  React.useEffect(() => {
+    const query = searchParams.get('q') || '';
+    setSearchValue(query);
+  }, [searchParams]);
+
+  const handleSearch = () => {
+    const trimmedQuery = searchValue.trim();
+    const targetUrl = trimmedQuery.length >= 2 ? `/?q=${encodeURIComponent(trimmedQuery)}` : '/';
+    router.push(targetUrl);
+  };
 
   const navLinks = [
     { label: 'Khuyến Mãi Hôm Nay', href: '#deals' },
@@ -54,16 +69,27 @@ export const Header: React.FC = () => {
             </div>
 
             <div className="flex-1 max-w-2xl mx-4">
-              <div className="relative">
+              <form
+                className="relative"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSearch();
+                }}
+              >
                 <input
                   type="text"
                   placeholder="Tìm kiếm sản phẩm..."
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full pl-4 pr-12 py-2.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-500 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 transition-all"
                 />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-[#CA8A04] flex items-center justify-center hover:bg-[#B47B04] transition-colors">
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-[#CA8A04] flex items-center justify-center hover:bg-[#B47B04] transition-colors"
+                >
                   <Search className="w-4 h-4 text-white" />
                 </button>
-              </div>
+              </form>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">

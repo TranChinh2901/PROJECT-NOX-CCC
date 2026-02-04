@@ -121,6 +121,46 @@ class CartController {
     }).sendResponse(res);
   }
 
+  async bulkRemoveItems(req: AuthenticatedRequest, res: Response) {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return new AppResponse({
+        message: 'Authentication required',
+        statusCode: HttpStatusCode.UNAUTHORIZED,
+        data: null
+      }).sendResponse(res);
+    }
+
+    const { item_ids } = req.body;
+
+    if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) {
+      return new AppResponse({
+        message: 'Valid item IDs array is required',
+        statusCode: HttpStatusCode.BAD_REQUEST,
+        data: null
+      }).sendResponse(res);
+    }
+
+    const itemIds = item_ids.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+
+    if (itemIds.length === 0) {
+      return new AppResponse({
+        message: 'Valid item IDs are required',
+        statusCode: HttpStatusCode.BAD_REQUEST,
+        data: null
+      }).sendResponse(res);
+    }
+
+    const cart = await cartService.bulkRemoveItems(userId, itemIds);
+
+    return new AppResponse({
+      message: `${itemIds.length} item(s) removed from cart successfully`,
+      statusCode: HttpStatusCode.OK,
+      data: cart
+    }).sendResponse(res);
+  }
+
   async clearCart(req: AuthenticatedRequest, res: Response) {
     const userId = req.user?.id;
 
