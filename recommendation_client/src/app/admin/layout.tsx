@@ -11,7 +11,7 @@ export default function AdminLayout({
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen bg-[#161513]">
+        <div className="min-h-screen bg-slate-50 text-slate-900">
           <div className="flex">
             <AdminSidebar />
             <div className="flex-1 ml-64">

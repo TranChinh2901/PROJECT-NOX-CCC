@@ -29,7 +29,7 @@ export class UserBehaviorLog {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ type: 'enum', enum: UserActionType })
+  @Column({ type: 'simple-enum', enum: UserActionType })
   action_type!: UserActionType;
 
   @Column({ type: 'int', nullable: true })
@@ -52,7 +52,7 @@ export class UserBehaviorLog {
   @Column({ type: 'json', nullable: true })
   metadata?: object;
 
-  @Column({ type: 'enum', enum: DeviceType })
+  @Column({ type: 'simple-enum', enum: DeviceType })
   device_type!: DeviceType;
 
   @Column({ length: 500, nullable: true })
@@ -67,6 +67,6 @@ export class UserBehaviorLog {
   @Column({ type: 'int', nullable: true })
   session_duration_seconds?: number;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 }

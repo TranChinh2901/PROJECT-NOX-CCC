@@ -34,7 +34,7 @@ export class InventoryLog {
   @JoinColumn({ name: 'warehouse_id' })
   warehouse!: Warehouse;
 
-  @Column({ type: 'enum', enum: InventoryActionType })
+  @Column({ type: 'simple-enum', enum: InventoryActionType })
   action_type!: InventoryActionType;
 
   @Column({ type: 'int' })
@@ -58,6 +58,6 @@ export class InventoryLog {
   @Column({ length: 100, nullable: true })
   performed_by?: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 }

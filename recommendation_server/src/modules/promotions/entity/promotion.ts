@@ -19,7 +19,7 @@ export class Promotion {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'enum', enum: PromotionType })
+  @Column({ type: 'simple-enum', enum: PromotionType })
   type!: PromotionType;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
@@ -37,16 +37,16 @@ export class Promotion {
   @Column({ type: 'int', nullable: true })
   usage_limit_per_user?: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   starts_at?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   ends_at?: Date;
 
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @Column({ type: 'enum', enum: PromotionAppliesTo, default: PromotionAppliesTo.ALL })
+  @Column({ type: 'simple-enum', enum: PromotionAppliesTo, default: PromotionAppliesTo.ALL })
   applies_to!: PromotionAppliesTo;
 
   @Column({ type: 'json', nullable: true })
@@ -55,12 +55,12 @@ export class Promotion {
   @OneToMany(() => PromotionUsage, usage => usage.promotion)
   usages?: PromotionUsage[];
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', nullable: true })
   deleted_at?: Date;
 }

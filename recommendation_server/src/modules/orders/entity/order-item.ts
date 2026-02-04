@@ -38,9 +38,9 @@ export class OrderItem {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   discount_amount!: number;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

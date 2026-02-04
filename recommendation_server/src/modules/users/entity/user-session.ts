@@ -31,16 +31,16 @@ export class UserSession {
   user_agent?: string;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: DeviceType, 
     default: DeviceType.UNKNOWN 
   })
   device_type!: DeviceType;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   started_at!: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   ended_at?: Date;
 
   @Column({ type: 'boolean', default: true })
@@ -50,9 +50,9 @@ export class UserSession {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

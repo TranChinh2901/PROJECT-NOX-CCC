@@ -1,16 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, RoleType } from '@/types';
-
-interface UserFilters {
-  search?: string;
-  role?: RoleType;
-  verified?: boolean;
-  page?: number;
-  limit?: number;
-}
+import { User } from '@/types';
+import { RoleType } from '@/types/auth.types';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,17 +16,12 @@ export default function UserManagement() {
   const [userForm, setUserForm] = useState<Partial<User>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const { authApi } = useAuth();
+  const { getAllUsers, deleteUserById, updateUserById, isLoading } = useAuth();
 
-  useEffect(() => {
-    fetchUsers();
-  }, [searchTerm, selectedRole, currentPage]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await authApi.getAllUsers({
+      const response = await getAllUsers({
         sort: 'created_at',
         limit: 10,
       });
@@ -43,13 +31,16 @@ export default function UserManagement() {
       console.error('Failed to fetch users:', error);
     } finally {
       setLoading(false);
-      setAuthLoading(false);
     }
-  };
+  }, [getAllUsers]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers, searchTerm, selectedRole, currentPage]);
 
   const handleDeleteUser = async (userId: number) => {
     try {
-      await authApi.deleteUserById(userId);
+      await deleteUserById(userId);
       setUsers(users.filter(user => user.id !== userId));
       setShowDeleteConfirm(null);
     } catch (error) {
@@ -66,7 +57,7 @@ export default function UserManagement() {
     if (!editingUser) return;
 
     try {
-      const updatedUser = await authApi.updateUserById(editingUser.id, userForm);
+      const updatedUser = await updateUserById(editingUser.id, userForm);
       setUsers(users.map(user => user.id === editingUser.id ? updatedUser : user));
       setEditingUser(null);
       setUserForm({});
@@ -79,10 +70,10 @@ export default function UserManagement() {
     return new Date(date).toLocaleDateString('vi-VN');
   };
 
-  if (authLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-[#FAFAF9]">Checking authentication...</div>
+        <div className="text-slate-600">Checking authentication...</div>
       </div>
     );
   }
@@ -90,20 +81,20 @@ export default function UserManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-[#FAFAF9]">Loading users...</div>
+        <div className="text-slate-600">Loading users...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-[#FAFAF9]">
+    <div className="min-h-screen text-slate-900">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">User Management</h1>
-        <p className="text-[#A1A1AA]">Manage registered users, view their details, and update their information.</p>
+        <p className="text-slate-500">Manage registered users, view their details, and update their information.</p>
       </div>
 
       {/* Filters */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <input
@@ -111,14 +102,14 @@ export default function UserManagement() {
               placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             />
           </div>
           <div>
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value as RoleType | '')}
-              className="px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             >
               <option value="">All Roles</option>
               <option value={RoleType.ADMIN}>Admin</option>
@@ -129,11 +120,11 @@ export default function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-white/10">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Users</h2>
-            <span className="text-sm text-[#A1A1AA]">
+            <span className="text-sm text-slate-500">
               {users.length} users found
             </span>
           </div>
@@ -142,19 +133,19 @@ export default function UserManagement() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">ID</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">User</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">Role</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">Phone</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">Verified</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">Joined</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-[#A1A1AA]">Actions</th>
+              <tr className="border-b border-slate-200">
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">ID</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">User</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Role</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Phone</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Verified</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Joined</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-mono">#{user.id}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
@@ -169,7 +160,7 @@ export default function UserManagement() {
                       )}
                       <div>
                         <p className="font-medium">{user.fullname}</p>
-                        <p className="text-sm text-[#A1A1AA]">{user.email}</p>
+                        <p className="text-sm text-slate-500">{user.email}</p>
                       </div>
                     </div>
                   </td>
@@ -182,7 +173,7 @@ export default function UserManagement() {
                       {user.role.toLowerCase()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-[#A1A1AA]">{user.phone_number}</td>
+                  <td className="px-6 py-4 text-slate-500">{user.phone_number}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       user.is_verified
@@ -192,7 +183,7 @@ export default function UserManagement() {
                       {user.is_verified ? 'Verified' : 'Not Verified'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-[#A1A1AA]">{formatDate(user.created_at)}</td>
+                  <td className="px-6 py-4 text-slate-500">{formatDate(user.created_at)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <button
@@ -218,21 +209,21 @@ export default function UserManagement() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="p-4 flex items-center justify-between">
-            <div className="text-sm text-[#A1A1AA]">
+            <div className="text-sm text-slate-500">
               Showing page {currentPage} of {totalPages}
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 bg-[#292524] text-[#FAFAF9] rounded hover:bg-[#44403C] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-[#292524] text-[#FAFAF9] rounded hover:bg-[#44403C] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -244,7 +235,7 @@ export default function UserManagement() {
       {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6 max-w-md w-full mx-4">
+          <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold mb-4">Edit User</h3>
             <div className="space-y-4">
               <div>
@@ -253,7 +244,7 @@ export default function UserManagement() {
                   type="text"
                   value={userForm.fullname || ''}
                   onChange={(e) => setUserForm({ ...userForm, fullname: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -262,7 +253,7 @@ export default function UserManagement() {
                   type="email"
                   value={userForm.email || ''}
                   onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -271,7 +262,7 @@ export default function UserManagement() {
                   type="tel"
                   value={userForm.phone_number || ''}
                   onChange={(e) => setUserForm({ ...userForm, phone_number: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -279,7 +270,7 @@ export default function UserManagement() {
                 <select
                   value={userForm.role || ''}
                   onChange={(e) => setUserForm({ ...userForm, role: e.target.value as RoleType })}
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 >
                   <option value={RoleType.USER}>User</option>
                   <option value={RoleType.ADMIN}>Admin</option>
@@ -289,7 +280,7 @@ export default function UserManagement() {
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => { setEditingUser(null); setUserForm({}); }}
-                className="px-4 py-2 bg-[#292524] text-[#FAFAF9] rounded hover:bg-[#44403C] transition-colors"
+                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
@@ -307,15 +298,15 @@ export default function UserManagement() {
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6 max-w-sm w-full mx-4">
+          <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-xl font-bold mb-4 text-red-500">Delete User</h3>
-            <p className="text-[#A1A1AA] mb-6">
+            <p className="text-slate-500 mb-6">
               Are you sure you want to delete this user? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
-                className="px-4 py-2 bg-[#292524] text-[#FAFAF9] rounded hover:bg-[#44403C] transition-colors"
+                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>

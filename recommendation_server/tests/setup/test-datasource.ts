@@ -14,8 +14,9 @@ export function createTestDataSource(): DataSource {
     type: 'sqlite',
     database: ':memory:',
     entities,
-    synchronize: false,
+    synchronize: true,
     logging: false,
+    dropSchema: false,
   });
 }
 
@@ -38,6 +39,8 @@ export async function resetTestDatabase(): Promise<void> {
     await dataSource.initialize();
   }
 
+  await dataSource.query('PRAGMA foreign_keys = OFF');
+
   const entities = dataSource.entityMetadatas;
   for (const entity of entities) {
     const repository = dataSource.getRepository(entity.name);
@@ -46,4 +49,6 @@ export async function resetTestDatabase(): Promise<void> {
     } catch (error) {
     }
   }
+
+  await dataSource.query('PRAGMA foreign_keys = ON');
 }

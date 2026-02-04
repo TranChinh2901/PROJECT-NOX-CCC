@@ -27,6 +27,6 @@ export class ReviewHelpful {
   @Column({ type: 'boolean' })
   is_helpful!: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 }

@@ -15,10 +15,10 @@ export class OrderStatusHistory {
   @JoinColumn({ name: 'order_id' })
   order!: Order;
 
-  @Column({ type: 'enum', enum: OrderStatus })
+  @Column({ type: 'simple-enum', enum: OrderStatus })
   status!: OrderStatus;
 
-  @Column({ type: 'enum', enum: OrderStatus, nullable: true })
+  @Column({ type: 'simple-enum', enum: OrderStatus, nullable: true })
   previous_status?: OrderStatus;
 
   @Column({ length: 100, nullable: true })
@@ -27,6 +27,6 @@ export class OrderStatusHistory {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 }

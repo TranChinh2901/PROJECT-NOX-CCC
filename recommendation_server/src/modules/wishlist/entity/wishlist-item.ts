@@ -29,18 +29,18 @@ export class WishlistItem {
   notes?: string;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: WishlistPriority, 
     default: WishlistPriority.MEDIUM 
   })
   priority!: WishlistPriority;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   added_at!: Date;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

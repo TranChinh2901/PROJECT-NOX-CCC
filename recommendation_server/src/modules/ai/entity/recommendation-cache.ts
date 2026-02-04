@@ -28,7 +28,7 @@ export class RecommendationCache {
   @JoinColumn({ name: 'product_id' })
   product?: Product;
 
-  @Column({ type: 'enum', enum: RecommendationType })
+  @Column({ type: 'simple-enum', enum: RecommendationType })
   recommendation_type!: RecommendationType;
 
   @Column({ length: 50, default: 'third_party' })
@@ -40,10 +40,10 @@ export class RecommendationCache {
   @Column({ type: 'json', nullable: true })
   context_data?: object;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   expires_at!: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   generated_at!: Date;
 
   @Column({ type: 'int', default: 0 })
@@ -52,9 +52,9 @@ export class RecommendationCache {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

@@ -27,7 +27,7 @@ export class Cart {
   session?: UserSession;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: CartStatus, 
     default: CartStatus.ACTIVE 
   })
@@ -42,18 +42,18 @@ export class Cart {
   @Column({ length: 3, default: 'VND' })
   currency!: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   expires_at?: Date;
 
   @OneToMany(() => CartItem, item => item.cart)
   items?: CartItem[];
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', nullable: true })
   deleted_at?: Date;
 }

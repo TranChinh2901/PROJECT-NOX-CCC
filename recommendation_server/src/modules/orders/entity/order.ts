@@ -31,21 +31,21 @@ export class Order {
   cart?: Cart;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: OrderStatus, 
     default: OrderStatus.PENDING 
   })
   status!: OrderStatus;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: PaymentStatus, 
     default: PaymentStatus.PENDING 
   })
   payment_status!: PaymentStatus;
 
   @Column({ 
-    type: 'enum', 
+    type: 'simple-enum', 
     enum: PaymentMethod 
   })
   payment_method!: PaymentMethod;
@@ -83,10 +83,10 @@ export class Order {
   @Column({ length: 100, nullable: true })
   tracking_number?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   shipped_at?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   delivered_at?: Date;
 
   @OneToMany(() => OrderItem, item => item.order)
@@ -95,12 +95,12 @@ export class Order {
   @OneToMany(() => OrderStatusHistory, history => history.order)
   status_histories?: OrderStatusHistory[];
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', nullable: true })
   deleted_at?: Date;
 }

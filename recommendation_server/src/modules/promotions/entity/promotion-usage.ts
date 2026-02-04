@@ -35,6 +35,6 @@ export class PromotionUsage {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   discount_amount!: number;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   used_at!: Date;
 }

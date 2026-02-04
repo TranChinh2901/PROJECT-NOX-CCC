@@ -28,7 +28,7 @@ export class User {
   @Column({ length: 255 })
   password!: string;
 
-  @Column({ type: 'enum', enum: GenderType, nullable: true })
+  @Column({ type: 'simple-enum', enum: GenderType, nullable: true })
   gender?: GenderType;
 
   @Column({ type: 'date', nullable: true }) 
@@ -37,15 +37,15 @@ export class User {
   @Column({ type: 'boolean', default: false })
   is_verified!: boolean;
 
-  @Column({ type: 'enum', enum: RoleType, default: RoleType.USER })
+  @Column({ type: 'simple-enum', enum: RoleType, default: RoleType.USER })
   role!: RoleType;
 
   @OneToMany(() => UserSession, (session) => session.user)
   sessions?: UserSession[];
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

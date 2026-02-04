@@ -40,10 +40,10 @@ export default function AdminSidebar() {
   };
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-[#1C1917] border-r border-[#292524] z-50">
+    <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 z-50">
       <div className="flex flex-col h-full">
-        <div className="p-6 border-b border-[#292524]">
-          <h1 className="text-xl font-bold text-[#FAFAF9]">Admin Panel</h1>
+        <div className="p-6 border-b border-slate-200">
+          <h1 className="text-xl font-bold text-slate-900">Admin Panel</h1>
         </div>
 
         <nav className="flex-1 p-4">
@@ -59,7 +59,7 @@ export default function AdminSidebar() {
                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                       active
                         ? 'bg-[#7366ff] text-white'
-                        : 'text-[#A1A1AA] hover:bg-[#292524] hover:text-[#FAFAF9]'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -71,10 +71,10 @@ export default function AdminSidebar() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-[#292524]">
+        <div className="p-4 border-t border-slate-200">
           <Link
             href="/"
-            className="flex items-center space-x-3 px-4 py-3 rounded-lg text-[#A1A1AA] hover:bg-[#292524] hover:text-[#FAFAF9] transition-colors"
+            className="flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
           >
             <Home className="w-5 h-5" />
             <span>Back to Store</span>
@@ -82,7 +82,7 @@ export default function AdminSidebar() {
 
           <button
             onClick={() => logout()}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[#A1A1AA] hover:bg-[#dc2626] hover:text-white transition-colors mt-2"
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-[#dc2626] hover:text-white transition-colors mt-2"
           >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>

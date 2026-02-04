@@ -19,7 +19,7 @@ export class ProductFeature {
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
-  @Column({ type: 'enum', enum: ProductFeatureType })
+  @Column({ type: 'simple-enum', enum: ProductFeatureType })
   feature_type!: ProductFeatureType;
 
   @Column({ length: 100 })
@@ -28,15 +28,15 @@ export class ProductFeature {
   @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
   confidence_score?: number;
 
-  @Column({ type: 'enum', enum: FeatureSource, default: FeatureSource.MANUAL })
+  @Column({ type: 'simple-enum', enum: FeatureSource, default: FeatureSource.MANUAL })
   source!: FeatureSource;
 
   @Column({ default: 1 })
   weight!: number;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 }

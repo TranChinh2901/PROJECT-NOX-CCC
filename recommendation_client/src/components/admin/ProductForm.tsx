@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Product, Category, Brand } from '@/types';
+import { Category, Brand } from '@/types';
 import { Plus, Minus, X } from 'lucide-react';
 
 interface ProductVariantInput {
@@ -64,8 +64,8 @@ export default function ProductForm({
     images: initialData.images as File[] || [],
   });
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories] = useState<Category[]>([]);
+  const [brands] = useState<Brand[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
@@ -113,7 +113,11 @@ export default function ProductForm({
     });
   };
 
-  const updateVariant = (index: number, field: keyof ProductVariantInput, value: any) => {
+  const updateVariant = (
+    index: number,
+    field: keyof ProductVariantInput,
+    value: ProductVariantInput[keyof ProductVariantInput]
+  ) => {
     const newVariants = [...formData.variants];
     newVariants[index] = { ...newVariants[index], [field]: value };
     setFormData({ ...formData, variants: newVariants });
@@ -127,7 +131,7 @@ export default function ProductForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Information */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -137,7 +141,7 @@ export default function ProductForm({
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             />
           </div>
           <div>
@@ -147,7 +151,7 @@ export default function ProductForm({
               required
               value={formData.sku}
               onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             />
           </div>
         </div>
@@ -158,13 +162,13 @@ export default function ProductForm({
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={4}
-            className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+            className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
           />
         </div>
       </div>
 
       {/* Pricing */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Pricing</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -174,7 +178,7 @@ export default function ProductForm({
               required
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             />
           </div>
           <div>
@@ -183,14 +187,14 @@ export default function ProductForm({
               type="number"
               value={formData.discount_price || ''}
               onChange={(e) => setFormData({ ...formData, discount_price: parseFloat(e.target.value) || undefined })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             />
           </div>
         </div>
       </div>
 
       {/* Categorization */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -198,7 +202,7 @@ export default function ProductForm({
             <select
               value={formData.category_id || ''}
               onChange={(e) => setFormData({ ...formData, category_id: e.target.value ? parseInt(e.target.value) : undefined })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             >
               <option value="">Select Category</option>
               {categories.map((category) => (
@@ -213,7 +217,7 @@ export default function ProductForm({
             <select
               value={formData.brand_id || ''}
               onChange={(e) => setFormData({ ...formData, brand_id: e.target.value ? parseInt(e.target.value) : undefined })}
-              className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+              className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             >
               <option value="">Select Brand</option>
               {brands.map((brand) => (
@@ -227,12 +231,12 @@ export default function ProductForm({
       </div>
 
       {/* Product Status */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Product Status</h3>
         <select
           value={formData.status}
           onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' | 'draft' })}
-          className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+          className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
         >
           <option value="draft">Draft</option>
           <option value="active">Active</option>
@@ -241,7 +245,7 @@ export default function ProductForm({
       </div>
 
       {/* Variants */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Product Variants</h3>
           <button
@@ -255,7 +259,7 @@ export default function ProductForm({
         </div>
 
         {formData.variants.map((variant, index) => (
-          <div key={index} className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
+          <div key={index} className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-medium">Variant {index + 1}</h4>
               {formData.variants.length > 1 && (
@@ -276,7 +280,7 @@ export default function ProductForm({
                   value={variant.size || ''}
                   onChange={(e) => updateVariant(index, 'size', e.target.value)}
                   placeholder="e.g., S, M, L, XL"
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -286,7 +290,7 @@ export default function ProductForm({
                   value={variant.color || ''}
                   onChange={(e) => updateVariant(index, 'color', e.target.value)}
                   placeholder="e.g., Red, Blue, Black"
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -296,7 +300,7 @@ export default function ProductForm({
                   value={variant.sku || ''}
                   onChange={(e) => updateVariant(index, 'sku', e.target.value)}
                   placeholder="Variant SKU"
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
               <div>
@@ -305,7 +309,7 @@ export default function ProductForm({
                   type="number"
                   value={variant.stock || 0}
                   onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value))}
-                  className="w-full px-4 py-2 bg-[#292524] text-[#FAFAF9] border border-[#44403C] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 />
               </div>
             </div>
@@ -314,7 +318,7 @@ export default function ProductForm({
       </div>
 
       {/* Images */}
-      <div className="glass-card backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-6">
+      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Product Images</h3>
         <div className="mb-4">
           <input
@@ -360,7 +364,7 @@ export default function ProductForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 bg-[#292524] text-[#FAFAF9] rounded-lg hover:bg-[#44403C] transition-colors"
+          className="px-6 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
         >
           Cancel
         </button>
