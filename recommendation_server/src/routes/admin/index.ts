@@ -7,11 +7,15 @@ import adminCategoryController from '@/modules/admin/admin-category.controller';
 import adminBrandController from '@/modules/admin/admin-brand.controller';
 import adminUserController from '@/modules/admin/admin-user.controller';
 import adminReviewController from '@/modules/admin/admin-review.controller';
+import adminOrderController from '@/modules/admin/admin-order.controller';
+import analyticsController from '@/modules/admin/analytics.controller';
 import { createProductSchema, updateProductSchema } from '@/modules/admin/schema/admin-product.schema';
 import { createCategorySchema, updateCategorySchema } from '@/modules/admin/schema/admin-category.schema';
 import { createBrandSchema, updateBrandSchema } from '@/modules/admin/schema/admin-brand.schema';
 import { updateUserSchema, bulkDeactivateSchema } from '@/modules/admin/schema/admin-user.schema';
 import { reviewFilterQuerySchema, bulkApproveSchema } from '@/modules/admin/schema/admin-review.schema';
+import { orderFilterQuerySchema, updateOrderStatusSchema, addInternalNoteSchema } from '@/modules/admin/schema/order.schema';
+import { dateRangeQuerySchema, topProductsQuerySchema } from '@/modules/admin/schema/analytics.schema';
 import { paginationQuerySchema } from '@/modules/admin/schema/pagination-query.schema';
 import { bulkOperationSchema } from '@/modules/admin/schema/bulk-operation.schema';
 import { idParamSchema } from '@/modules/admin/schema/id-param.schema';
@@ -199,6 +203,62 @@ router.post(
   '/reviews/bulk-approve',
   validateBody(bulkApproveSchema),
   asyncHandle(adminReviewController.bulkApprove)
+);
+
+router.get(
+  '/orders',
+  validateQuery(orderFilterQuerySchema),
+  asyncHandle(adminOrderController.listOrders)
+);
+
+router.get(
+  '/orders/:id',
+  validateParams(idParamSchema),
+  asyncHandle(adminOrderController.getOrder)
+);
+
+router.patch(
+  '/orders/:id/status',
+  validateParams(idParamSchema),
+  validateBody(updateOrderStatusSchema),
+  asyncHandle(adminOrderController.updateOrderStatus)
+);
+
+router.post(
+  '/orders/:id/cancel',
+  validateParams(idParamSchema),
+  asyncHandle(adminOrderController.cancelOrder)
+);
+
+router.post(
+  '/orders/:id/notes',
+  validateParams(idParamSchema),
+  validateBody(addInternalNoteSchema),
+  asyncHandle(adminOrderController.addInternalNote)
+);
+
+router.get(
+  '/analytics/sales',
+  validateQuery(dateRangeQuerySchema),
+  asyncHandle(analyticsController.getSalesStats)
+);
+
+router.get(
+  '/analytics/orders',
+  validateQuery(dateRangeQuerySchema),
+  asyncHandle(analyticsController.getOrderStats)
+);
+
+router.get(
+  '/analytics/top-products',
+  validateQuery(topProductsQuerySchema),
+  asyncHandle(analyticsController.getTopProducts)
+);
+
+router.get(
+  '/analytics/users',
+  validateQuery(dateRangeQuerySchema),
+  asyncHandle(analyticsController.getUserStats)
 );
 
 export default router;
