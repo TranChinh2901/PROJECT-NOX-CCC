@@ -6,6 +6,7 @@ import categoryRouter from "@/routes/category";
 import cartRouter from "@/routes/cart";
 import orderRouter from "@/routes/order";
 import reviewRouter from "@/routes/review";
+import adminRouter from "@/routes/admin";
 
 const router = express.Router();
 const API_V1 = "/api/v1";
@@ -16,5 +17,6 @@ router.use(`${API_V1}/categories`, categoryRouter);
 router.use(`${API_V1}/cart`, cartRouter);
 router.use(`${API_V1}/orders`, orderRouter);
 router.use(`${API_V1}/reviews`, reviewRouter);
+router.use(`${API_V1}/admin`, adminRouter);
 
 export default router;

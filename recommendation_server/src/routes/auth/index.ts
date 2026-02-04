@@ -50,14 +50,14 @@ router.delete('/delete-account/:id',
 );
 
 router.delete('/users/:id',
-  // authMiddleware(),
-  // requireAdmin(),
+  authMiddleware(),
+  requireAdmin(),
   asyncHandle(authController.deleteUserById)
 );
 
 router.put('/users/:id',
-  // authMiddleware(),
-  // requireAdmin(),
+  authMiddleware(),
+  requireAdmin(),
   asyncHandle(authController.updateUserById)
 );
 
