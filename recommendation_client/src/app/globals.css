@@ -59,6 +59,14 @@
   --color-blue-glow: var(--color-blue-glow);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
+
+  /* Admin Dashboard Colors (RGB format for Tailwind) */
+  --color-admin-primary: var(--admin-primary);
+  --color-admin-secondary: var(--admin-secondary);
+  --color-admin-accent: var(--admin-accent);
+  --color-admin-background: var(--admin-background);
+  --color-admin-success: var(--admin-success);
+  --color-admin-error: var(--admin-error);
 }
 
 body {

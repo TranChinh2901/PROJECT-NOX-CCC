@@ -1,0 +1,178 @@
+# AlertManager Configuration for Notification System
+# Save as: alertmanager.yml
+
+global:
+  # ResolveTimeout is the default value used by alertmanager if the alert does not include EndsAt
+  resolve_timeout: 5m
+
+  # SMTP configuration for email alerts
+  smtp_from: 'alerts@example.com'
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'your-smtp-password'
+  smtp_require_tls: true
+
+  # Slack API URL (optional - for testing)
+  # slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+  # PagerDuty API key (optional - for testing)
+  # pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert notifications
+route:
+  # Default receiver for all alerts
+  receiver: 'default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'service']
+
+  # Wait time before sending first notification for new group
+  group_wait: 10s
+
+  # Wait time before sending notification about new alerts added to group
+  group_interval: 5m
+
+  # Wait time before resending notification if alert is still firing
+  repeat_interval: 3h
+
+  # Child routes
+  routes:
+    # Critical alerts -> PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: true  # Also send to default receiver
+
+    # Warning alerts -> Slack
+    - match:
+        severity: warning
+      receiver: 'slack-warnings'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+    # Info alerts -> Slack (less urgent)
+    - match:
+        severity: info
+      receiver: 'slack-info'
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 24h
+
+    # Database alerts -> Database team
+    - match_re:
+        alert_type: infrastructure
+      receiver: 'database-team'
+      group_wait: 10s
+      repeat_interval: 2h
+
+    # Performance alerts -> Performance team
+    - match:
+        alert_type: performance
+      receiver: 'performance-team'
+      group_wait: 1m
+      repeat_interval: 6h
+
+# Receivers define where to send notifications
+receivers:
+  # Default receiver (email to team)
+  - name: 'default'
+    email_configs:
+      - to: 'team@example.com'
+        send_resolved: true
+        headers:
+          Subject: '[Alert] {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+        html: |
+          <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Summary:</strong> {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}</p>
+          <p><strong>Description:</strong> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+
+  # PagerDuty for critical alerts
+  - name: 'pagerduty'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        send_resolved: true
+        severity: '{{ if eq .GroupLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
+        description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          alertname: '{{ .GroupLabels.alertname }}'
+          service: '{{ .GroupLabels.service }}'
+          runbook: '{{ range .Alerts }}{{ .Annotations.runbook_url }}{{ end }}'
+
+  # Slack for warning alerts
+  - name: 'slack-warnings'
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-notification'
+        send_resolved: true
+        title: ':warning: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Service:* {{ .GroupLabels.service }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+          {{ range .Alerts }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+
+  # Slack for info alerts
+  - name: 'slack-info'
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-info'
+        send_resolved: true
+        title: ':information_source: {{ .GroupLabels.alertname }}'
+        text: |
+          *Service:* {{ .GroupLabels.service }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+        color: 'good'
+
+  # Database team email
+  - name: 'database-team'
+    email_configs:
+      - to: 'database-team@example.com'
+        send_resolved: true
+        headers:
+          Subject: '[DB Alert] {{ .GroupLabels.alertname }}'
+
+  # Performance team email
+  - name: 'performance-team'
+    email_configs:
+      - to: 'performance-team@example.com'
+        send_resolved: true
+        headers:
+          Subject: '[Performance Alert] {{ .GroupLabels.alertname }}'
+
+# Inhibition rules (suppress alerts when other alerts are firing)
+inhibit_rules:
+  # If database is down, suppress all other alerts from that service
+  - source_match:
+      alertname: 'NotificationDatabaseDown'
+    target_match_re:
+      service: 'notification'
+    equal: ['service']
+
+  # If service is down, suppress latency alerts
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+      alert_type: 'performance'
+    equal: ['service']
+
+  # If high error rate, suppress individual endpoint errors
+  - source_match:
+      alertname: 'NotificationHighErrorRate'
+    target_match_re:
+      alertname: '.*Latency.*'
+    equal: ['service']

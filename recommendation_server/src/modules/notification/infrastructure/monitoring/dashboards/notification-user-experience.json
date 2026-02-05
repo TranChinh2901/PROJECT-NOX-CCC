@@ -1,0 +1,477 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "notification-user-experience",
+    "title": "Notification System - User Experience",
+    "tags": ["notifications", "user-experience", "rum"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Time to Delivery (WebSocket)",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(notification_delivery_duration_seconds_bucket{channel=\"in_app\"}[5m])) by (le))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(notification_delivery_duration_seconds_bucket{channel=\"in_app\"}[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(notification_delivery_duration_seconds_bucket{channel=\"in_app\"}[5m])) by (le))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Time (seconds)",
+            "format": "s"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        },
+        "thresholds": [
+          {
+            "value": 1,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": false,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Notification Read Rate",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(notification_created_total) - sum(unread_notifications)",
+            "legendFormat": "Total Read",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(unread_notifications)",
+            "legendFormat": "Total Unread",
+            "refId": "B"
+          },
+          {
+            "expr": "(sum(notification_created_total) - sum(unread_notifications)) / sum(notification_created_total) * 100",
+            "legendFormat": "Read Rate %",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Count",
+            "format": "short"
+          },
+          {
+            "label": "Read Rate %",
+            "format": "percent",
+            "max": 100
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "seriesOverrides": [
+          {
+            "alias": "Read Rate %",
+            "yaxis": 2,
+            "color": "#73BF69"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Unread Notification Count Distribution",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(unread_notifications) by (user_id)",
+            "legendFormat": "User {{user_id}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Unread Count",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 0,
+        "linewidth": 1,
+        "legend": {
+          "show": false
+        }
+      },
+      {
+        "id": 4,
+        "title": "Average Unread Notifications per User",
+        "type": "stat",
+        "gridPos": {
+          "x": 12,
+          "y": 8,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "avg(unread_notifications)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 1,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 10,
+                  "color": "yellow"
+                },
+                {
+                  "value": 50,
+                  "color": "orange"
+                },
+                {
+                  "value": 100,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Users with Excessive Unread Notifications",
+        "type": "stat",
+        "gridPos": {
+          "x": 18,
+          "y": 8,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "count(unread_notifications > 100)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 10,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "User Preferences Adoption",
+        "type": "piechart",
+        "gridPos": {
+          "x": 12,
+          "y": 12,
+          "w": 12,
+          "h": 8
+        },
+        "description": "Percentage of users who have customized their notification preferences",
+        "targets": [
+          {
+            "expr": "sum(notification_preferences_customized)",
+            "legendFormat": "Customized",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(notification_preferences_default)",
+            "legendFormat": "Default",
+            "refId": "B"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          },
+          "pieType": "donut",
+          "displayLabels": ["percent"]
+        }
+      },
+      {
+        "id": 7,
+        "title": "Notification Type Engagement",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 12,
+          "h": 8
+        },
+        "description": "Read rate by notification type",
+        "targets": [
+          {
+            "expr": "sum(rate(notification_created_total{type=\"order\"}[1h])) - sum(rate(unread_notifications{type=\"order\"}[1h]))",
+            "legendFormat": "Order - Read",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(notification_created_total{type=\"review\"}[1h])) - sum(rate(unread_notifications{type=\"review\"}[1h]))",
+            "legendFormat": "Review - Read",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(notification_created_total{type=\"promotional\"}[1h])) - sum(rate(unread_notifications{type=\"promotional\"}[1h]))",
+            "legendFormat": "Promotional - Read",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Read Rate",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "stack": false
+      },
+      {
+        "id": 8,
+        "title": "WebSocket Connection Stability",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 20,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(websocket_reconnections_total[5m]) / rate(websocket_connections_total[5m]) * 100",
+            "legendFormat": "Reconnection Rate %",
+            "refId": "A"
+          },
+          {
+            "expr": "websocket_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Reconnection Rate %",
+            "format": "percent",
+            "max": 100
+          },
+          {
+            "label": "Active Connections",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "seriesOverrides": [
+          {
+            "alias": "Active Connections",
+            "yaxis": 2,
+            "color": "#5794F2"
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 10,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Quiet Hours Usage",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 12,
+          "h": 4
+        },
+        "description": "Percentage of users with quiet hours enabled",
+        "targets": [
+          {
+            "expr": "sum(notification_preferences_quiet_hours_enabled) / sum(notification_preferences_total) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "blue"
+                },
+                {
+                  "value": 25,
+                  "color": "green"
+                },
+                {
+                  "value": 50,
+                  "color": "yellow"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Delivery Method Preferences",
+        "type": "bargauge",
+        "gridPos": {
+          "x": 12,
+          "y": 24,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(notification_preferences_channel_enabled{channel=\"in_app\"})",
+            "legendFormat": "In-App",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(notification_preferences_channel_enabled{channel=\"email\"})",
+            "legendFormat": "Email",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(notification_preferences_channel_enabled{channel=\"push\"})",
+            "legendFormat": "Push",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(notification_preferences_channel_enabled{channel=\"sms\"})",
+            "legendFormat": "SMS",
+            "refId": "D"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

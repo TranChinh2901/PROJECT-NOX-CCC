@@ -21,6 +21,11 @@ import { PromotionUsage } from "@/modules/promotions/entity/promotion-usage";
 import { UserBehaviorLog } from "@/modules/ai/entity/user-behavior-log";
 import { ProductFeature } from "@/modules/ai/entity/product-feature";
 import { RecommendationCache } from "@/modules/ai/entity/recommendation-cache";
+import { Notification } from "@/modules/notification/entity/notification";
+import { NotificationPreference } from "@/modules/notification/entity/notification-preference";
+import { NotificationTemplate } from "@/modules/notification/entity/notification-template";
+import { NotificationDeliveryLog } from "@/modules/notification/entity/notification-delivery-log";
+import { NotificationSubscription } from "@/modules/notification/entity/notification-subscription";
 
 export const entities = [
   User,
@@ -46,4 +51,9 @@ export const entities = [
   UserBehaviorLog,
   ProductFeature,
   RecommendationCache,
+  Notification,
+  NotificationPreference,
+  NotificationTemplate,
+  NotificationDeliveryLog,
+  NotificationSubscription,
 ];

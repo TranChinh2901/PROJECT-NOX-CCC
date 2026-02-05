@@ -1,0 +1,47 @@
+/**
+ * Test Server Helper
+ * Provides configured Express app for testing
+ */
+import express, { Application } from 'express';
+import { notificationRouter } from '../../presentation';
+import { authMiddleware } from '@/middlewares/auth.middleware';
+import { errorMiddleware } from '@/middlewares/error.middleware';
+
+export class TestServer {
+  private app: Application;
+
+  constructor() {
+    this.app = express();
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupErrorHandling();
+  }
+
+  private setupMiddleware(): void {
+    this.app.use(express.json());
+    this.app.use(express.urlencoded({ extended: true }));
+  }
+
+  private setupRoutes(): void {
+    // Test route without auth
+    this.app.get('/health', (req, res) => {
+      res.json({ status: 'ok' });
+    });
+
+    // Notification routes with auth
+    this.app.use('/api/v1/notifications', authMiddleware, notificationRouter);
+  }
+
+  private setupErrorHandling(): void {
+    this.app.use(errorMiddleware);
+  }
+
+  getApp(): Application {
+    return this.app;
+  }
+}
+
+export const createTestServer = (): Application => {
+  const server = new TestServer();
+  return server.getApp();
+};

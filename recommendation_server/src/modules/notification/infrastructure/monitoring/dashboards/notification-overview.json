@@ -1,0 +1,438 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "notification-overview",
+    "title": "Notification System - Overview",
+    "tags": ["notifications", "overview"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Notifications Created Over Time",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(notification_created_total[5m])",
+            "legendFormat": "Total Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(notification_created_total{type=\"order\"}[5m])",
+            "legendFormat": "Order",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(notification_created_total{type=\"review\"}[5m])",
+            "legendFormat": "Review",
+            "refId": "C"
+          },
+          {
+            "expr": "rate(notification_created_total{type=\"promotional\"}[5m])",
+            "legendFormat": "Promotional",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Notifications/sec",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "rightSide": false,
+          "values": true,
+          "current": true,
+          "avg": true
+        }
+      },
+      {
+        "id": 2,
+        "title": "Delivery Success Rate",
+        "type": "gauge",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 6,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(notification_delivered_total{status=\"delivered\"}) / (sum(notification_delivered_total) + sum(notification_failed_total)) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 90,
+                  "color": "yellow"
+                },
+                {
+                  "value": 95,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active WebSocket Connections",
+        "type": "stat",
+        "gridPos": {
+          "x": 18,
+          "y": 0,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "websocket_active_connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "blue"
+                },
+                {
+                  "value": 100,
+                  "color": "green"
+                },
+                {
+                  "value": 500,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1000,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Queue Depth",
+        "type": "stat",
+        "gridPos": {
+          "x": 18,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "queue_depth",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 100,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1000,
+                  "color": "orange"
+                },
+                {
+                  "value": 10000,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Delivery Method Breakdown",
+        "type": "piechart",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum by(channel) (notification_delivered_total)",
+            "legendFormat": "{{channel}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          },
+          "pieType": "pie",
+          "displayLabels": ["percent"]
+        }
+      },
+      {
+        "id": 6,
+        "title": "WebSocket Connections Over Time",
+        "type": "graph",
+        "gridPos": {
+          "x": 8,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "websocket_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(websocket_connections_total[5m]) * 60",
+            "legendFormat": "New Connections/min",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(websocket_reconnections_total[5m]) * 60",
+            "legendFormat": "Reconnections/min",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Count",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2
+      },
+      {
+        "id": 7,
+        "title": "Queue Processing Rate",
+        "type": "graph",
+        "gridPos": {
+          "x": 16,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(queue_jobs_processed_total{status=\"completed\"}[5m]) * 60",
+            "legendFormat": "Completed/min",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(queue_jobs_processed_total{status=\"failed\"}[5m]) * 60",
+            "legendFormat": "Failed/min",
+            "refId": "B"
+          },
+          {
+            "expr": "queue_depth",
+            "legendFormat": "Queue Depth",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Jobs/min",
+            "format": "short"
+          },
+          {
+            "label": "Queue Depth",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "seriesOverrides": [
+          {
+            "alias": "Queue Depth",
+            "yaxis": 2,
+            "color": "#FF9830"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Notification Priority Distribution",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(notification_created_total{priority=\"high\"}[5m])",
+            "legendFormat": "High Priority",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(notification_created_total{priority=\"medium\"}[5m])",
+            "legendFormat": "Medium Priority",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(notification_created_total{priority=\"low\"}[5m])",
+            "legendFormat": "Low Priority",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Notifications/sec",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "stack": true
+      },
+      {
+        "id": 9,
+        "title": "Cache Performance",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 16,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) * 100",
+            "legendFormat": "Hit Rate %",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(cache_hits_total[5m])",
+            "legendFormat": "Hits/sec",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(cache_misses_total[5m])",
+            "legendFormat": "Misses/sec",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Hit Rate %",
+            "format": "percent",
+            "max": 100
+          },
+          {
+            "label": "Operations/sec",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "seriesOverrides": [
+          {
+            "alias": "Hit Rate %",
+            "yaxis": 1,
+            "color": "#73BF69"
+          },
+          {
+            "alias": "Hits/sec",
+            "yaxis": 2,
+            "color": "#5794F2"
+          },
+          {
+            "alias": "Misses/sec",
+            "yaxis": 2,
+            "color": "#F2495C"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { container } from '../di/container';
-import { successResponse } from '@/common/success.response';
-import { errorResponse } from '@/common/error.response';
-import { StatusCode } from '@/constants/status-code';
+import { AppResponse } from '@/common/success.response';
+import { HttpStatusCode } from '@/constants/status-code';
 
 /**
  * Presentation Layer: Recommendation Controller
@@ -26,11 +25,10 @@ export class RecommendationController {
       const userId = parseInt(req.params.userId, 10);
 
       if (isNaN(userId)) {
-        return errorResponse(
-          res,
-          StatusCode.BAD_REQUEST,
-          'Invalid user ID'
-        );
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: 'Invalid user ID',
+        });
       }
 
       const strategy = req.query.strategy as string | undefined;
@@ -50,19 +48,17 @@ export class RecommendationController {
         categoryFilter,
       });
 
-      return successResponse(
-        res,
-        StatusCode.OK,
-        'Recommendations retrieved successfully',
-        result
-      );
+      return new AppResponse({
+        statusCode: HttpStatusCode.OK,
+        message: 'Recommendations retrieved successfully',
+        data: result,
+      }).sendResponse(res);
     } catch (error: any) {
       console.error('Error getting recommendations:', error);
-      return errorResponse(
-        res,
-        StatusCode.INTERNAL_SERVER_ERROR,
-        error.message || 'Failed to get recommendations'
-      );
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Failed to get recommendations',
+      });
     }
   }
 
@@ -77,20 +73,18 @@ export class RecommendationController {
 
       // Validation
       if (!userId || !behaviorType) {
-        return errorResponse(
-          res,
-          StatusCode.BAD_REQUEST,
-          'userId and behaviorType are required'
-        );
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: 'userId and behaviorType are required',
+        });
       }
 
       const validBehaviorTypes = ['view', 'add_to_cart', 'purchase', 'review', 'wishlist', 'search'];
       if (!validBehaviorTypes.includes(behaviorType)) {
-        return errorResponse(
-          res,
-          StatusCode.BAD_REQUEST,
-          `Invalid behaviorType. Must be one of: ${validBehaviorTypes.join(', ')}`
-        );
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: `Invalid behaviorType. Must be one of: ${validBehaviorTypes.join(', ')}`,
+        });
       }
 
       // Get use case from DI container
@@ -110,18 +104,16 @@ export class RecommendationController {
         });
 
       // Return immediately (fire and forget)
-      return successResponse(
-        res,
-        StatusCode.OK,
-        'Behavior tracked successfully'
-      );
+      return new AppResponse({
+        statusCode: HttpStatusCode.OK,
+        message: 'Behavior tracked successfully',
+      }).sendResponse(res);
     } catch (error: any) {
       console.error('Error tracking behavior:', error);
-      return errorResponse(
-        res,
-        StatusCode.INTERNAL_SERVER_ERROR,
-        error.message || 'Failed to track behavior'
-      );
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Failed to track behavior',
+      });
     }
   }
 
@@ -135,11 +127,10 @@ export class RecommendationController {
       const productId = parseInt(req.params.productId, 10);
 
       if (isNaN(productId)) {
-        return errorResponse(
-          res,
-          StatusCode.BAD_REQUEST,
-          'Invalid product ID'
-        );
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: 'Invalid product ID',
+        });
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
@@ -150,22 +141,20 @@ export class RecommendationController {
       // Get similar products
       const recommendations = await engine.getSimilarProducts(productId, limit);
 
-      return successResponse(
-        res,
-        StatusCode.OK,
-        'Similar products retrieved successfully',
-        {
+      return new AppResponse({
+        statusCode: HttpStatusCode.OK,
+        message: 'Similar products retrieved successfully',
+        data: {
           productId,
           recommendations: recommendations.map((r) => r.toJSON()),
-        }
-      );
+        },
+      }).sendResponse(res);
     } catch (error: any) {
       console.error('Error getting similar products:', error);
-      return errorResponse(
-        res,
-        StatusCode.INTERNAL_SERVER_ERROR,
-        error.message || 'Failed to get similar products'
-      );
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Failed to get similar products',
+      });
     }
   }
 }

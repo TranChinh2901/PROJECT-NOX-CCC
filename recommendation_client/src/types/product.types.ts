@@ -91,6 +91,7 @@ export interface Product {
   compare_at_price?: number;
   cost_price?: number;
   weight_kg?: number;
+  stock_quantity?: number;
   is_active: boolean;
   is_featured: boolean;
   meta_title?: string;

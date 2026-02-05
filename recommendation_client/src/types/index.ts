@@ -54,3 +54,24 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
 }
+
+export type {
+  NotificationType,
+  NotificationPriority,
+  NotificationStatus,
+  NotificationAction,
+  Notification,
+  NotificationGroup,
+  NotificationFilters,
+  NotificationPreferences,
+  PaginatedNotifications,
+  WebSocketConnectionStatus,
+  NotificationContextType,
+  SocketEventType,
+  SubscribePayload,
+  SocketMessage,
+  GetNotificationsParams,
+  MarkMultipleAsReadRequest,
+  DeleteMultipleRequest,
+  UnreadCountResponse,
+} from './notification.types';
