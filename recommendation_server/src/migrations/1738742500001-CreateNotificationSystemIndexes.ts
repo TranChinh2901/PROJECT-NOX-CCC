@@ -6,10 +6,10 @@ export class CreateNotificationSystemIndexes1738742500001 implements MigrationIn
     public async up(queryRunner: QueryRunner): Promise<void> {
         // ===== Indexes for notification_templates =====
         await queryRunner.query(
-            `CREATE INDEX idx_templates_type ON notification_templates(type) WHERE is_active = 1`
+            `CREATE INDEX idx_templates_type ON notification_templates(type)`
         );
         await queryRunner.query(
-            `CREATE INDEX idx_templates_channel ON notification_templates(channel) WHERE is_active = 1`
+            `CREATE INDEX idx_templates_channel ON notification_templates(channel)`
         );
 
         // ===== Indexes for notifications =====
@@ -23,13 +23,13 @@ export class CreateNotificationSystemIndexes1738742500001 implements MigrationIn
             `CREATE INDEX idx_notifications_type ON notifications(type)`
         );
         await queryRunner.query(
-            `CREATE INDEX idx_notifications_order ON notifications(order_id) WHERE order_id IS NOT NULL`
+            `CREATE INDEX idx_notifications_order ON notifications(order_id)`
         );
         await queryRunner.query(
-            `CREATE INDEX idx_notifications_product ON notifications(product_id) WHERE product_id IS NOT NULL`
+            `CREATE INDEX idx_notifications_product ON notifications(product_id)`
         );
         await queryRunner.query(
-            `CREATE INDEX idx_notifications_expires ON notifications(expires_at) WHERE expires_at IS NOT NULL`
+            `CREATE INDEX idx_notifications_expires ON notifications(expires_at)`
         );
         await queryRunner.query(
             `CREATE INDEX idx_notifications_created ON notifications(created_at DESC)`
@@ -46,7 +46,7 @@ export class CreateNotificationSystemIndexes1738742500001 implements MigrationIn
         );
         // Partial index for unread notifications (most common query)
         await queryRunner.query(
-            `CREATE INDEX idx_recipients_user_unread ON notification_recipients(user_id, created_at DESC) WHERE status = 'read'`
+            `CREATE INDEX idx_recipients_user_unread ON notification_recipients(user_id, created_at DESC)`
         );
         await queryRunner.query(
             `CREATE INDEX idx_recipients_notification ON notification_recipients(notification_id)`
@@ -56,11 +56,11 @@ export class CreateNotificationSystemIndexes1738742500001 implements MigrationIn
         );
         // Index for cleanup jobs (old read notifications)
         await queryRunner.query(
-            `CREATE INDEX idx_recipients_old_read ON notification_recipients(created_at) WHERE status = 'read'`
+            `CREATE INDEX idx_recipients_old_read ON notification_recipients(created_at)`
         );
         // Index for pending delivery
         await queryRunner.query(
-            `CREATE INDEX idx_recipients_pending ON notification_recipients(status, created_at ASC) WHERE status = 'pending'`
+            `CREATE INDEX idx_recipients_pending ON notification_recipients(status, created_at ASC)`
         );
 
         // ===== Indexes for notification_preferences =====
@@ -74,7 +74,7 @@ export class CreateNotificationSystemIndexes1738742500001 implements MigrationIn
         // ===== Indexes for notification_delivery_log =====
         // Index for retry jobs
         await queryRunner.query(
-            `CREATE INDEX idx_delivery_log_retry ON notification_delivery_log(status, next_retry_at) WHERE status = 'failed' AND next_retry_at IS NOT NULL`
+            `CREATE INDEX idx_delivery_log_retry ON notification_delivery_log(status, next_retry_at)`
         );
         await queryRunner.query(
             `CREATE INDEX idx_delivery_log_recipient ON notification_delivery_log(recipient_id)`

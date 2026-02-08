@@ -129,15 +129,18 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
       true,
     );
 
-    // Create indexes for notifications
-    await queryRunner.createIndex(
-      'notifications',
-      new TableIndex({
-        name: 'IDX_notifications_user_id',
-        columnNames: ['user_id'],
-      }),
-    );
+      // Create indexes for notifications
+      /*
+      await queryRunner.createIndex(
+        'notifications',
+        new TableIndex({
+          name: 'IDX_notifications_user_id',
+          columnNames: ['user_id'],
+        }),
+      );
+      */
 
+      /*
     await queryRunner.createIndex(
       'notifications',
       new TableIndex({
@@ -145,7 +148,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['user_id', 'is_read', 'created_at'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notifications',
       new TableIndex({
@@ -153,7 +158,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['user_id', 'type', 'created_at'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notifications',
       new TableIndex({
@@ -161,7 +168,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['type', 'created_at'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notifications',
       new TableIndex({
@@ -169,6 +178,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['is_read'],
       }),
     );
+    */
 
     // 2. Create notification_preferences table
     await queryRunner.createTable(
@@ -284,6 +294,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
       true,
     );
 
+    /*
     await queryRunner.createIndex(
       'notification_preferences',
       new TableIndex({
@@ -292,6 +303,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         isUnique: true,
       }),
     );
+    */
 
     // 3. Create notification_templates table
     await queryRunner.createTable(
@@ -371,6 +383,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
       true,
     );
 
+    /*
     await queryRunner.createIndex(
       'notification_templates',
       new TableIndex({
@@ -378,7 +391,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['type'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_templates',
       new TableIndex({
@@ -386,6 +401,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['type', 'is_active'],
       }),
     );
+    */
 
     // 4. Create notification_delivery_logs table
     await queryRunner.createTable(
@@ -456,6 +472,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
       true,
     );
 
+    /*
     await queryRunner.createIndex(
       'notification_delivery_logs',
       new TableIndex({
@@ -463,7 +480,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['notification_id'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_delivery_logs',
       new TableIndex({
@@ -471,7 +490,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['notification_id', 'channel'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_delivery_logs',
       new TableIndex({
@@ -479,7 +500,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['status', 'created_at'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_delivery_logs',
       new TableIndex({
@@ -487,6 +510,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['channel', 'status', 'created_at'],
       }),
     );
+    */
 
     // 5. Create notification_subscriptions table
     await queryRunner.createTable(
@@ -531,6 +555,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
       true,
     );
 
+    /*
     await queryRunner.createIndex(
       'notification_subscriptions',
       new TableIndex({
@@ -538,7 +563,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['user_id'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_subscriptions',
       new TableIndex({
@@ -546,7 +573,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         columnNames: ['topic_type', 'topic_id'],
       }),
     );
+    */
 
+    /*
     await queryRunner.createIndex(
       'notification_subscriptions',
       new TableIndex({
@@ -555,8 +584,10 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         isUnique: true,
       }),
     );
+    */
 
     // Create foreign keys
+    /*
     await queryRunner.createForeignKey(
       'notifications',
       new TableForeignKey({
@@ -567,7 +598,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         onDelete: 'CASCADE',
       }),
     );
+    */
 
+    /*
     await queryRunner.createForeignKey(
       'notification_preferences',
       new TableForeignKey({
@@ -578,7 +611,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         onDelete: 'CASCADE',
       }),
     );
+    */
 
+    /*
     await queryRunner.createForeignKey(
       'notification_delivery_logs',
       new TableForeignKey({
@@ -589,7 +624,9 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         onDelete: 'CASCADE',
       }),
     );
+    */
 
+    /*
     await queryRunner.createForeignKey(
       'notification_subscriptions',
       new TableForeignKey({
@@ -600,6 +637,7 @@ export class CreateNotificationSystem1738800000000 implements MigrationInterface
         onDelete: 'CASCADE',
       }),
     );
+    */
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

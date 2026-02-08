@@ -24,4 +24,4 @@ global.console = {
 };
 
 // Global test utilities
-global.sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+(global as any).sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

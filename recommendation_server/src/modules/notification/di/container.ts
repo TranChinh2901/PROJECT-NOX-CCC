@@ -1,11 +1,6 @@
 /**
  * Dependency Injection Container for Notification Module
  */
-import { AppDataSource } from '@/config/data-source';
-import { NotificationEntity } from '../entity/Notification.entity';
-import { NotificationPreferenceEntity } from '../entity/NotificationPreference.entity';
-import { NotificationTemplateEntity } from '../entity/NotificationTemplate.entity';
-
 import { TypeORMNotificationRepository } from '../infrastructure/repositories/TypeORMNotificationRepository';
 import { TypeORMPreferenceRepository } from '../infrastructure/repositories/TypeORMPreferenceRepository';
 import { TypeORMTemplateRepository } from '../infrastructure/repositories/TypeORMTemplateRepository';
@@ -34,19 +29,16 @@ class NotificationContainer {
   }
 
   getNotificationRepository() {
-    const ormRepo = AppDataSource.getRepository(NotificationEntity);
-    const baseRepo = new TypeORMNotificationRepository(ormRepo);
+    const baseRepo = new TypeORMNotificationRepository();
     return new CachedNotificationRepository(baseRepo);
   }
 
   getPreferenceRepository() {
-    const ormRepo = AppDataSource.getRepository(NotificationPreferenceEntity);
-    return new TypeORMPreferenceRepository(ormRepo);
+    return new TypeORMPreferenceRepository();
   }
 
   getTemplateRepository() {
-    const ormRepo = AppDataSource.getRepository(NotificationTemplateEntity);
-    return new TypeORMTemplateRepository(ormRepo);
+    return new TypeORMTemplateRepository();
   }
 
   getWebSocketService() {
@@ -60,9 +52,7 @@ class NotificationContainer {
   getDeliveryService() {
     return new NotificationDeliveryService(
       this.getWebSocketService(),
-      this.getEmailService(),
-      this.getPreferenceRepository(),
-      this.getQueueService()
+      this.getEmailService()
     );
   }
 
@@ -73,6 +63,7 @@ class NotificationContainer {
   getCreateNotificationUseCase() {
     return new CreateNotificationUseCase(
       this.getNotificationRepository(),
+      this.getPreferenceRepository(),
       this.getDeliveryService()
     );
   }
@@ -85,7 +76,8 @@ class NotificationContainer {
 
   getMarkAsReadUseCase() {
     return new MarkAsReadUseCase(
-      this.getNotificationRepository()
+      this.getNotificationRepository(),
+      this.getWebSocketService()
     );
   }
 
@@ -98,6 +90,7 @@ class NotificationContainer {
   getSendNotificationUseCase() {
     return new SendNotificationUseCase(
       this.getNotificationRepository(),
+      this.getPreferenceRepository(),
       this.getTemplateRepository(),
       this.getDeliveryService()
     );

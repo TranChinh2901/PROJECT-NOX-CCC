@@ -8,7 +8,14 @@ import { StatCard } from '@/components/admin/StatCard';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { adminApi, type DashboardStats, type AnalyticsData, type AdminOrder } from '@/lib/api/admin.api';
 
-const COLORS = ['#7366ff', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+const COLORS = [
+  'rgb(var(--admin-chart-primary))',
+  'rgb(var(--admin-chart-secondary))',
+  'rgb(var(--admin-chart-tertiary))',
+  'rgb(var(--admin-chart-quaternary))',
+  'rgb(var(--admin-chart-quinary))',
+  'rgb(var(--admin-chart-senary))',
+];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -217,11 +224,11 @@ export default function AdminDashboard() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg">
-          <p className="text-sm font-medium text-slate-900">{label}</p>
+        <div className="bg-white border border-[rgb(var(--admin-border))] rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-semibold text-[rgb(var(--admin-text))] mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm text-slate-600">
-              {entry.name}: <span className="font-semibold" style={{ color: entry.color }}>{entry.value}</span>
+            <p key={index} className="text-sm text-[rgb(var(--admin-text-muted))]">
+              {entry.name}: <span className="font-bold" style={{ color: entry.color }}>{entry.value}</span>
             </p>
           ))}
         </div>
@@ -231,14 +238,14 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen text-slate-900">
+    <div className="min-h-screen text-[rgb(var(--admin-text))]">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-slate-500">Welcome back! Here&apos;s what&apos;s happening today.</p>
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2 tracking-tight text-[rgb(var(--admin-text))]">Dashboard</h1>
+        <p className="text-[rgb(var(--admin-text-muted))] text-base">Welcome back! Here&apos;s what&apos;s happening today.</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mb-10">
         <StatCard
           title="Total Revenue"
           subtitle="Last 30 days"
@@ -246,7 +253,7 @@ export default function AdminDashboard() {
           change={stats.revenueChange}
           sparklineData={analytics?.revenueByDay?.map(d => d.revenue) || []}
           icon={<DollarSign className="w-6 h-6" />}
-          iconColor="text-[#10B981]"
+          iconColor="text-[rgb(var(--admin-success))]"
           loading={loading}
         />
 
@@ -257,7 +264,7 @@ export default function AdminDashboard() {
           change={stats.ordersChange}
           sparklineData={analytics?.revenueByDay?.map(d => d.orders) || []}
           icon={<ShoppingCart className="w-6 h-6" />}
-          iconColor="text-[#3B82F6]"
+          iconColor="text-[rgb(var(--admin-primary))]"
           loading={loading}
         />
 
@@ -268,7 +275,7 @@ export default function AdminDashboard() {
           change={stats.usersChange}
           sparklineData={analytics?.userGrowth?.map(d => d.users) || []}
           icon={<Users className="w-6 h-6" />}
-          iconColor="text-[#7C3AED]"
+          iconColor="text-[rgb(var(--admin-chart-quaternary))]"
           loading={loading}
         />
 
@@ -278,7 +285,7 @@ export default function AdminDashboard() {
           value={stats.totalProducts}
           change={stats.productsChange}
           icon={<Package className="w-6 h-6" />}
-          iconColor="text-[#F97316]"
+          iconColor="text-[rgb(var(--admin-accent))]"
           loading={loading}
         />
       </div>
@@ -287,66 +294,66 @@ export default function AdminDashboard() {
       {analytics && (
         <>
           {/* Revenue and Orders Trend */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <GlassCard className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Revenue Trend</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 mb-10">
+            <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Revenue Trend</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={analytics.revenueByDay}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#7366ff" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#7366ff" stopOpacity={0} />
+                      <stop offset="5%" stopColor="rgb(var(--admin-chart-primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="rgb(var(--admin-chart-primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="#64748b" />
-                  <YAxis tickFormatter={formatCurrencyShort} stroke="#64748b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
+                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
+                  <YAxis tickFormatter={formatCurrencyShort} stroke="rgb(100, 116, 139)" fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="revenue" stroke="#7366ff" fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="monotone" dataKey="revenue" stroke="rgb(var(--admin-chart-primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             </GlassCard>
 
-            <GlassCard className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Orders Overview</h2>
+            <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Orders Overview</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.revenueByDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="#64748b" />
-                  <YAxis stroke="#64748b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
+                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
+                  <YAxis stroke="rgb(100, 116, 139)" fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="orders" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="orders" fill="rgb(var(--admin-chart-primary))" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </GlassCard>
           </div>
 
           {/* Top Products and Order Status */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <GlassCard className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Top Products</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 mb-10">
+            <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Top Products</h2>
               <div className="space-y-4">
                 {analytics.topProducts.slice(0, 5).map((product, index) => (
-                  <div key={product.id} className="flex items-center justify-between">
+                  <div key={product.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[rgb(var(--admin-background))] transition-colors duration-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-[#7366ff]/10 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-semibold text-[#7366ff]">#{index + 1}</span>
+                      <div className="w-9 h-9 bg-gradient-to-br from-[rgb(var(--admin-primary))]/15 to-[rgb(var(--admin-primary))]/5 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-[rgb(var(--admin-primary))]">#{index + 1}</span>
                       </div>
                       <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-slate-500">{product.sales} sales</p>
+                        <p className="font-semibold text-[rgb(var(--admin-text))]">{product.name}</p>
+                        <p className="text-sm text-[rgb(var(--admin-text-muted))]">{product.sales} sales</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-slate-900">{formatCurrencyShort(product.revenue)}</p>
+                      <p className="font-bold text-[rgb(var(--admin-text))]">{formatCurrencyShort(product.revenue)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </GlassCard>
 
-            <GlassCard className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Order Status Distribution</h2>
+            <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Order Status Distribution</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -355,33 +362,35 @@ export default function AdminDashboard() {
                     cy="50%"
                     labelLine={false}
                     label={(entry: any) => `${entry.status}: ${entry.percentage}%`}
-                    outerRadius={80}
+                    outerRadius={90}
                     fill="#8884d8"
                     dataKey="count"
+                    strokeWidth={2}
+                    stroke="#fff"
                   >
                     {analytics.orderStatusDistribution.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </GlassCard>
           </div>
 
           {/* User Growth */}
-          <div className="mb-8">
-            <GlassCard className="p-6">
-              <h2 className="text-xl font-semibold mb-4">User Growth</h2>
+          <div className="mb-10">
+            <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">User Growth</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={analytics.userGrowth}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="#64748b" />
-                  <YAxis stroke="#64748b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
+                  <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
+                  <YAxis stroke="rgb(100, 116, 139)" fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Line type="monotone" dataKey="users" stroke="#7366ff" strokeWidth={2} name="Total Users" />
-                  <Line type="monotone" dataKey="active_users" stroke="#10b981" strokeWidth={2} name="Active Users" />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Line type="monotone" dataKey="users" stroke="rgb(var(--admin-chart-primary))" strokeWidth={3} name="Total Users" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="active_users" stroke="rgb(var(--admin-chart-quaternary))" strokeWidth={3} name="Active Users" dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </GlassCard>
@@ -390,16 +399,16 @@ export default function AdminDashboard() {
       )}
 
       {/* Recent Orders */}
-      <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-slate-200">
+      <div className="glass-card backdrop-blur-sm bg-white border border-[rgb(var(--admin-border))] rounded-xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
+        <div className="p-6 border-b border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-background))]/50">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Recent Orders</h2>
-              <p className="text-sm text-slate-500">Latest orders from customers</p>
+              <h2 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Recent Orders</h2>
+              <p className="text-sm text-[rgb(var(--admin-text-muted))] mt-1">Latest orders from customers</p>
             </div>
             <Link
               href="/admin/orders"
-              className="px-4 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors"
+              className="px-5 py-2.5 bg-[rgb(var(--admin-primary))] text-white rounded-lg hover:bg-[rgb(var(--admin-primary-hover))] transition-colors duration-200 font-semibold text-sm shadow-md hover:shadow-lg"
             >
               View All
             </Link>
@@ -409,42 +418,42 @@ export default function AdminDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Order</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Amount</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Payment</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Actions</th>
+              <tr className="border-b border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-background))]/30">
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Order</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {recentOrders.map((order) => (
-                <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-6 py-4">{order.order_number}</td>
+                <tr key={order.id} className="border-b border-[rgb(var(--admin-border))]/50 hover:bg-[rgb(var(--admin-background))]/50 transition-colors duration-150">
+                  <td className="px-6 py-4 font-mono text-sm text-[rgb(var(--admin-text))]">{order.order_number}</td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-medium">{order.customer.fullname}</p>
-                      <p className="text-sm text-slate-500">{order.customer.email}</p>
+                      <p className="font-semibold text-[rgb(var(--admin-text))]">{order.customer.fullname}</p>
+                      <p className="text-sm text-[rgb(var(--admin-text-muted))]">{order.customer.email}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-500">{formatDate(order.created_at)}</td>
-                  <td className="px-6 py-4 font-medium">{formatCurrency(order.total_amount)}</td>
+                  <td className="px-6 py-4 text-[rgb(var(--admin-text-muted))]">{formatDate(order.created_at)}</td>
+                  <td className="px-6 py-4 font-bold text-[rgb(var(--admin-text))]">{formatCurrency(order.total_amount)}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
                       {order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.payment_status)}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getPaymentStatusColor(order.payment_status)}`}>
                       {order.payment_status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <Link
                       href={`/admin/orders/${order.id}`}
-                      className="text-[#7366ff] hover:text-[#5d54cc] font-medium"
+                      className="text-[rgb(var(--admin-primary))] hover:text-[rgb(var(--admin-primary-hover))] font-semibold text-sm hover:underline transition-all duration-200"
                     >
                       View
                     </Link>

@@ -18,6 +18,9 @@ import { User } from '@/modules/users/entity/user.entity';
 
 @Entity('notification_preferences')
 @Unique(['user_id'])
+@Index(['user_id', 'email_enabled'])
+@Index(['user_id', 'in_app_enabled'])
+@Index(['user_id', 'quiet_hours_enabled'])
 export class NotificationPreference {
   @PrimaryGeneratedColumn()
   id!: number;

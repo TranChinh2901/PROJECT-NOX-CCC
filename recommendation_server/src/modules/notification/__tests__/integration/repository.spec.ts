@@ -4,20 +4,17 @@
  */
 import { DataSource, Repository } from 'typeorm';
 import { testDb } from '../helpers/test-database';
-import { NotificationEntity } from '../../entity/NotificationEntity';
-import { NotificationPreferencesEntity } from '../../entity/NotificationPreferencesEntity';
+import { Notification, NotificationPreference } from '../../entity';
+import { NotificationType, NotificationPriority } from '../../enum/notification.enum';
 import { NotificationFixtures } from '../fixtures/notification.fixtures';
-import { NotificationRepository } from '../../infrastructure/repositories/NotificationRepository';
 
 describe('Notification Repository Integration Tests', () => {
   let dataSource: DataSource;
-  let repository: Repository<NotificationEntity>;
-  let notificationRepo: NotificationRepository;
+  let repository: Repository<Notification>;
 
   beforeAll(async () => {
     dataSource = await testDb.connect();
-    repository = dataSource.getRepository(NotificationEntity);
-    notificationRepo = new NotificationRepository(dataSource);
+    repository = dataSource.getRepository(Notification);
   });
 
   afterAll(async () => {
@@ -30,11 +27,11 @@ describe('Notification Repository Integration Tests', () => {
 
   describe('Create Operations', () => {
     it('should create a notification', async () => {
-      const notification = NotificationFixtures.createNotification({ userId: 1 });
+      const notification = NotificationFixtures.createNotification({ user_id: 1 });
       const saved = await repository.save(notification);
 
       expect(saved.id).toBeDefined();
-      expect(saved.userId).toBe(1);
+      expect(saved.user_id).toBe(1);
       expect(saved.title).toBe(notification.title);
     });
 
@@ -47,27 +44,27 @@ describe('Notification Repository Integration Tests', () => {
     });
 
     it('should enforce required fields', async () => {
-      const notification = new NotificationEntity();
+      const notification = new Notification();
       // Missing required fields
 
       await expect(repository.save(notification)).rejects.toThrow();
     });
 
     it('should set default values correctly', async () => {
-      const notification = NotificationFixtures.createNotification({ userId: 1 });
+      const notification = NotificationFixtures.createNotification({ user_id: 1 });
       const saved = await repository.save(notification);
 
-      expect(saved.isRead).toBe(false);
-      expect(saved.isArchived).toBe(false);
-      expect(saved.createdAt).toBeInstanceOf(Date);
-      expect(saved.updatedAt).toBeInstanceOf(Date);
+      expect(saved.is_read).toBe(false);
+      expect(saved.is_archived).toBe(false);
+      expect(saved.created_at).toBeInstanceOf(Date);
+      expect(saved.updated_at).toBeInstanceOf(Date);
     });
   });
 
   describe('Read Operations', () => {
     it('should find notification by ID', async () => {
       const notification = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1 })
+        NotificationFixtures.createNotification({ user_id: 1 })
       );
 
       const found = await repository.findOne({ where: { id: notification.id } });
@@ -83,26 +80,26 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should find notifications by user ID', async () => {
       await repository.save([
-        NotificationFixtures.createNotification({ userId: 1 }),
-        NotificationFixtures.createNotification({ userId: 1 }),
-        NotificationFixtures.createNotification({ userId: 2 }),
+        NotificationFixtures.createNotification({ user_id: 1 }),
+        NotificationFixtures.createNotification({ user_id: 1 }),
+        NotificationFixtures.createNotification({ user_id: 2 }),
       ]);
 
-      const found = await repository.find({ where: { userId: 1 } });
+      const found = await repository.find({ where: { user_id: 1 } });
 
       expect(found).toHaveLength(2);
-      expect(found.every(n => n.userId === 1)).toBe(true);
+      expect(found.every(n => n.user_id === 1)).toBe(true);
     });
 
     it('should filter by type', async () => {
       await repository.save([
-        NotificationFixtures.createNotification({ userId: 1, type: 'ORDER_UPDATE' }),
-        NotificationFixtures.createNotification({ userId: 1, type: 'PROMOTION' }),
-        NotificationFixtures.createNotification({ userId: 1, type: 'ORDER_UPDATE' }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.ORDER_PLACED }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.PROMOTION_AVAILABLE }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.ORDER_PLACED }),
       ]);
 
       const found = await repository.find({
-        where: { userId: 1, type: 'ORDER_UPDATE' },
+        where: { user_id: 1, type: NotificationType.ORDER_PLACED },
       });
 
       expect(found).toHaveLength(2);
@@ -110,13 +107,13 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should filter by read status', async () => {
       await repository.save([
-        NotificationFixtures.createNotification({ userId: 1, isRead: false }),
-        NotificationFixtures.createNotification({ userId: 1, isRead: true }),
-        NotificationFixtures.createNotification({ userId: 1, isRead: false }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: true }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: false }),
       ]);
 
       const unread = await repository.find({
-        where: { userId: 1, isRead: false },
+        where: { user_id: 1, is_read: false },
       });
 
       expect(unread).toHaveLength(2);
@@ -127,17 +124,17 @@ describe('Notification Repository Integration Tests', () => {
       await repository.save(notifications);
 
       const page1 = await repository.find({
-        where: { userId: 1 },
+        where: { user_id: 1 },
         take: 10,
         skip: 0,
-        order: { createdAt: 'DESC' },
+        order: { created_at: 'DESC' },
       });
 
       const page2 = await repository.find({
-        where: { userId: 1 },
+        where: { user_id: 1 },
         take: 10,
         skip: 10,
-        order: { createdAt: 'DESC' },
+        order: { created_at: 'DESC' },
       });
 
       expect(page1).toHaveLength(10);
@@ -147,16 +144,16 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should order by creation date', async () => {
       const n1 = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1 })
+        NotificationFixtures.createNotification({ user_id: 1 })
       );
       await new Promise(resolve => setTimeout(resolve, 10));
       const n2 = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1 })
+        NotificationFixtures.createNotification({ user_id: 1 })
       );
 
       const found = await repository.find({
-        where: { userId: 1 },
-        order: { createdAt: 'DESC' },
+        where: { user_id: 1 },
+        order: { created_at: 'DESC' },
       });
 
       expect(found[0].id).toBe(n2.id);
@@ -167,15 +164,15 @@ describe('Notification Repository Integration Tests', () => {
   describe('Update Operations', () => {
     it('should update notification', async () => {
       const notification = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1, isRead: false })
+        NotificationFixtures.createNotification({ user_id: 1, is_read: false })
       );
 
-      notification.isRead = true;
+      notification.is_read = true;
       const updated = await repository.save(notification);
 
-      expect(updated.isRead).toBe(true);
-      expect(updated.updatedAt.getTime()).toBeGreaterThan(
-        notification.createdAt.getTime()
+      expect(updated.is_read).toBe(true);
+      expect(updated.updated_at.getTime()).toBeGreaterThan(
+        notification.created_at.getTime()
       );
     });
 
@@ -185,28 +182,28 @@ describe('Notification Repository Integration Tests', () => {
       );
 
       const ids = notifications.map(n => n.id);
-      await repository.update({ id: { $in: ids } as any }, { isRead: true });
+      await repository.update({ id: { $in: ids } as any }, { is_read: true });
 
       const updated = await repository.findBy({ id: { $in: ids } as any });
-      expect(updated.every(n => n.isRead)).toBe(true);
+      expect(updated.every(n => n.is_read)).toBe(true);
     });
 
     it('should archive notification', async () => {
       const notification = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1, isArchived: false })
+        NotificationFixtures.createNotification({ user_id: 1, is_archived: false })
       );
 
-      await repository.update(notification.id, { isArchived: true });
+      await repository.update(notification.id, { is_archived: true });
 
       const updated = await repository.findOne({ where: { id: notification.id } });
-      expect(updated?.isArchived).toBe(true);
+      expect(updated?.is_archived).toBe(true);
     });
   });
 
   describe('Delete Operations', () => {
     it('should delete notification', async () => {
       const notification = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1 })
+        NotificationFixtures.createNotification({ user_id: 1 })
       );
 
       await repository.delete(notification.id);
@@ -229,7 +226,7 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should soft delete notification if configured', async () => {
       const notification = await repository.save(
-        NotificationFixtures.createNotification({ userId: 1 })
+        NotificationFixtures.createNotification({ user_id: 1 })
       );
 
       await repository.softDelete(notification.id);
@@ -248,8 +245,8 @@ describe('Notification Repository Integration Tests', () => {
   describe('Transaction Operations', () => {
     it('should commit transaction on success', async () => {
       await testDb.runInTransaction(async (ds) => {
-        const repo = ds.getRepository(NotificationEntity);
-        await repo.save(NotificationFixtures.createNotification({ userId: 1 }));
+        const repo = ds.getRepository(Notification);
+        await repo.save(NotificationFixtures.createNotification({ user_id: 1 }));
       });
 
       const count = await repository.count();
@@ -259,8 +256,8 @@ describe('Notification Repository Integration Tests', () => {
     it('should rollback transaction on error', async () => {
       try {
         await testDb.runInTransaction(async (ds) => {
-          const repo = ds.getRepository(NotificationEntity);
-          await repo.save(NotificationFixtures.createNotification({ userId: 1 }));
+          const repo = ds.getRepository(Notification);
+          await repo.save(NotificationFixtures.createNotification({ user_id: 1 }));
           throw new Error('Simulated error');
         });
       } catch (error) {
@@ -273,12 +270,12 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should handle nested transactions', async () => {
       await testDb.runInTransaction(async (ds) => {
-        const repo = ds.getRepository(NotificationEntity);
-        await repo.save(NotificationFixtures.createNotification({ userId: 1 }));
+        const repo = ds.getRepository(Notification);
+        await repo.save(NotificationFixtures.createNotification({ user_id: 1 }));
 
         await testDb.runInTransaction(async (ds2) => {
-          const repo2 = ds2.getRepository(NotificationEntity);
-          await repo2.save(NotificationFixtures.createNotification({ userId: 2 }));
+          const repo2 = ds2.getRepository(Notification);
+          await repo2.save(NotificationFixtures.createNotification({ user_id: 2 }));
         });
       });
 
@@ -290,7 +287,7 @@ describe('Notification Repository Integration Tests', () => {
   describe('Data Integrity', () => {
     it('should enforce unique constraints if defined', async () => {
       // This depends on your entity constraints
-      const notification = NotificationFixtures.createNotification({ userId: 1 });
+      const notification = NotificationFixtures.createNotification({ user_id: 1 });
       await repository.save(notification);
 
       // Try to save duplicate - adjust based on your constraints
@@ -298,7 +295,7 @@ describe('Notification Repository Integration Tests', () => {
     });
 
     it('should validate data types', async () => {
-      const notification = NotificationFixtures.createNotification({ userId: 1 });
+      const notification = NotificationFixtures.createNotification({ user_id: 1 });
       (notification as any).priority = 'INVALID_PRIORITY';
 
       // Should fail validation if enums are enforced
@@ -308,7 +305,7 @@ describe('Notification Repository Integration Tests', () => {
     it('should handle JSON data fields', async () => {
       const data = { orderId: 123, customField: 'value', nested: { key: 'val' } };
       const notification = NotificationFixtures.createNotification({
-        userId: 1,
+        user_id: 1,
         data,
       });
 
@@ -323,19 +320,19 @@ describe('Notification Repository Integration Tests', () => {
     it('should count notifications', async () => {
       await repository.save(NotificationFixtures.createBulkNotifications(5, 1));
 
-      const count = await repository.count({ where: { userId: 1 } });
+      const count = await repository.count({ where: { user_id: 1 } });
       expect(count).toBe(5);
     });
 
     it('should count unread notifications', async () => {
       await repository.save([
-        NotificationFixtures.createNotification({ userId: 1, isRead: false }),
-        NotificationFixtures.createNotification({ userId: 1, isRead: false }),
-        NotificationFixtures.createNotification({ userId: 1, isRead: true }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: 1, is_read: true }),
       ]);
 
       const unreadCount = await repository.count({
-        where: { userId: 1, isRead: false },
+        where: { user_id: 1, is_read: false },
       });
 
       expect(unreadCount).toBe(2);
@@ -343,16 +340,16 @@ describe('Notification Repository Integration Tests', () => {
 
     it('should group by type', async () => {
       await repository.save([
-        NotificationFixtures.createNotification({ userId: 1, type: 'ORDER_UPDATE' }),
-        NotificationFixtures.createNotification({ userId: 1, type: 'ORDER_UPDATE' }),
-        NotificationFixtures.createNotification({ userId: 1, type: 'PROMOTION' }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.ORDER_PLACED }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.ORDER_PLACED }),
+        NotificationFixtures.createNotification({ user_id: 1, type: NotificationType.PROMOTION_AVAILABLE }),
       ]);
 
       const results = await repository
         .createQueryBuilder('notification')
         .select('notification.type')
         .addSelect('COUNT(*)', 'count')
-        .where('notification.userId = :userId', { userId: 1 })
+        .where('notification.user_id = :userId', { user_id: 1 })
         .groupBy('notification.type')
         .getRawMany();
 
@@ -365,11 +362,11 @@ describe('Notification Repository Integration Tests', () => {
 
 describe('Notification Preferences Repository Tests', () => {
   let dataSource: DataSource;
-  let repository: Repository<NotificationPreferencesEntity>;
+  let repository: Repository<NotificationPreference>;
 
   beforeAll(async () => {
     dataSource = await testDb.connect();
-    repository = dataSource.getRepository(NotificationPreferencesEntity);
+    repository = dataSource.getRepository(NotificationPreference);
   });
 
   afterAll(async () => {
@@ -381,36 +378,36 @@ describe('Notification Preferences Repository Tests', () => {
   });
 
   it('should create user preferences', async () => {
-    const prefs = NotificationFixtures.createPreferences({ userId: 1 });
+    const prefs = NotificationFixtures.createPreferences({ user_id: 1 });
     const saved = await repository.save(prefs);
 
     expect(saved.id).toBeDefined();
-    expect(saved.userId).toBe(1);
+    expect(saved.user_id).toBe(1);
   });
 
   it('should update user preferences', async () => {
     const prefs = await repository.save(
-      NotificationFixtures.createPreferences({ userId: 1, emailEnabled: true })
+      NotificationFixtures.createPreferences({ user_id: 1, email_enabled: true })
     );
 
-    prefs.emailEnabled = false;
+    prefs.email_enabled = false;
     const updated = await repository.save(prefs);
 
-    expect(updated.emailEnabled).toBe(false);
+    expect(updated.email_enabled).toBe(false);
   });
 
   it('should find preferences by user ID', async () => {
-    await repository.save(NotificationFixtures.createPreferences({ userId: 1 }));
+    await repository.save(NotificationFixtures.createPreferences({ user_id: 1 }));
 
-    const found = await repository.findOne({ where: { userId: 1 } });
+    const found = await repository.findOne({ where: { user_id: 1 } });
     expect(found).toBeDefined();
   });
 
   it('should enforce one preference per user', async () => {
-    await repository.save(NotificationFixtures.createPreferences({ userId: 1 }));
+    await repository.save(NotificationFixtures.createPreferences({ user_id: 1 }));
 
     // Try to create another preference for same user - should fail if unique constraint exists
-    // const duplicate = NotificationFixtures.createPreferences({ userId: 1 });
+    // const duplicate = NotificationFixtures.createPreferences({ user_id: 1 });
     // await expect(repository.save(duplicate)).rejects.toThrow();
   });
 });

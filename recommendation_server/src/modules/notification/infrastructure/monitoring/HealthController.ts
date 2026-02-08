@@ -238,7 +238,7 @@ export class HealthController {
   private async getMetrics(): Promise<HealthStatus['metrics']> {
     try {
       // Import metrics collector dynamically to avoid circular dependencies
-      const { metricsCollector } = await import('./MetricsCollector');
+      const { metricsCollector } = await import('./MetricsCollector.js');
       const metrics = metricsCollector.exportJSON() as any;
 
       return {

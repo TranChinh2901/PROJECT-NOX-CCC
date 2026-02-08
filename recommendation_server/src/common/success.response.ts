@@ -11,7 +11,7 @@ export class AppResponse {
     data = {},
   }: {
     message: string;
-    statusCode: number;
+    statusCode?: number;
     data?: any;
   }) {
     this.message = message;

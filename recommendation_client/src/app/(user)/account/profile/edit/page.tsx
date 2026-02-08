@@ -76,8 +76,11 @@ const EditProfilePage: React.FC = () => {
       newErrors.fullname = 'Full name must be at least 2 characters';
     }
 
-    if (formData.phone_number && !/^\+?[\d\s-()]+$/.test(formData.phone_number)) {
-      newErrors.phone_number = 'Please enter a valid phone number';
+    // Sanitize phone before validation
+    const sanitizedPhone = formData.phone_number.replace(/[\s\-\(\)\+]/g, '');
+    
+    if (sanitizedPhone && !/^[0-9]{10,11}$/.test(sanitizedPhone)) {
+      newErrors.phone_number = 'Phone number must be 10-11 digits';
     }
 
     setErrors(newErrors);
@@ -134,9 +137,11 @@ const EditProfilePage: React.FC = () => {
         toast.success('Avatar updated successfully');
       }
 
+      const sanitizedPhone = formData.phone_number.replace(/[\s\-\(\)\+]/g, '');
+
       await updateProfile({
         fullname: formData.fullname,
-        phone_number: formData.phone_number,
+        phone_number: sanitizedPhone || undefined,
         address: formData.address,
       });
 
@@ -144,7 +149,20 @@ const EditProfilePage: React.FC = () => {
       router.push('/account/profile');
     } catch (error: any) {
       console.error('Profile update error:', error);
-      toast.error(error?.message || 'Failed to update profile. Please try again.');
+      
+      const details = error.response?.data?.details;
+      if (Array.isArray(details) && details.length > 0) {
+        const fieldErrors: FormErrors = {};
+        details.forEach((detail: { field: string; message: string }) => {
+          if (detail.field && detail.message) {
+            fieldErrors[detail.field as keyof FormErrors] = detail.message;
+          }
+        });
+        setErrors(fieldErrors);
+        toast.error('Please fix the validation errors');
+      } else {
+        toast.error(error?.message || 'Failed to update profile. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -241,6 +259,7 @@ const EditProfilePage: React.FC = () => {
                   onChange={handleInputChange}
                   error={errors.phone_number}
                   placeholder="Enter your phone number"
+                  helperText="Format: 10-11 digits (e.g., 0912345678)"
                 />
 
                 <FormInput

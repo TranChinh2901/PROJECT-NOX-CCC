@@ -30,7 +30,7 @@ describe('WebSocket Integration Tests', () => {
       });
 
       // Socket.IO authentication middleware
-      ioServer.use((socket, next) => {
+      ioServer.use((socket: any, next: any) => {
         const token = socket.handshake.auth.token;
 
         if (!token) {
@@ -52,7 +52,7 @@ describe('WebSocket Integration Tests', () => {
       });
 
       // Socket.IO connection handler
-      ioServer.on('connection', (socket) => {
+      ioServer.on('connection', (socket: any) => {
         const userId = (socket as any).userId;
         console.log(`User ${userId} connected`);
 
@@ -60,7 +60,7 @@ describe('WebSocket Integration Tests', () => {
         socket.join(`user:${userId}`);
 
         // Handle notification acknowledgment
-        socket.on('notification:ack', (data) => {
+        socket.on('notification:ack', (data: any) => {
           socket.emit('notification:ack:response', { success: true, ...data });
         });
 
@@ -172,7 +172,7 @@ describe('WebSocket Integration Tests', () => {
       });
 
       clientSocket.on('connect', () => {
-        const notification = NotificationFixtures.createNotification({ userId: 1 });
+        const notification = NotificationFixtures.createNotification({ user_id: 1 });
 
         clientSocket.on('notification:new', (data) => {
           expect(data.title).toBe(notification.title);
@@ -345,7 +345,7 @@ describe('WebSocket Integration Tests', () => {
         // Simulate network disconnect
         (clientSocket as any).io.engine.close();
 
-        clientSocket.on('disconnect', (reason) => {
+        clientSocket.on('disconnect', (reason: any) => {
           expect(reason).toBeDefined();
           done();
         });
@@ -430,7 +430,7 @@ describe('WebSocket Integration Tests', () => {
       });
 
       clientSocket.on('connect', () => {
-        clientSocket.on('error', (error) => {
+        clientSocket.on('error', (error: any) => {
           expect(error).toBeDefined();
           done();
         });

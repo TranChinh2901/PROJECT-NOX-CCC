@@ -8,7 +8,8 @@ import { testDb } from '../helpers/test-database';
 import { createTestServer } from '../helpers/test-server';
 import { AuthHelper } from '../helpers/auth-helper';
 import { NotificationFixtures } from '../fixtures/notification.fixtures';
-import { NotificationEntity } from '../../entity/NotificationEntity';
+import { Notification } from '../../entity';
+import { NotificationType, NotificationPriority } from '../../enum/notification.enum';
 import { DataSource } from 'typeorm';
 
 describe('Notification API Integration Tests', () => {
@@ -79,7 +80,7 @@ describe('Notification API Integration Tests', () => {
     it('should return paginated notifications', async () => {
       // Create 25 notifications
       const notifications = NotificationFixtures.createBulkNotifications(25, userId);
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save(notifications);
 
       const response = await request(app)
@@ -95,11 +96,11 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should filter notifications by type', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, type: 'ORDER_UPDATE' }),
-        NotificationFixtures.createNotification({ userId, type: 'ORDER_UPDATE' }),
-        NotificationFixtures.createNotification({ userId, type: 'PROMOTION' }),
+        NotificationFixtures.createNotification({ user_id: userId, type: NotificationType.ORDER_PLACED }),
+        NotificationFixtures.createNotification({ user_id: userId, type: NotificationType.ORDER_PLACED }),
+        NotificationFixtures.createNotification({ user_id: userId, type: NotificationType.PROMOTION_AVAILABLE }),
       ]);
 
       const response = await request(app)
@@ -112,11 +113,11 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should filter notifications by priority', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, priority: 'HIGH' }),
-        NotificationFixtures.createNotification({ userId, priority: 'LOW' }),
-        NotificationFixtures.createNotification({ userId, priority: 'HIGH' }),
+        NotificationFixtures.createNotification({ user_id: userId, priority: NotificationPriority.HIGH }),
+        NotificationFixtures.createNotification({ user_id: userId, priority: NotificationPriority.LOW }),
+        NotificationFixtures.createNotification({ user_id: userId, priority: NotificationPriority.HIGH }),
       ]);
 
       const response = await request(app)
@@ -129,24 +130,24 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should filter notifications by read status', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: true }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: true }),
       ]);
 
       const response = await request(app)
-        .get('/api/v1/notifications?isRead=false')
+        .get('/api/v1/notifications?is_read=false')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
       expect(response.body.data.notifications).toHaveLength(2);
-      expect(response.body.data.notifications.every((n: any) => n.isRead === false)).toBe(true);
+      expect(response.body.data.notifications.every((n: any) => n.is_read === false)).toBe(true);
     });
 
     it('should filter notifications by date range', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -154,9 +155,9 @@ describe('Notification API Integration Tests', () => {
       lastWeek.setDate(lastWeek.getDate() - 7);
 
       await repo.save([
-        NotificationFixtures.createNotification({ userId, createdAt: today }),
-        NotificationFixtures.createNotification({ userId, createdAt: yesterday }),
-        NotificationFixtures.createNotification({ userId, createdAt: lastWeek }),
+        NotificationFixtures.createNotification({ user_id: userId, created_at: today }),
+        NotificationFixtures.createNotification({ user_id: userId, created_at: yesterday }),
+        NotificationFixtures.createNotification({ user_id: userId, created_at: lastWeek }),
       ]);
 
       const fromDate = yesterday.toISOString().split('T')[0];
@@ -172,10 +173,10 @@ describe('Notification API Integration Tests', () => {
 
     it('should only return notifications for authenticated user', async () => {
       const otherUserId = 999;
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId }),
-        NotificationFixtures.createNotification({ userId: otherUserId }),
+        NotificationFixtures.createNotification({ user_id: userId }),
+        NotificationFixtures.createNotification({ user_id: otherUserId }),
       ]);
 
       const response = await request(app)
@@ -208,9 +209,9 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should return 403 when accessing other user\'s notification', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId: 999 })
+        NotificationFixtures.createNotification({ user_id: 999 })
       );
 
       const response = await request(app)
@@ -222,9 +223,9 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should return notification details', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId })
+        NotificationFixtures.createNotification({ user_id: userId })
       );
 
       const response = await request(app)
@@ -249,11 +250,11 @@ describe('Notification API Integration Tests', () => {
 
   describe('GET /api/v1/notifications/unread-count', () => {
     it('should return unread count', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: true }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: true }),
       ]);
 
       const response = await request(app)
@@ -277,9 +278,9 @@ describe('Notification API Integration Tests', () => {
 
   describe('POST /api/v1/notifications/:id/read', () => {
     it('should mark notification as read', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId, isRead: false })
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false })
       );
 
       const response = await request(app)
@@ -290,7 +291,7 @@ describe('Notification API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       const updated = await repo.findOne({ where: { id: notification.id } });
-      expect(updated?.isRead).toBe(true);
+      expect(updated?.is_read).toBe(true);
     });
 
     it('should return 404 for non-existent notification', async () => {
@@ -303,9 +304,9 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should return 403 when marking other user\'s notification', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId: 999 })
+        NotificationFixtures.createNotification({ user_id: 999 })
       );
 
       const response = await request(app)
@@ -319,10 +320,10 @@ describe('Notification API Integration Tests', () => {
 
   describe('POST /api/v1/notifications/read', () => {
     it('should mark multiple notifications as read', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notifications = await repo.save([
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
       ]);
 
       const notificationIds = notifications.map(n => n.id);
@@ -336,7 +337,7 @@ describe('Notification API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       const updated = await repo.findBy({ id: { $in: notificationIds } as any });
-      expect(updated.every(n => n.isRead)).toBe(true);
+      expect(updated.every(n => n.is_read)).toBe(true);
     });
 
     it('should return 400 for empty notification IDs', async () => {
@@ -362,11 +363,11 @@ describe('Notification API Integration Tests', () => {
 
   describe('POST /api/v1/notifications/read-all', () => {
     it('should mark all notifications as read', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId, isRead: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
       ]);
 
       const response = await request(app)
@@ -376,15 +377,15 @@ describe('Notification API Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
 
-      const updated = await repo.findBy({ userId });
-      expect(updated.every(n => n.isRead)).toBe(true);
+      const updated = await repo.findBy({ user_id: userId });
+      expect(updated.every(n => n.is_read)).toBe(true);
     });
 
     it('should only mark authenticated user\'s notifications', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save([
-        NotificationFixtures.createNotification({ userId, isRead: false }),
-        NotificationFixtures.createNotification({ userId: 999, isRead: false }),
+        NotificationFixtures.createNotification({ user_id: userId, is_read: false }),
+        NotificationFixtures.createNotification({ user_id: 999, is_read: false }),
       ]);
 
       await request(app)
@@ -392,16 +393,16 @@ describe('Notification API Integration Tests', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      const otherUserNotification = await repo.findOne({ where: { userId: 999 } });
-      expect(otherUserNotification?.isRead).toBe(false);
+      const otherUserNotification = await repo.findOne({ where: { user_id: 999 } });
+      expect(otherUserNotification?.is_read).toBe(false);
     });
   });
 
   describe('POST /api/v1/notifications/:id/archive', () => {
     it('should archive notification', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId, isArchived: false })
+        NotificationFixtures.createNotification({ user_id: userId, is_archived: false })
       );
 
       const response = await request(app)
@@ -412,15 +413,15 @@ describe('Notification API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       const updated = await repo.findOne({ where: { id: notification.id } });
-      expect(updated?.isArchived).toBe(true);
+      expect(updated?.is_archived).toBe(true);
     });
   });
 
   describe('DELETE /api/v1/notifications/:id', () => {
     it('should delete notification', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId })
+        NotificationFixtures.createNotification({ user_id: userId })
       );
 
       const response = await request(app)
@@ -435,9 +436,9 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should return 403 when deleting other user\'s notification', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notification = await repo.save(
-        NotificationFixtures.createNotification({ userId: 999 })
+        NotificationFixtures.createNotification({ user_id: 999 })
       );
 
       const response = await request(app)
@@ -451,7 +452,7 @@ describe('Notification API Integration Tests', () => {
 
   describe('Concurrent Requests', () => {
     it('should handle concurrent read operations', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       await repo.save(NotificationFixtures.createBulkNotifications(10, userId));
 
       const requests = Array(10)
@@ -471,7 +472,7 @@ describe('Notification API Integration Tests', () => {
     });
 
     it('should handle concurrent mark as read operations', async () => {
-      const repo = dataSource.getRepository(NotificationEntity);
+      const repo = dataSource.getRepository(Notification);
       const notifications = await repo.save(
         NotificationFixtures.createBulkNotifications(5, userId)
       );

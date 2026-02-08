@@ -5,4 +5,5 @@ export { cartApi } from './cart.api';
 export { orderApi } from './order.api';
 export { reviewApi } from './review.api';
 export { notificationApi } from './notification.api';
+export { wishlistApi } from './wishlist.api';
 export { default as apiClient } from './apiClient';

@@ -17,7 +17,9 @@ import { User } from '@/modules/users/entity/user.entity';
 
 @Entity('notification_subscriptions')
 @Unique(['user_id', 'topic_type', 'topic_id'])
-@Index(['topic_type', 'topic_id'])
+@Index(['topic_type', 'topic_id', 'is_active'])
+@Index(['user_id', 'is_active'])
+@Index(['user_id', 'topic_type'])
 export class NotificationSubscription {
   @PrimaryGeneratedColumn()
   id!: number;

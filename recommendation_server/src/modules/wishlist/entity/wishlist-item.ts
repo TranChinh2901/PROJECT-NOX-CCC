@@ -1,37 +1,37 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index, Unique } from "typeorm";
-import { User } from "@/modules/users/entity/user.entity";
 import { ProductVariant } from "@/modules/products/entity/product-variant";
 import { WishlistPriority } from "../enum/wishlist.enum";
+import { Wishlist } from "./wishlist.entity";
 
 @Entity('wishlist_items')
-@Unique(['user_id', 'variant_id'])
-@Index(['user_id'])
+@Unique(['wishlist_id', 'variant_id'])
+@Index(['wishlist_id'])
 @Index(['variant_id'])
 export class WishlistItem {
   @PrimaryGeneratedColumn()
   id!: number;
 
   @Column()
-  user_id!: number;
+  wishlist_id!: number;
 
-  @ManyToOne(() => User, user => user.id)
-  @JoinColumn({ name: 'user_id' })
-  user!: User;
+  @ManyToOne(() => Wishlist, wishlist => wishlist.items, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'wishlist_id' })
+  wishlist!: Wishlist;
 
   @Column()
   variant_id!: number;
 
-  @ManyToOne(() => ProductVariant, variant => variant.id)
+  @ManyToOne(() => ProductVariant)
   @JoinColumn({ name: 'variant_id' })
   variant!: ProductVariant;
 
   @Column({ length: 500, nullable: true })
   notes?: string;
 
-  @Column({ 
-    type: 'simple-enum', 
-    enum: WishlistPriority, 
-    default: WishlistPriority.MEDIUM 
+  @Column({
+    type: 'simple-enum',
+    enum: WishlistPriority,
+    default: WishlistPriority.MEDIUM
   })
   priority!: WishlistPriority;
 

@@ -15,6 +15,7 @@ import { NotificationType } from '../enum/notification.enum';
 
 @Entity('notification_templates')
 @Index(['type', 'is_active'])
+@Index(['is_active'])
 export class NotificationTemplate {
   @PrimaryGeneratedColumn()
   id!: number;

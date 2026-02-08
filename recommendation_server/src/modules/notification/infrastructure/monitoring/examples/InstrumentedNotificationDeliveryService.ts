@@ -7,18 +7,18 @@ import {
   INotificationDeliveryService,
   DeliveryResult,
   DeliveryOptions,
-} from '../../domain/services/INotificationDeliveryService';
-import { IWebSocketService } from '../../domain/services/IWebSocketService';
-import { IEmailService } from '../../domain/services/IEmailService';
-import { NotificationDomain } from '../../domain/entities/NotificationDomain';
-import { NotificationPreferencesDomain } from '../../domain/entities/NotificationPreferencesDomain';
-import { DeliveryChannel, DeliveryStatus } from '../../enum/notification.enum';
-import { NotificationDeliveryLog } from '../../entity/notification-delivery-log';
+} from '../../../domain/services/INotificationDeliveryService';
+import { IWebSocketService } from '../../../domain/services/IWebSocketService';
+import { IEmailService } from '../../../domain/services/IEmailService';
+import { NotificationDomain } from '../../../domain/entities/NotificationDomain';
+import { NotificationPreferencesDomain } from '../../../domain/entities/NotificationPreferencesDomain';
+import { DeliveryChannel, DeliveryStatus } from '../../../enum/notification.enum';
+import { NotificationDeliveryLog } from '../../../entity/notification-delivery-log';
 import { AppDataSource } from '@/config/database.config';
 import { Repository } from 'typeorm';
 
 // Import monitoring components
-import { metricsCollector, logger } from '../monitoring';
+import { metricsCollector, logger } from '../index';
 
 interface ScheduledJob {
   id: string;
@@ -79,7 +79,7 @@ export class InstrumentedNotificationDeliveryService implements INotificationDel
         // Track scheduled delivery
         metricsCollector.incrementNotificationsDelivered('scheduled', DeliveryStatus.PENDING);
 
-        return channels.map(channel => ({
+        return channels.map((channel: DeliveryChannel) => ({
           channel,
           status: DeliveryStatus.PENDING,
         }));

@@ -195,15 +195,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback(async (data: AddToCartDto, product?: Product, variant?: ProductVariant): Promise<Cart> => {
     const safeQuantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
     const now = new Date();
-    const variantWithProduct = variant && product ? {
-      ...variant,
-      product: product
-    } : undefined;
 
     const unitPrice = variant?.final_price ?? product?.base_price ?? 0;
     let updatedCart: Cart | null = null;
-
-    setCart((currentCart) => {
+    const buildUpdatedCart = (currentCart: Cart | null): Cart => {
       if (!currentCart) {
         const newItem: CartItemWithVariant = {
           id: Date.now(),
@@ -217,7 +212,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           variant: variant && product ? { ...variant, product } : undefined,
         };
 
-        updatedCart = {
+        return {
           id: Date.now(),
           status: CartStatus.ACTIVE,
           total_amount: unitPrice * safeQuantity,
@@ -227,55 +222,66 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           created_at: now,
           updated_at: now,
         };
-      } else {
-        const existingIndex = currentCart.items?.findIndex(item => item.variant_id === data.variant_id);
-        const nowInner = now;
-
-        if (existingIndex !== undefined && existingIndex >= 0 && currentCart.items) {
-          const updatedItems = [...currentCart.items] as CartItemWithVariant[];
-          const existingItem = updatedItems[existingIndex];
-          const newQuantity = existingItem.quantity + safeQuantity;
-          updatedItems[existingIndex] = {
-            ...existingItem,
-            quantity: newQuantity,
-            total_price: unitPrice * newQuantity,
-            updated_at: nowInner,
-          };
-          updatedCart = {
-            ...currentCart,
-            items: updatedItems,
-            item_count: calculateItemCount({ ...currentCart, items: updatedItems }),
-            total_amount: updatedItems.reduce((sum, item) => sum + item.total_price, 0),
-            updated_at: nowInner,
-          };
-        } else {
-          const newItem: CartItemWithVariant = {
-            id: Date.now(),
-            cart_id: currentCart.id,
-            variant_id: data.variant_id,
-            quantity: safeQuantity,
-            unit_price: unitPrice,
-            total_price: unitPrice * safeQuantity,
-            added_at: now,
-            updated_at: now,
-            variant: variant && product ? { ...variant, product } : undefined,
-          };
-          updatedCart = {
-            ...currentCart,
-            items: [...(currentCart.items || []), newItem],
-            item_count: calculateItemCount({ ...currentCart, items: [...(currentCart.items || []), newItem] }),
-            total_amount: (currentCart.items || []).reduce((sum, item) => sum + item.total_price, 0) + unitPrice * safeQuantity,
-            updated_at: now,
-          };
-        }
       }
+
+      const existingIndex = currentCart.items?.findIndex(item => item.variant_id === data.variant_id);
+      const nowInner = now;
+
+      if (existingIndex !== undefined && existingIndex >= 0 && currentCart.items) {
+        const updatedItems = [...currentCart.items] as CartItemWithVariant[];
+        const existingItem = updatedItems[existingIndex];
+        const newQuantity = existingItem.quantity + safeQuantity;
+        updatedItems[existingIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          total_price: unitPrice * newQuantity,
+          updated_at: nowInner,
+        };
+        return {
+          ...currentCart,
+          items: updatedItems,
+          item_count: calculateItemCount({ ...currentCart, items: updatedItems }),
+          total_amount: updatedItems.reduce((sum, item) => sum + item.total_price, 0),
+          updated_at: nowInner,
+        };
+      }
+
+      const newItem: CartItemWithVariant = {
+        id: Date.now(),
+        cart_id: currentCart.id,
+        variant_id: data.variant_id,
+        quantity: safeQuantity,
+        unit_price: unitPrice,
+        total_price: unitPrice * safeQuantity,
+        added_at: now,
+        updated_at: now,
+        variant: variant && product ? { ...variant, product } : undefined,
+      };
+      const nextItems = [...(currentCart.items || []), newItem];
+
+      return {
+        ...currentCart,
+        items: nextItems,
+        item_count: calculateItemCount({ ...currentCart, items: nextItems }),
+        total_amount: nextItems.reduce((sum, item) => sum + item.total_price, 0),
+        updated_at: now,
+      };
+    };
+
+    setCart((currentCart) => {
+      updatedCart = buildUpdatedCart(currentCart);
 
       setItemCount(calculateItemCount(updatedCart));
       persistCart(updatedCart);
       return updatedCart;
     });
 
-    if (!updatedCart) throw new Error('Failed to update cart');
+    if (!updatedCart) {
+      updatedCart = buildUpdatedCart(cart);
+      setCart(updatedCart);
+      setItemCount(calculateItemCount(updatedCart));
+      persistCart(updatedCart);
+    }
 
     if (!isAuthenticated) return updatedCart;
 
@@ -287,7 +293,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to sync addToCart with API:', error);
       return updatedCart;
     }
-  }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
+  }, [cart, isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
 
   // Update item quantity
   const updateQuantity = useCallback(async (itemId: number, data: UpdateCartItemDto): Promise<Cart> => {

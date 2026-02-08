@@ -13,7 +13,7 @@ export const AppDataSource = new DataSource({
   password: loadedEnv.db.password,
   database: loadedEnv.db.database,
   synchronize: false,
-  migrations: ["src/migrations/*.ts"],
+  migrations: ["src/migrations/*.ts", "src/database/migrations/1770297908578-CreateWishlistTable.ts"],
   logging: false,
   entities: entities,
 });

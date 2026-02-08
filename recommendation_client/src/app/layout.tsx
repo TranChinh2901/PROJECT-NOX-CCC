@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { WishlistProvider } from "@/contexts/WishlistContext";
 
 const cormorant = Cormorant({
   variable: "--font-heading",
@@ -35,9 +36,11 @@ export default function RootLayout({
         className={`${cormorant.variable} ${montserrat.variable} antialiased bg-background text-text font-body`}
       >
         <AuthProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          <WishlistProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
         <Toaster 
           position="top-right"

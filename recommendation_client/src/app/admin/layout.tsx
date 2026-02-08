@@ -28,16 +28,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[rgb(var(--admin-background))] text-slate-900">
+    <div className="min-h-screen bg-[rgb(var(--admin-background))] text-[rgb(var(--admin-text))]">
       <ResponsiveSidebar onToggle={setSidebarCollapsed} />
       <div className={cn(
-        'flex-1 transition-all duration-300',
+        'flex-1 transition-all duration-300 ease-out',
         // Desktop margin adjustment based on sidebar state
         'lg:ml-64',
-        sidebarCollapsed && 'lg:ml-16'
+        sidebarCollapsed && 'lg:ml-20'
       )}>
         <ResponsiveHeader sidebarCollapsed={sidebarCollapsed} />
-        <main className="p-4 lg:p-8">
+        <main className="p-5 lg:p-8 xl:p-10">
           <Suspense fallback={<PageSkeleton />}>
             {children}
           </Suspense>

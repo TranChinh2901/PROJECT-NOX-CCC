@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -142,6 +142,13 @@ export const Header: React.FC = () => {
                         <Package className="w-4 h-4" />
                         <span>Đơn hàng</span>
                       </Link>
+                      <Link
+                        href="/account/wishlist"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Heart className="w-4 h-4" />
+                        <span>Yêu thích</span>
+                      </Link>
                       <Link 
                         href="/account/addresses"
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -179,6 +186,14 @@ export const Header: React.FC = () => {
                   </Link>
                 </div>
               )}
+
+              <Link
+                href="/account/wishlist"
+                className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <Heart className="w-6 h-6" />
+                <span className="font-medium text-gray-900 hidden sm:block">Yêu thích</span>
+              </Link>
 
               <Link
                 href="/cart"
@@ -286,6 +301,15 @@ export const Header: React.FC = () => {
                 >
                   <Package className="w-5 h-5" />
                   <span>Đơn hàng</span>
+                </Link>
+
+                <Link
+                  href="/account/wishlist"
+                  className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span>Yêu thích</span>
                 </Link>
 
                 <Link

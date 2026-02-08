@@ -20,9 +20,12 @@ import {
 } from '../enum/notification.enum';
 
 @Entity('notifications')
+@Index(['user_id', 'is_read', 'is_archived', 'created_at'])
 @Index(['user_id', 'is_read', 'created_at'])
-@Index(['user_id', 'type', 'created_at'])
-@Index(['type', 'created_at'])
+@Index(['user_id', 'priority', 'is_read', 'created_at'])
+@Index(['user_id', 'expires_at'])
+@Index(['reference_type', 'reference_id'])
+@Index(['created_at'])
 export class Notification {
   @PrimaryGeneratedColumn()
   id!: number;

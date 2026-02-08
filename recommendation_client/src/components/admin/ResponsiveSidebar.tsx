@@ -97,7 +97,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
   };
 
   const renderNavItems = (mobile = false) => (
-    <ul className="space-y-2">
+    <ul className="space-y-1.5">
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.href, item.exact);
@@ -109,10 +109,10 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
               onClick={mobile ? closeMobileDrawer : undefined}
               className={cn(
                 'flex items-center px-4 py-3 rounded-lg transition-all duration-200',
-                'group relative',
+                'group relative font-medium',
                 active
-                  ? 'bg-[rgb(var(--admin-primary))] text-white'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[rgb(var(--admin-primary))] text-white shadow-md'
+                  : 'text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-primary))]/8 hover:text-[rgb(var(--admin-primary))]',
                 collapsed && !mobile ? 'justify-center' : 'space-x-3'
               )}
               aria-label={item.label}
@@ -120,14 +120,14 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               <span className={cn(
-                'transition-opacity duration-200',
+                'transition-all duration-200',
                 collapsed && !mobile ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
               )}>
                 {item.label}
               </span>
               {item.badge !== undefined && item.badge > 0 && (
                 <span className={cn(
-                  'ml-auto px-2 py-0.5 text-xs font-semibold rounded-full',
+                  'ml-auto px-2 py-0.5 text-xs font-bold rounded-full',
                   active ? 'bg-white/20 text-white' : 'bg-[rgb(var(--admin-primary))] text-white',
                   collapsed && !mobile && 'hidden'
                 )}>
@@ -144,15 +144,15 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
   return (
     <>
       {/* Mobile Header with Hamburger */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 h-16 flex items-center px-4">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-[rgb(var(--admin-border))] h-16 flex items-center px-5 shadow-sm">
         <button
           onClick={toggleMobileDrawer}
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-2 text-[rgb(var(--admin-text-muted))] hover:text-[rgb(var(--admin-primary))] hover:bg-[rgb(var(--admin-primary))]/8 rounded-lg transition-all duration-200"
           aria-label="Toggle menu"
         >
           <Menu className="w-6 h-6" />
         </button>
-        <h1 className="ml-4 text-lg font-bold text-slate-900">Admin Panel</h1>
+        <h1 className="ml-4 text-lg font-bold text-[rgb(var(--admin-text))] tracking-tight">Admin Panel</h1>
       </div>
 
       {/* Mobile Overlay */}
@@ -167,18 +167,18 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
       {/* Mobile Drawer */}
       <div
         className={cn(
-          'lg:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-50',
-          'transform transition-transform duration-300 ease-in-out',
+          'lg:hidden fixed top-0 left-0 h-full w-72 bg-white border-r border-[rgb(var(--admin-border))] z-50 shadow-2xl',
+          'transform transition-transform duration-300 ease-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Mobile Header */}
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-slate-900">Admin Panel</h1>
+          <div className="p-6 border-b border-[rgb(var(--admin-border))] flex items-center justify-between">
+            <h1 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Admin Panel</h1>
             <button
               onClick={closeMobileDrawer}
-              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-[rgb(var(--admin-text-muted))] hover:text-[rgb(var(--admin-primary))] hover:bg-[rgb(var(--admin-primary))]/8 rounded-lg transition-all duration-200"
               aria-label="Close menu"
             >
               <X className="w-5 h-5" />
@@ -191,11 +191,11 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
           </nav>
 
           {/* Mobile Footer */}
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4 border-t border-[rgb(var(--admin-border))]">
             <Link
               href="/"
               onClick={closeMobileDrawer}
-              className="flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-primary))]/8 hover:text-[rgb(var(--admin-primary))] transition-all duration-200 font-medium"
             >
               <Home className="w-5 h-5" />
               <span>Back to Store</span>
@@ -206,7 +206,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
                 logout();
                 closeMobileDrawer();
               }}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-[#dc2626] hover:text-white transition-colors mt-2"
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-error))]/10 hover:text-[rgb(var(--admin-error))] transition-all duration-200 mt-2 font-medium"
             >
               <LogOut className="w-5 h-5" />
               <span>Logout</span>
@@ -218,16 +218,19 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
       {/* Desktop Sidebar */}
       <div
         className={cn(
-          'hidden lg:flex fixed left-0 top-0 h-full bg-white border-r border-slate-200 z-40',
-          'transition-all duration-300 ease-in-out',
-          collapsed ? 'w-16' : 'w-64'
+          'hidden lg:flex fixed left-0 top-0 h-full bg-white border-r border-[rgb(var(--admin-border))] z-40 shadow-sm',
+          'transition-all duration-300 ease-out',
+          collapsed ? 'w-20' : 'w-64'
         )}
       >
         <div className="flex flex-col h-full w-full">
           {/* Desktop Header */}
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className={cn(
+            'border-b border-[rgb(var(--admin-border))] flex items-center justify-between transition-all duration-300',
+            collapsed ? 'p-4' : 'p-6'
+          )}>
             <h1 className={cn(
-              'text-xl font-bold text-slate-900 transition-opacity duration-200',
+              'text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight transition-all duration-200',
               collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
             )}>
               Admin Panel
@@ -235,7 +238,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
             <button
               onClick={toggleDesktopSidebar}
               className={cn(
-                'p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors',
+                'p-2 text-[rgb(var(--admin-text-muted))] hover:text-[rgb(var(--admin-primary))] hover:bg-[rgb(var(--admin-primary))]/8 rounded-lg transition-all duration-200 flex-shrink-0',
                 collapsed && 'mx-auto'
               )}
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -251,11 +254,11 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
           </nav>
 
           {/* Desktop Footer */}
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4 border-t border-[rgb(var(--admin-border))]">
             <Link
               href="/"
               className={cn(
-                'flex items-center px-4 py-3 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors',
+                'flex items-center px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-primary))]/8 hover:text-[rgb(var(--admin-primary))] transition-all duration-200 font-medium',
                 collapsed ? 'justify-center' : 'space-x-3'
               )}
               aria-label="Back to Store"
@@ -263,7 +266,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
             >
               <Home className="w-5 h-5 flex-shrink-0" />
               <span className={cn(
-                'transition-opacity duration-200',
+                'transition-all duration-200',
                 collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
               )}>
                 Back to Store
@@ -273,7 +276,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
             <button
               onClick={() => logout()}
               className={cn(
-                'w-full flex items-center px-4 py-3 rounded-lg text-slate-600 hover:bg-[#dc2626] hover:text-white transition-colors mt-2',
+                'w-full flex items-center px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-error))]/10 hover:text-[rgb(var(--admin-error))] transition-all duration-200 mt-2 font-medium',
                 collapsed ? 'justify-center' : 'space-x-3'
               )}
               aria-label="Logout"
@@ -281,7 +284,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <span className={cn(
-                'transition-opacity duration-200',
+                'transition-all duration-200',
                 collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
               )}>
                 Logout

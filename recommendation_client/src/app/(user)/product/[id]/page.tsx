@@ -7,6 +7,7 @@ import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { productApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 import { Product, Review } from '@/types';
 import toast from 'react-hot-toast';
 import {
@@ -151,6 +152,7 @@ export default function ProductPage() {
   }, [productId]);
 
   const { addToCart: addToCartContext } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const removeFlyingItem = useCallback((id: number) => {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
@@ -208,6 +210,18 @@ export default function ProductPage() {
     }
   };
 
+  const handleToggleWishlist = async () => {
+    if (!product) return;
+
+    const defaultVariantId = product.variants?.[0]?.id;
+    if (!defaultVariantId) {
+      toast.error('Sản phẩm không có phiên bản nào khả dụng');
+      return;
+    }
+
+    await toggleWishlist(defaultVariantId);
+  };
+
   // Calculate discount and rating from API data
   const discount = product?.compare_at_price && product?.base_price
     ? Math.round(((product.compare_at_price - product.base_price) / product.compare_at_price) * 100)
@@ -220,6 +234,9 @@ export default function ProductPage() {
   const primaryImage = product?.images?.find(img => img.is_primary)?.image_url 
     || product?.images?.[0]?.image_url 
     || '/placeholder.png';
+
+  const defaultVariantId = product?.variants?.[0]?.id;
+  const isWishlisted = defaultVariantId ? isInWishlist(defaultVariantId) : false;
 
   if (loading) {
     return (
@@ -389,8 +406,17 @@ export default function ProductPage() {
               </div>
 
               <div className="flex items-center gap-4 mb-8">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all bg-white shadow-sm">
-                  <Heart className="w-5 h-5" />
+                <button
+                  onClick={handleToggleWishlist}
+                  disabled={!defaultVariantId}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all bg-white shadow-sm ${
+                    isWishlisted
+                      ? 'border-[#CA8A04] text-[#CA8A04] bg-[#CA8A04]/10'
+                      : 'border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
+                  aria-pressed={isWishlisted}
+                >
+                  <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-[#CA8A04]' : ''}`} />
                   <span className="hidden sm:inline">Yêu Thích</span>
                 </button>
                 <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all bg-white shadow-sm">

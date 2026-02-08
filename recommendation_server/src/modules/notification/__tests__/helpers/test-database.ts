@@ -3,9 +3,9 @@
  * Manages test database lifecycle and provides utilities for testing
  */
 import { DataSource } from 'typeorm';
-import { NotificationEntity } from '../../entity/NotificationEntity';
-import { NotificationPreferencesEntity } from '../../entity/NotificationPreferencesEntity';
-import { NotificationTemplateEntity } from '../../entity/NotificationTemplateEntity';
+import { Notification as NotificationEntity } from '../../entity/notification';
+import { NotificationPreference as NotificationPreferenceEntity } from '../../entity/notification-preference';
+import { NotificationTemplate as NotificationTemplateEntity } from '../../entity/notification-template';
 
 export class TestDatabase {
   private static instance: TestDatabase;
@@ -30,7 +30,7 @@ export class TestDatabase {
       database: ':memory:',
       entities: [
         NotificationEntity,
-        NotificationPreferencesEntity,
+        NotificationPreferenceEntity,
         NotificationTemplateEntity,
       ],
       synchronize: true,

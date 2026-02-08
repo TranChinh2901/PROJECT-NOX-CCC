@@ -18,8 +18,10 @@ import { DeliveryChannel, DeliveryStatus } from '../enum/notification.enum';
 
 @Entity('notification_delivery_logs')
 @Index(['notification_id', 'channel'])
-@Index(['status', 'created_at'])
+@Index(['status', 'retry_count', 'created_at'])
 @Index(['channel', 'status', 'created_at'])
+@Index(['channel', 'status'])
+@Index(['created_at'])
 export class NotificationDeliveryLog {
   @PrimaryGeneratedColumn()
   id!: number;

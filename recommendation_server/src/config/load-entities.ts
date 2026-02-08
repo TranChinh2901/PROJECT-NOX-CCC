@@ -15,6 +15,7 @@ import { OrderItem } from "@/modules/orders/entity/order-item";
 import { OrderStatusHistory } from "@/modules/orders/entity/order-status-history";
 import { Review } from "@/modules/reviews/entity/review";
 import { ReviewHelpful } from "@/modules/reviews/entity/review-helpful";
+import { Wishlist } from "@/modules/wishlist/entity/wishlist.entity";
 import { WishlistItem } from "@/modules/wishlist/entity/wishlist-item";
 import { Promotion } from "@/modules/promotions/entity/promotion";
 import { PromotionUsage } from "@/modules/promotions/entity/promotion-usage";
@@ -45,6 +46,7 @@ export const entities = [
   OrderStatusHistory,
   Review,
   ReviewHelpful,
+  Wishlist,
   WishlistItem,
   Promotion,
   PromotionUsage,
