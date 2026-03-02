@@ -60,11 +60,13 @@
                 </span>
               </Link>
 
-              <div className="hidden md:flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 cursor-pointer transition-colors ml-4">
-                <MapPin className="w-4 h-4" />
-                <div className="flex flex-col">
+              <div className="hidden md:flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 cursor-pointer transition-colors ml-4 max-w-[150px]">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <div className="flex flex-col min-w-0">
                   <span className="text-xs">Giao đến</span>
-                  <span className="font-medium text-gray-900">TP. Hồ Chí Minh</span>
+                  <span className="font-medium text-gray-900 truncate">
+                    {user?.address || 'Chọn địa chỉ'}
+                  </span>
                 </div>
               </div>
 
