@@ -14,3 +14,6 @@ export const HttpStatusCode = {
 
   INTERNAL_SERVER_ERROR: 500,
 } as const;
+
+// Export as StatusCode alias for convenience
+export const StatusCode = HttpStatusCode;

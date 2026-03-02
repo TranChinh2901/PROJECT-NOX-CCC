@@ -9,6 +9,7 @@ import { Button } from '@/components/common/Button';
 import { orderApi } from '@/lib/api';
 import { PaymentMethod } from '@/types/product.types';
 import type { Address } from '@/types';
+import { formatPrice } from '@/lib/utils';
 
 interface FormErrors {
   fullname?: string;
@@ -341,12 +342,12 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex justify-between text-sm">
                     <div>
                       <p className="text-gray-900">
-                        Variant ID: {item.variant_id}
+                        Variant ID: {formatPrice(item.variant_id)}
                       </p>
                       <p className="text-gray-600">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium text-gray-900">
-                      ${item.total_price.toFixed(2)}
+                      {formatPrice(item.total_price)}
                     </p>
                   </div>
                 ))}
@@ -355,15 +356,15 @@ export default function CheckoutPage() {
               <div className="border-t border-gray-200 pt-4 space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Shipping</span>
-                  <span>${shippingFee.toFixed(2)}</span>
+                  <span>{formatPrice(shippingFee)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatPrice(total)}</span>
                 </div>
               </div>
 

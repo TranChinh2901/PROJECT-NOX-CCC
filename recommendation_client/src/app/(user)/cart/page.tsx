@@ -18,7 +18,6 @@ export default function CartPage() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
-  // Refresh cart from server on mount (handles cases where cart was cleared by server)
   useEffect(() => {
     const timer = setTimeout(() => {
       refreshCart();
@@ -26,12 +25,10 @@ export default function CartPage() {
     return () => clearTimeout(timer);
   }, [refreshCart]);
 
-  // Derived state
   const isSelectAll = cart?.items && cart.items.length > 0 && selectedItems.size === cart.items.length;
   const isIndeterminate = selectedItems.size > 0 && selectedItems.size < (cart?.items?.length || 0);
   const hasSelection = selectedItems.size > 0;
 
-  // Selection handlers
   const toggleSelectItem = (itemId: number) => {
     setSelectedItems(prev => {
       const next = new Set(prev);

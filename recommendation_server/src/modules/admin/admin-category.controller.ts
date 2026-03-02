@@ -38,7 +38,6 @@ class AdminCategoryController {
     const id = parseInt(req.params.id);
 
     const category = await adminCategoryService.getCategory(id);
-
     return new AppResponse({
       message: 'Category retrieved successfully',
       statusCode: HttpStatusCode.OK,
@@ -48,9 +47,7 @@ class AdminCategoryController {
 
   async createCategory(req: Request, res: Response) {
     const data: CreateCategoryDto = req.body;
-
     const category = await adminCategoryService.createCategory(data);
-
     return new AppResponse({
       message: 'Category created successfully',
       statusCode: HttpStatusCode.CREATED,

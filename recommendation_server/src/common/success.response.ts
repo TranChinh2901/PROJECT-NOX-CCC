@@ -27,3 +27,20 @@ export class AppResponse {
     });
   }
 }
+
+/**
+ * Helper function to send success responses
+ */
+export function successResponse(
+  res: Response,
+  statusCode: number,
+  message: string,
+  data?: any
+): Response {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    data,
+  });
+  
+}

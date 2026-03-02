@@ -56,7 +56,6 @@ export class AdminReviewService {
     }
 
     const total = await queryBuilder.getCount();
-
     const validSortColumns = ['created_at', 'updated_at', 'rating', 'helpful_count'];
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     queryBuilder = queryBuilder.orderBy(`review.${sortColumn}`, sortOrder);
