@@ -27,6 +27,14 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
   const imageUrl = product?.images?.find((image) => image.is_primary)?.image_url ?? product?.images?.[0]?.image_url ?? '/placeholder.png';
   const productHref = product?.id ? `/product/${product.id}` : '/';
 
+  const getPriorityLabel = (priority: string) => {
+    const labels: Record<string, string> = {
+      high: 'Ưu tiên cao',
+      low: 'Ưu tiên thấp',
+    };
+    return labels[priority.toLowerCase()] || null;
+  };
+
   const handleAddToCart = async () => {
     if (!variantId) {
       toast.error('San pham khong co phien ban kha dung');
@@ -52,9 +60,9 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 192px"
         />
-        {item.priority && (
+        {item.priority && getPriorityLabel(item.priority) && (
           <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded text-xs font-medium text-[#CA8A04] border border-[#CA8A04]/40">
-            {item.priority.toUpperCase()}
+            {getPriorityLabel(item.priority)}
           </div>
         )}
       </Link>
@@ -67,7 +75,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
             </Link>
             <p className="text-gray-600 text-sm line-clamp-2 mb-2">{productDescription}</p>
             <div className="text-[#B47B04] font-bold text-xl">
-              {typeof price === 'number' ? formatPrice(price) : price}
+              {formatPrice(price)}
             </div>
           </div>
 
@@ -97,7 +105,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
           >
             <div className="flex items-center justify-center gap-2">
               <ShoppingCart size={18} />
-              Them vao gio
+              Thêm vào giỏ
             </div>
           </LiquidButton>
 
@@ -105,7 +113,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
             <LiquidButton variant="ghost" size="sm" className="w-full border border-gray-300 text-gray-700 hover:text-gray-900 hover:bg-gray-100">
               <div className="flex items-center justify-center gap-2">
                 <Eye size={18} />
-                Xem san pham
+                Xem sản phẩm
               </div>
             </LiquidButton>
           </Link>

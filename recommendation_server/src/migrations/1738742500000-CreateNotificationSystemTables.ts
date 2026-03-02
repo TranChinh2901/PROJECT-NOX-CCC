@@ -45,7 +45,7 @@ export class CreateNotificationSystemTables1738742500000 implements MigrationInt
                     {
                         name: "variables",
                         type: "json",
-                        default: "'{}'"
+                        isNullable: true
                     },
                     {
                         name: "is_active",
@@ -121,7 +121,7 @@ export class CreateNotificationSystemTables1738742500000 implements MigrationInt
                     {
                         name: "metadata",
                         type: "json",
-                        default: "'{}'"
+                        isNullable: true
                     },
                     {
                         name: "order_id",
@@ -248,7 +248,7 @@ export class CreateNotificationSystemTables1738742500000 implements MigrationInt
                     {
                         name: "custom_settings",
                         type: "json",
-                        default: "'{}'"
+                        isNullable: true
                     },
                     {
                         name: "created_at",

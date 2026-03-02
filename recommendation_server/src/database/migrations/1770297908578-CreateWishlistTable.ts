@@ -54,29 +54,47 @@ export class CreateWishlistTable1770297908578 implements MigrationInterface {
             ],
         }), true);
 
-        // Add foreign key for wishlists -> users
-        await queryRunner.createForeignKey("wishlists", new TableForeignKey({
-            columnNames: ["user_id"],
-            referencedColumnNames: ["id"],
-            referencedTableName: "users",
-            onDelete: "CASCADE",
-        }));
+        // Add foreign key for wishlists -> users (idempotent for partially applied migrations)
+        let wishlistsTable = await queryRunner.getTable("wishlists");
+        const hasWishlistsUserFk = wishlistsTable?.foreignKeys.some(
+            (fk) => fk.columnNames.includes("user_id") && fk.referencedTableName === "users"
+        );
+        if (!hasWishlistsUserFk) {
+            await queryRunner.createForeignKey("wishlists", new TableForeignKey({
+                columnNames: ["user_id"],
+                referencedColumnNames: ["id"],
+                referencedTableName: "users",
+                onDelete: "CASCADE",
+            }));
+        }
 
         // Modify wishlist_items to link to wishlists instead of just user_id
-        // First, add wishlist_id column
-        await queryRunner.query(`ALTER TABLE wishlist_items ADD COLUMN wishlist_id INT NULL AFTER user_id`);
+        // First, add wishlist_id column if it does not exist
+        let wishlistItemsTable = await queryRunner.getTable("wishlist_items");
+        const hasWishlistIdColumn = wishlistItemsTable?.columns.some((c) => c.name === "wishlist_id");
+        if (!hasWishlistIdColumn) {
+            await queryRunner.query(`ALTER TABLE wishlist_items ADD COLUMN wishlist_id INT NULL AFTER user_id`);
+        }
 
         // Migrate existing data: Create default wishlists for users who have items
         const usersWithItems = await queryRunner.query(`SELECT DISTINCT user_id FROM wishlist_items`);
 
         for (const user of usersWithItems) {
-            // Create default wishlist for this user
-            const result = await queryRunner.query(`
-                INSERT INTO wishlists (user_id, name, is_default, created_at, updated_at)
-                VALUES (?, 'My Wishlist', 1, NOW(), NOW())
-            `, [user.user_id]);
-
-            const wishlistId = result.insertId;
+            // Reuse existing default wishlist if present to avoid duplicates on re-runs.
+            const existing = await queryRunner.query(
+                `SELECT id FROM wishlists WHERE user_id = ? AND is_default = 1 ORDER BY id ASC LIMIT 1`,
+                [user.user_id]
+            );
+            let wishlistId: number;
+            if (existing.length > 0) {
+                wishlistId = existing[0].id;
+            } else {
+                const result = await queryRunner.query(`
+                    INSERT INTO wishlists (user_id, name, is_default, created_at, updated_at)
+                    VALUES (?, 'My Wishlist', 1, NOW(), NOW())
+                `, [user.user_id]);
+                wishlistId = result.insertId;
+            }
 
             // Update items to point to this wishlist
             await queryRunner.query(`UPDATE wishlist_items SET wishlist_id = ? WHERE user_id = ?`, [wishlistId, user.user_id]);
@@ -100,41 +118,50 @@ export class CreateWishlistTable1770297908578 implements MigrationInterface {
         // We should remove user_id from wishlist_items to normalize.
 
         // Add FK for wishlist_id
-        await queryRunner.createForeignKey("wishlist_items", new TableForeignKey({
-            columnNames: ["wishlist_id"],
-            referencedColumnNames: ["id"],
-            referencedTableName: "wishlists",
-            onDelete: "CASCADE",
-        }));
+        wishlistItemsTable = await queryRunner.getTable("wishlist_items");
+        const hasWishlistItemsFk = wishlistItemsTable?.foreignKeys.some(
+            (fk) => fk.columnNames.includes("wishlist_id") && fk.referencedTableName === "wishlists"
+        );
+        if (!hasWishlistItemsFk) {
+            await queryRunner.createForeignKey("wishlist_items", new TableForeignKey({
+                columnNames: ["wishlist_id"],
+                referencedColumnNames: ["id"],
+                referencedTableName: "wishlists",
+                onDelete: "CASCADE",
+            }));
+        }
 
         // Now we can drop user_id column from wishlist_items
-        // First drop the foreign key if it exists
-        const table = await queryRunner.getTable("wishlist_items");
-        const foreignKey = table!.foreignKeys.find(fk => fk.columnNames.indexOf("user_id") !== -1);
-        if (foreignKey) {
-            await queryRunner.dropForeignKey("wishlist_items", foreignKey);
+        wishlistItemsTable = await queryRunner.getTable("wishlist_items");
+        const hasUserIdColumn = wishlistItemsTable?.columns.some((c) => c.name === "user_id");
+        if (hasUserIdColumn) {
+            // First drop the foreign key if it exists
+            const foreignKey = wishlistItemsTable!.foreignKeys.find(fk => fk.columnNames.indexOf("user_id") !== -1);
+            if (foreignKey) {
+                await queryRunner.dropForeignKey("wishlist_items", foreignKey);
+            }
+
+            // Drop every index/unique index involving user_id before dropping the column.
+            const userIdIndexes = wishlistItemsTable!.indices.filter(idx => idx.columnNames.indexOf("user_id") !== -1);
+            for (const idx of userIdIndexes) {
+                await queryRunner.dropIndex("wishlist_items", idx);
+            }
+
+            await queryRunner.query(`ALTER TABLE wishlist_items DROP COLUMN user_id`);
         }
-
-        // Drop the index on user_id if exists
-        const index = table!.indices.find(idx => idx.columnNames.indexOf("user_id") !== -1);
-        if (index) {
-             await queryRunner.dropIndex("wishlist_items", index);
-        }
-
-        // Drop the unique index on user_id + variant_id
-        // We need to replace it with wishlist_id + variant_id
-        // We can find unique constraints/indices via table metadata
-        // Since we can't easily guess the name, let's try to drop index by column names
-        // Note: TypeORM doesn't support dropIndex with column names directly in the wrapper easily without the index object
-        // But we can try raw SQL if needed, or iterate indices.
-
-        // Let's assume we want to enforce unique variant per wishlist
-        // Dropping user_id column will force dropping dependent indices in some DBs, but let's be explicit
-
-        await queryRunner.query(`ALTER TABLE wishlist_items DROP COLUMN user_id`);
 
         // Add unique constraint for wishlist_id + variant_id
-        await queryRunner.query(`CREATE UNIQUE INDEX IDX_wishlist_variant ON wishlist_items (wishlist_id, variant_id)`);
+        wishlistItemsTable = await queryRunner.getTable("wishlist_items");
+        const hasWishlistVariantUnique = wishlistItemsTable?.indices.some(
+            (idx) =>
+                idx.isUnique &&
+                idx.columnNames.length === 2 &&
+                idx.columnNames.includes("wishlist_id") &&
+                idx.columnNames.includes("variant_id")
+        );
+        if (!hasWishlistVariantUnique) {
+            await queryRunner.query(`CREATE UNIQUE INDEX IDX_wishlist_variant ON wishlist_items (wishlist_id, variant_id)`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
