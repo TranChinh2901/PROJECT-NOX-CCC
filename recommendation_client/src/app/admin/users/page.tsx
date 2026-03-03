@@ -26,7 +26,7 @@ export default function UserManagement() {
         limit: 10,
       });
       setUsers(response);
-      setTotalPages(1); // Adjust based on actual pagination from API
+      setTotalPages(1); 
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {

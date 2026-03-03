@@ -7,9 +7,11 @@
   import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart } from 'lucide-react';
   import { useCart } from '@/contexts/CartContext';
   import { useAuth } from '@/contexts/AuthContext';
+  import { useWishlist } from '@/contexts/WishlistContext';
 
   export const Header: React.FC = () => {
     const { itemCount } = useCart();
+    const { wishlistCount } = useWishlist();
     const { user, isAuthenticated, logout } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -193,7 +195,14 @@
                   href="/account/wishlist"
                   className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  <Heart className="w-6 h-6" />
+                  <div className="relative">
+                    <Heart className="w-6 h-6" />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#CA8A04] rounded-full text-xs text-white flex items-center justify-center font-bold">
+                        {wishlistCount > 9 ? '9+' : wishlistCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-medium text-gray-900 hidden sm:block">Yêu thích</span>
                 </Link>
 

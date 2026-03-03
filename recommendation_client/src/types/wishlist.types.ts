@@ -39,6 +39,7 @@ export interface WishlistState {
 export interface WishlistContextType {
   items: WishlistItem[];
   isLoading: boolean;
+  wishlistCount: number;
   addToWishlist: (productId: number) => Promise<void>;
   removeFromWishlist: (productId: number) => Promise<void>;
   isInWishlist: (productId: number) => boolean;

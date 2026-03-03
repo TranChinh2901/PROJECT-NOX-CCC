@@ -82,10 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(
     async (userData: SignupDto): Promise<AuthResponse> => {
       const response = await authApi.register(userData);
-      storeAuthState(response);
       return response;
     },
-    [storeAuthState]
+    []
   );
 
   const logout = useCallback(

@@ -6,7 +6,6 @@ import { CartStatus } from '@/types/order.types';
 import { cartApi, productApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Storage keys
 const CART_STORAGE_KEY = 'cart:state';
 const CART_USER_KEY = 'cart:user_id';
 
@@ -23,13 +22,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const prevUserId = useRef<number | null>(null);
 
-  // Calculate total items in cart
   const calculateItemCount = useCallback((cartData: Cart | null): number => {
     if (!cartData?.items) return 0;
     return cartData.items.reduce((sum, item) => sum + item.quantity, 0);
   }, []);
 
-  // Persist cart to localStorage
   const persistCart = useCallback((cartData: Cart | null) => {
     try {
       if (cartData) {
@@ -42,7 +39,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Clear local cart storage
   const clearLocalCartStorage = useCallback(() => {
     try {
       localStorage.removeItem(CART_STORAGE_KEY);
@@ -102,8 +98,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItemCount(0);
     }
   }, [calculateItemCount]);
-
-  // Sync cart with server
   const syncWithAPI = useCallback(async (): Promise<Cart | null> => {
     setIsLoading(true);
     try {
@@ -156,7 +150,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [calculateItemCount, persistCart, loadCartFromStorage]);
 
-  // Merge local cart to server
   const mergeLocalCartToServer = useCallback(async (): Promise<void> => {
     try {
       const stored = localStorage.getItem(CART_STORAGE_KEY);
@@ -176,7 +169,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Add all items in parallel
       await Promise.all(
         validItems.map(item =>
           cartApi.addToCart({ variant_id: item.variant_id, quantity: item.quantity })
@@ -191,7 +183,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Add item to cart
   const addToCart = useCallback(async (data: AddToCartDto, product?: Product, variant?: ProductVariant): Promise<Cart> => {
     const safeQuantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
     const now = new Date();
@@ -294,8 +285,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updatedCart;
     }
   }, [cart, isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
-
-  // Update item quantity
   const updateQuantity = useCallback(async (itemId: number, data: UpdateCartItemDto): Promise<Cart> => {
     let updatedCart: Cart | null = null;
     const now = new Date();
@@ -339,8 +328,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updatedCart;
     }
   }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
-
-  // Remove item from cart
   const removeItem = useCallback(async (itemId: number): Promise<Cart> => {
     let updatedCart: Cart | null = null;
     const now = new Date();
@@ -370,10 +357,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const synced = await syncWithAPI();
       return synced ?? updatedCart;
     } catch (error) {
-      // Check if error is 403 (cart locked/expired after order)
       const axiosError = error as { response?: { status?: number } };
       if (axiosError.response?.status === 403) {
-        // Cart was likely converted to order, clear local state
         console.warn('Cart is locked (possibly converted to order), clearing local state');
         setCart(null);
         setItemCount(0);
@@ -382,12 +367,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Cart has been processed. Please refresh to continue.');
       }
       console.error('Failed to sync removeItem with API:', error);
-      // Return local cart state for other errors
       return updatedCart;
     }
   }, [isAuthenticated, syncWithAPI, calculateItemCount, persistCart, clearLocalCartStorage]);
-
-  // Bulk remove items from cart
   const bulkRemoveItems = useCallback(async (itemIds: number[]): Promise<Cart> => {
     let updatedCart: Cart | null = null;
     const now = new Date();
@@ -415,27 +397,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const result = await cartApi.bulkRemoveItems(itemIds);
-      // Update with server response
       setCart(result);
       setItemCount(calculateItemCount(result));
       persistCart(result);
       return result;
     } catch (error) {
       console.error('Failed to bulk remove items from API:', error);
-      // Return local cart state on error
       return updatedCart;
     }
   }, [isAuthenticated, calculateItemCount, persistCart]);
 
-  // Clear cart
   const clearCart = useCallback(async (): Promise<void> => {
-    // Clear state first (optimistic)
     setCart(null);
     setItemCount(0);
     clearLocalCartStorage();
     persistCart(null);
 
-    // Skip next auto-sync to prevent fetching stale cart
     skipNextSync.current = true;
 
     if (!isAuthenticated) return;
@@ -443,12 +420,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       await cartApi.clearCart();
     } catch (error) {
-      // If API fails, still keep local cart cleared
       console.warn('Failed to clear cart on API, but local cart is cleared:', error);
     }
   }, [isAuthenticated, clearLocalCartStorage, persistCart]);
 
-  // Refresh cart
   const refreshCart = useCallback(async (): Promise<Cart | null> => {
     if (isAuthenticated) {
       return await syncWithAPI();
@@ -461,10 +436,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return currentCart;
   }, [isAuthenticated, syncWithAPI]);
 
-  // Flag to prevent auto-sync after checkout (e.g., when cart was cleared by server)
   const skipNextSync = useRef(false);
 
-  // Auth state change effect
   useEffect(() => {
     if (isAuthLoading) return;
 
@@ -475,7 +448,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     prevUserId.current = currentUserId;
 
-    // Handle logout or user switch
     if (didLogout || didSwitchUser) {
       clearLocalCartStorage();
       setCart(null);
@@ -495,29 +467,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Handle authenticated user
     const syncCart = async () => {
       if (!user?.id) return;
 
       try {
-        // Check if we should skip this sync (e.g., after checkout)
         if (skipNextSync.current) {
           skipNextSync.current = false;
-          // Still sync to get fresh server cart
           await syncWithAPI();
           return;
         }
 
-        // Check if user switched - clear old cart if so
         const storedUserId = localStorage.getItem(CART_USER_KEY);
         if (storedUserId && storedUserId !== String(user.id)) {
           clearLocalCartStorage();
         }
-
-        // Update stored user id
         localStorage.setItem(CART_USER_KEY, String(user.id));
-
-        // Merge local cart to server then sync
         await mergeLocalCartToServer();
         await syncWithAPI();
       } catch (error) {

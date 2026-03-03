@@ -17,11 +17,12 @@ const normalizeWishlistItems = (payload: WishlistResponse): WishlistItem[] => {
     return [];
   }
 
-  if (isWishlistCollection(payload[0])) {
-    return payload.flatMap((wishlist) => wishlist.items);
+  const firstEntry = payload[0];
+  if (isWishlistCollection(firstEntry)) {
+    return (payload as WishlistCollection[]).flatMap((wishlist) => wishlist.items);
   }
 
-  return payload;
+  return payload as WishlistItem[];
 };
 
 const getVariantId = (item: WishlistItem): number | null => {
@@ -40,6 +41,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const wishlistCount = items.length;
 
   const loadWishlist = useCallback(async () => {
     setIsLoading(true);
@@ -87,11 +89,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!isAuthenticated) return;
 
     try {
-      // Find the item to remove
       const itemToRemove = items.find(item => matchesWishlistItem(item, productId));
       if (!itemToRemove) return;
 
-      // Optimistic update
       setItems(prev => prev.filter(item => item.id !== itemToRemove.id));
 
       await wishlistApi.removeItem(itemToRemove.id);
@@ -123,6 +123,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <WishlistContext.Provider value={{
       items,
       isLoading,
+      wishlistCount,
       addToWishlist,
       removeFromWishlist,
       isInWishlist,

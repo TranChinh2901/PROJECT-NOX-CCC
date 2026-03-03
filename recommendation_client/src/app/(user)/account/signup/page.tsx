@@ -101,7 +101,7 @@ export default function SignupPage() {
         date_of_birth: new Date().toISOString(),
       });
 
-      router.push('/');
+      router.push('/account/login');
     } catch (error) {
       setErrors({
         general:
