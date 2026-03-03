@@ -65,7 +65,7 @@
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs">Giao đến</span>
                   <span className="font-medium text-gray-900 truncate">
-                    {user?.address || 'Chọn địa chỉ'}
+                    {user?.address || 'your address'}
                   </span>
                 </div>
               </div>
