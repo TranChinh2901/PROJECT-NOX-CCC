@@ -40,10 +40,10 @@
     };
 
     const navLinks = [
-      { label: 'Khuyến Mãi Hôm Nay', href: '#deals' },
-      { label: 'Dịch Vụ Khách Hàng', href: '#service' },
-      { label: 'Thẻ Quà Tặng', href: '#giftcards' },
-      { label: 'Bán Hàng', href: '#sell' },
+      { label: 'Khuyến Mãi Hôm Nay', href: '/deals' },
+      { label: 'Dịch Vụ Khách Hàng', href: '/service' },
+      { label: 'Thẻ Quà Tặng', href: '/giftcards' },
+      { label: 'Bán Hàng', href: '/sell' },
     ];
 
     return (

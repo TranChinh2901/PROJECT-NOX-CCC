@@ -1,10 +1,5 @@
 'use client';
 
-/**
- * NotificationPreferences Component
- *
- * User notification preferences management page.
- */
 
 import React, { useState } from 'react';
 import Link from 'next/link';
