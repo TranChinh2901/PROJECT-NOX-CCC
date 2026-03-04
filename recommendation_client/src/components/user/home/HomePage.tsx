@@ -14,17 +14,17 @@ import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
   ShoppingCart, 
-  Star, 
+  // Star, 
   Filter,
-  ChevronRight,
-  Laptop,
-  Smartphone,
-  Monitor,
-  Headphones,
-  Watch,
-  Camera,
-  Gamepad,
-  Speaker
+  // ChevronRight,
+  // Laptop,
+  // Smartphone,
+  // Monitor,
+  // Headphones,
+  // Watch,
+  // Camera,
+  // Gamepad,
+  // Speaker
 } from 'lucide-react';
 
 const featuredDeals = [
@@ -120,11 +120,13 @@ function FlyToCartAnimation({
 }
 
 export default function HomePage() {
+  const INITIAL_VISIBLE_PRODUCTS = 10;
   const { addToCart: addToCartContext, itemCount } = useCart();
   const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PRODUCTS);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +262,15 @@ export default function HomePage() {
     
     return filtered;
   }, [products, sortBy]);
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount]
+  );
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_PRODUCTS);
+  }, [selectedCategory, searchQuery, sortBy]);
 
   const handleAddToCart = useCallback(async (product: Product, imageElement: HTMLImageElement | null) => {
     try {
@@ -480,7 +491,7 @@ export default function HomePage() {
                 </div>
               ))
             ) : (
-              filteredProducts.map((product) => (
+              visibleProducts.map((product) => (
                 <ProductCard 
                   key={product.id} 
                   product={product} 
@@ -494,6 +505,17 @@ export default function HomePage() {
               ))
             )}
           </div>
+
+          {!loading && visibleCount < filteredProducts.length && (
+            <div className="mt-10 flex justify-center">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + INITIAL_VISIBLE_PRODUCTS)}
+                className="px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Xem thêm
+              </button>
+            </div>
+          )}
 
           {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-16">
