@@ -21,11 +21,14 @@ export class NotificationTemplate {
   id!: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: NotificationType,
   })
   @Index()
   type!: NotificationType;
+
+  @Column({ type: 'simple-enum', enum: ['email', 'sms', 'push', 'in_app'], default: 'in_app' })
+  channel!: string;
 
   @Column({ length: 100 })
   name!: string;

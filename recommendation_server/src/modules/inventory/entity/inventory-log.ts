@@ -3,10 +3,11 @@ import { Inventory } from "./inventory";
 import { ProductVariant } from "@/modules/products/entity/product-variant";
 import { Warehouse } from "./warehouse";
 import { InventoryActionType } from "../enum/inventory.enum";
+import { User } from "@/modules/users/entity/user.entity";
 
 @Entity('inventory_logs')
 @Index(['inventory_id'])
-@Index(['variant_id'])
+@Index(['performed_by_user_id'])
 @Index(['action_type'])
 @Index(['created_at'])
 export class InventoryLog {
@@ -16,23 +17,17 @@ export class InventoryLog {
   @Column()
   inventory_id!: number;
 
-  @ManyToOne(() => Inventory, inventory => inventory.id)
+  @ManyToOne(() => Inventory, inventory => inventory.id, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'inventory_id' })
   inventory!: Inventory;
 
-  @Column()
-  variant_id!: number;
+  variant_id?: number;
 
-  @ManyToOne(() => ProductVariant, variant => variant.id)
-  @JoinColumn({ name: 'variant_id' })
-  variant!: ProductVariant;
+  variant?: ProductVariant;
 
-  @Column()
-  warehouse_id!: number;
+  warehouse_id?: number;
 
-  @ManyToOne(() => Warehouse, warehouse => warehouse.id)
-  @JoinColumn({ name: 'warehouse_id' })
-  warehouse!: Warehouse;
+  warehouse?: Warehouse;
 
   @Column({ type: 'simple-enum', enum: InventoryActionType })
   action_type!: InventoryActionType;
@@ -55,7 +50,13 @@ export class InventoryLog {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ nullable: true })
+  performed_by_user_id!: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'performed_by_user_id' })
+  performed_by_user!: User | null;
+
   performed_by?: string;
 
   @CreateDateColumn({ type: 'datetime' })

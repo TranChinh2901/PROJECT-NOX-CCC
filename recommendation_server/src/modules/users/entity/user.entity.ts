@@ -48,4 +48,7 @@ export class User {
 
   @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
+
+  @Column({ type: 'datetime', nullable: true, default: null })
+  deleted_at!: Date | null;
 }

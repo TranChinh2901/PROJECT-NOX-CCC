@@ -274,14 +274,14 @@ export class ProductService {
     const searchResults = fuse.search(query.trim());
     
     const limitedResults = searchResults.slice(0, limit);
-    const matchedProducts = limitedResults.map(result => result.item);
+    const matchedProducts = limitedResults.map((result: { item: Product }) => result.item);
 
     const suggestions = Array.from(
-      new Set(searchResults.slice(0, 5).map(result => result.item.name))
+      new Set(searchResults.slice(0, 5).map((result: { item: Product }) => result.item.name))
     );
 
     return {
-      data: matchedProducts.map(product => this.formatProductResponse(product)),
+      data: matchedProducts.map((product: Product) => this.formatProductResponse(product)),
       suggestions
     };
   }

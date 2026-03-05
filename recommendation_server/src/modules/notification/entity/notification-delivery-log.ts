@@ -31,20 +31,26 @@ export class NotificationDeliveryLog {
   notification_id!: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryChannel,
   })
   channel!: DeliveryChannel;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryStatus,
     default: DeliveryStatus.PENDING,
   })
   status!: DeliveryStatus;
 
+  @Column({ type: 'int', default: 1 })
+  attempt_number!: number;
+
   @Column({ type: 'int', default: 0 })
   retry_count!: number;
+
+  @Column({ type: 'datetime', nullable: true })
+  next_retry_at!: Date | null;
 
   @Column({ type: 'datetime', nullable: true })
   sent_at?: Date;

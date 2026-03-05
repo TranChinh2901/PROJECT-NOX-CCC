@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from "typeorm";
 import { Product } from "./product";
 import { ProductVariant } from "./product-variant";
 
@@ -13,14 +13,14 @@ export class ProductImage {
   @Column()
   product_id!: number;
 
-  @ManyToOne(() => Product, product => product.id)
+  @ManyToOne(() => Product, product => product.id, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
   @Column({ nullable: true })
   variant_id?: number;
 
-  @ManyToOne(() => ProductVariant, variant => variant.id, { nullable: true })
+  @ManyToOne(() => ProductVariant, variant => variant.id, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'variant_id' })
   variant?: ProductVariant;
 
@@ -45,6 +45,5 @@ export class ProductImage {
   @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'datetime', nullable: true })
   deleted_at?: Date;
 }

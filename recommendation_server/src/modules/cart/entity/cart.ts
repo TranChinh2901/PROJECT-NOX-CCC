@@ -6,7 +6,7 @@ import { CartStatus } from "../enum/cart.enum";
 
 @Entity('carts')
 @Index(['user_id'])
-@Index(['session_id'])
+@Index(['guest_token'])
 @Index(['status'])
 export class Cart {
   @PrimaryGeneratedColumn()
@@ -15,15 +15,15 @@ export class Cart {
   @Column({ type: 'int', nullable: true })
   user_id?: number;
 
-  @ManyToOne(() => User, user => user.id, { nullable: true })
+  @ManyToOne(() => User, user => user.id, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'varchar', length: 64, nullable: true, unique: true })
+  guest_token!: string | null;
+
   session_id?: number;
 
-  @ManyToOne(() => UserSession, session => session.id, { nullable: true })
-  @JoinColumn({ name: 'session_id' })
   session?: UserSession;
 
   @Column({ 

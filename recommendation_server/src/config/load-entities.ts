@@ -1,5 +1,6 @@
 import { User } from "@/modules/users/entity/user.entity";
 import { UserSession } from "@/modules/users/entity/user-session";
+import { UserAddress } from "@/modules/users/entity/user-address.entity";
 import { Category } from "@/modules/products/entity/category";
 import { Brand } from "@/modules/products/entity/brand";
 import { Product } from "@/modules/products/entity/product";
@@ -27,10 +28,12 @@ import { NotificationPreference } from "@/modules/notification/entity/notificati
 import { NotificationTemplate } from "@/modules/notification/entity/notification-template";
 import { NotificationDeliveryLog } from "@/modules/notification/entity/notification-delivery-log";
 import { NotificationSubscription } from "@/modules/notification/entity/notification-subscription";
+import { NotificationBatchJob } from "@/modules/notification/entity/notification-batch-job";
 
 export const entities = [
   User,
   UserSession,
+  UserAddress,
   Category,
   Brand,
   Product,
@@ -58,4 +61,5 @@ export const entities = [
   NotificationTemplate,
   NotificationDeliveryLog,
   NotificationSubscription,
+  NotificationBatchJob,
 ];

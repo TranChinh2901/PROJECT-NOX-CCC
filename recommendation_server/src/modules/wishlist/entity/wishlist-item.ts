@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index, Unique } from "typeorm";
 import { ProductVariant } from "@/modules/products/entity/product-variant";
+import { User } from "@/modules/users/entity/user.entity";
 import { WishlistPriority } from "../enum/wishlist.enum";
 import { Wishlist } from "./wishlist.entity";
 
@@ -20,6 +21,10 @@ export class WishlistItem {
 
   @Column()
   variant_id!: number;
+
+  user_id?: number;
+
+  user?: User;
 
   @ManyToOne(() => ProductVariant)
   @JoinColumn({ name: 'variant_id' })

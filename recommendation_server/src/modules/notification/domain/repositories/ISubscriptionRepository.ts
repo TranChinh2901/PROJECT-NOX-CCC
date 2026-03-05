@@ -2,7 +2,7 @@
  * Repository Interface: ISubscriptionRepository
  * Defines the contract for notification subscription persistence.
  */
-import { NotificationSubscription } from '../entity/notification-subscription';
+import { NotificationSubscription } from '../../entity/notification-subscription';
 
 export interface SubscriptionFilter {
   userId?: number;

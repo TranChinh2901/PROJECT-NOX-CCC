@@ -27,12 +27,12 @@ export class Review {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @Column()
-  order_item_id!: number;
+  @Column({ nullable: true })
+  order_item_id!: number | null;
 
-  @ManyToOne(() => OrderItem, item => item.id)
+  @ManyToOne(() => OrderItem, item => item.id, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'order_item_id' })
-  order_item!: OrderItem;
+  order_item!: OrderItem | null;
 
   @Column({ type: 'int' })
   rating!: number;

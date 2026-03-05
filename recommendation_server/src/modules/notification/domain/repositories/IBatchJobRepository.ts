@@ -2,7 +2,7 @@
  * Repository Interface: IBatchJobRepository
  * Defines the contract for notification batch job persistence.
  */
-import { BatchJobStatus, BatchJobType, NotificationBatchJob } from '../entity/notification-batch-job';
+import { BatchJobStatus, BatchJobType, NotificationBatchJob } from '../../entity/notification-batch-job';
 
 export interface BatchJobFilter {
   status?: BatchJobStatus;
