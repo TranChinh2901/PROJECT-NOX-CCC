@@ -44,12 +44,12 @@ export class CartService {
     }
   }
 
-  async getOrCreateCart(userId: number, sessionId?: number) {
-    const whereConditions: Array<{ user_id: number; status: CartStatus } | { session_id: number; status: CartStatus }> = [
+  async getOrCreateCart(userId: number, guestToken?: string) {
+    const whereConditions: Array<{ user_id: number; status: CartStatus } | { guest_token: string; status: CartStatus }> = [
       { user_id: userId, status: CartStatus.ACTIVE }
     ];
-    if (sessionId !== undefined && sessionId !== null) {
-      whereConditions.push({ session_id: sessionId, status: CartStatus.ACTIVE });
+    if (guestToken) {
+      whereConditions.push({ guest_token: guestToken, status: CartStatus.ACTIVE });
     }
 
     let cart = await this.cartRepository.findOne({
@@ -60,7 +60,7 @@ export class CartService {
     if (!cart) {
       cart = this.cartRepository.create({
         user_id: userId,
-        session_id: sessionId,
+        guest_token: guestToken ?? null,
         status: CartStatus.ACTIVE,
         total_amount: 0,
         item_count: 0,
@@ -81,7 +81,7 @@ export class CartService {
     return this.formatCartResponse(cart);
   }
 
-  async addToCart(userId: number, data: AddToCartDto, sessionId?: number) {
+  async addToCart(userId: number, data: AddToCartDto, guestToken?: string) {
     const { variant_id, quantity } = data;
 
     if (quantity <= 0) {
@@ -105,11 +105,11 @@ export class CartService {
       );
     }
 
-    const whereConditions: Array<{ user_id: number; status: CartStatus } | { session_id: number; status: CartStatus }> = [
+    const whereConditions: Array<{ user_id: number; status: CartStatus } | { guest_token: string; status: CartStatus }> = [
       { user_id: userId, status: CartStatus.ACTIVE }
     ];
-    if (sessionId !== undefined && sessionId !== null) {
-      whereConditions.push({ session_id: sessionId, status: CartStatus.ACTIVE });
+    if (guestToken) {
+      whereConditions.push({ guest_token: guestToken, status: CartStatus.ACTIVE });
     }
 
     let cart = await this.cartRepository.findOne({
@@ -120,7 +120,7 @@ export class CartService {
     if (!cart) {
       cart = this.cartRepository.create({
         user_id: userId,
-        session_id: sessionId,
+        guest_token: guestToken ?? null,
         status: CartStatus.ACTIVE,
         total_amount: 0,
         item_count: 0,

@@ -1,6 +1,7 @@
 import { OrderItem } from './order-item';
 import { Order } from './order';
 import { ProductVariant } from '@/modules/products/entity/product-variant';
+import { Warehouse } from '@/modules/inventory/entity/warehouse';
 
 describe('OrderItem Entity', () => {
   describe('Schema Validation', () => {
@@ -9,6 +10,7 @@ describe('OrderItem Entity', () => {
       item.id = 1;
       item.order_id = 10;
       item.variant_id = 5;
+      item.warehouse_id = 2;
       item.product_snapshot = { name: 'T-Shirt', size: 'M', color: 'Red' };
       item.quantity = 2;
       item.unit_price = 29.99;
@@ -18,6 +20,7 @@ describe('OrderItem Entity', () => {
       expect(item.id).toBe(1);
       expect(item.order_id).toBe(10);
       expect(item.variant_id).toBe(5);
+      expect(item.warehouse_id).toBe(2);
       expect(item.quantity).toBe(2);
       expect(item.unit_price).toBe(29.99);
       expect(item.total_price).toBe(59.98);
@@ -153,6 +156,19 @@ describe('OrderItem Entity', () => {
       
       expect(item.variant).toBe(variant);
       expect(item.variant_id).toBe(5);
+    });
+
+    it('should define optional ManyToOne relationship with Warehouse', () => {
+      const warehouse = new Warehouse();
+      warehouse.id = 3;
+      warehouse.code = 'WH-03';
+
+      const item = new OrderItem();
+      item.warehouse = warehouse;
+      item.warehouse_id = warehouse.id;
+
+      expect(item.warehouse).toBe(warehouse);
+      expect(item.warehouse_id).toBe(3);
     });
 
     it('should allow multiple items for same order', () => {

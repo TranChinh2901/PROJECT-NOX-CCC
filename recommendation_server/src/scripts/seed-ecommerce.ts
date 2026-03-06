@@ -15,6 +15,7 @@ import { OrderItem } from "../modules/orders/entity/order-item";
 import { OrderStatusHistory } from "../modules/orders/entity/order-status-history";
 import { Review } from "../modules/reviews/entity/review";
 import { ReviewHelpful } from "../modules/reviews/entity/review-helpful";
+import { Wishlist } from "../modules/wishlist/entity/wishlist.entity";
 import { WishlistItem } from "../modules/wishlist/entity/wishlist-item";
 import { Promotion } from "../modules/promotions/entity/promotion";
 import { PromotionUsage } from "../modules/promotions/entity/promotion-usage";
@@ -69,7 +70,7 @@ async function seedDatabase() {
       "promotion_usage", "promotions", "wishlist_items", "review_helpful",
       "reviews", "order_status_histories", "order_items", "orders",
       "cart_items", "carts", "user_sessions", "inventory_logs",
-      "inventory", "product_images", "product_variants", "products",
+      "wishlists", "inventory", "product_images", "product_variants", "products",
       "warehouses", "brands", "categories", "users"
     ];
     for (const table of tables) {
@@ -162,6 +163,7 @@ async function seedDatabase() {
     const products: Product[] = [];
     const variants: ProductVariant[] = [];
     const images: ProductImage[] = [];
+    const inventoryByVariantId = new Map<number, Inventory[]>();
 
     const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
     const colors = [
@@ -231,6 +233,9 @@ async function seedDatabase() {
           inventory.reorder_level = 10;
           inventory.reorder_quantity = 100;
           await queryRunner.manager.save(inventory);
+          const existingInventories = inventoryByVariantId.get(variant.id) ?? [];
+          existingInventories.push(inventory);
+          inventoryByVariantId.set(variant.id, existingInventories);
         }
       }
 
@@ -306,13 +311,11 @@ async function seedDatabase() {
 
     for (let i = 0; i < CONFIG.carts; i++) {
       const user = faker.helpers.arrayElement(users.filter(u => u.role === RoleType.USER));
-      const session = faker.helpers.arrayElement(sessions.filter(s => s.user_id === user.id));
       
       const cart = new Cart();
       cart.user = user;
       cart.user_id = user.id;
-      cart.session = session;
-      cart.session_id = session.id;
+      cart.guest_token = null;
       cart.status = faker.helpers.arrayElement(Object.values(CartStatus));
       cart.total_amount = 0;
       cart.item_count = 0;
@@ -380,11 +383,14 @@ async function seedDatabase() {
       const numItems = faker.number.int({ min: 1, max: 5 });
       for (let oi = 0; oi < numItems; oi++) {
         const variant = faker.helpers.arrayElement(variants);
+        const inventoryOptions = inventoryByVariantId.get(variant.id) ?? [];
+        const inventory = faker.helpers.arrayElement(inventoryOptions);
         const orderItem = new OrderItem();
         orderItem.order = order;
         orderItem.order_id = order.id;
         orderItem.variant = variant;
         orderItem.variant_id = variant.id;
+        orderItem.warehouse_id = inventory?.warehouse_id;
         orderItem.product_snapshot = { product_name: variant.product.name, variant_sku: variant.sku };
         orderItem.quantity = faker.number.int({ min: 1, max: 3 });
         orderItem.unit_price = variant.final_price;
@@ -459,6 +465,24 @@ async function seedDatabase() {
     }
     console.log(`Created ${reviews.length} reviews, ${reviewHelpful.length} helpful votes`);
 
+    console.log("Seeding wishlists...");
+    const wishlists: Wishlist[] = [];
+    const defaultWishlistsByUserId = new Map<number, Wishlist>();
+
+    for (const user of users.filter((candidate) => candidate.role === RoleType.USER)) {
+      const wishlist = new Wishlist();
+      wishlist.user = user;
+      wishlist.user_id = user.id;
+      wishlist.name = "My Wishlist";
+      wishlist.is_default = true;
+      wishlist.is_public = faker.datatype.boolean(0.2);
+      wishlist.share_token = wishlist.is_public ? faker.string.alphanumeric(24) : undefined;
+      await queryRunner.manager.save(wishlist);
+      wishlists.push(wishlist);
+      defaultWishlistsByUserId.set(user.id, wishlist);
+    }
+    console.log(`Created ${wishlists.length} wishlists`);
+
     console.log("Seeding wishlist items...");
     const wishlistItems: WishlistItem[] = [];
     const wishlistKeys = new Set<string>();
@@ -466,14 +490,18 @@ async function seedDatabase() {
     for (let i = 0; i < CONFIG.wishlistItems; i++) {
       const user = faker.helpers.arrayElement(users.filter(u => u.role === RoleType.USER));
       const variant = faker.helpers.arrayElement(variants);
-      const key = `${user.id}-${variant.id}`;
+      const wishlist = defaultWishlistsByUserId.get(user.id);
+      if (!wishlist) {
+        continue;
+      }
+      const key = `${wishlist.id}-${variant.id}`;
       
       if (wishlistKeys.has(key)) continue;
       wishlistKeys.add(key);
       
       const item = new WishlistItem();
-      item.user = user;
-      item.user_id = user.id;
+      item.wishlist = wishlist;
+      item.wishlist_id = wishlist.id;
       item.variant = variant;
       item.variant_id = variant.id;
       item.priority = faker.helpers.arrayElement(Object.values(WishlistPriority));
@@ -607,6 +635,7 @@ async function seedDatabase() {
       cache.user_id = cacheUser?.id;
       cache.product = cacheProduct;
       cache.product_id = cacheProduct?.id;
+      cache.cache_key = `user:${cache.user_id ?? 'guest'}:product:${cache.product_id ?? 'none'}:type:${recType}:algo:collaborative_filtering`;
       cache.recommendation_type = recType;
       cache.algorithm = "collaborative_filtering";
       

@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { AppDataSource } from "@/config/database.config";
 import { Order } from "@/modules/orders/entity/order";
 import { OrderItem } from "@/modules/orders/entity/order-item";
@@ -56,90 +56,108 @@ export class OrderService {
 
   async createOrder(userId: number, data: CreateOrderDto) {
     const { cart_id, shipping_address, billing_address, payment_method, notes } = data;
+    const orderId = await AppDataSource.transaction(async manager => {
+      const cart = await manager
+        .getRepository(Cart)
+        .createQueryBuilder('cart')
+        .leftJoinAndSelect('cart.items', 'items')
+        .leftJoinAndSelect('items.variant', 'variant')
+        .leftJoinAndSelect('variant.product', 'product')
+        .setLock('pessimistic_write')
+        .where('cart.id = :cartId', { cartId: cart_id })
+        .andWhere('cart.user_id = :userId', { userId })
+        .andWhere('cart.status = :status', { status: CartStatus.ACTIVE })
+        .getOne();
 
-    const cart = await this.cartRepository.findOne({
-      where: { id: cart_id, user_id: userId, status: CartStatus.ACTIVE },
-      relations: ['items', 'items.variant', 'items.variant.product']
-    });
+      if (!cart) {
+        throw new AppError(
+          'Cart not found or already converted',
+          HttpStatusCode.NOT_FOUND,
+          ErrorCode.CART_NOT_FOUND
+        );
+      }
 
-    if (!cart) {
-      throw new AppError(
-        'Cart not found or already converted',
-        HttpStatusCode.NOT_FOUND,
-        ErrorCode.CART_NOT_FOUND
-      );
-    }
+      if (!cart.items || cart.items.length === 0) {
+        throw new AppError(
+          'Cart is empty',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.VALIDATION_ERROR
+        );
+      }
 
-    if (!cart.items || cart.items.length === 0) {
-      throw new AppError(
-        'Cart is empty',
-        HttpStatusCode.BAD_REQUEST,
-        ErrorCode.VALIDATION_ERROR
-      );
-    }
+      const orderNumber = this.generateOrderNumber();
+      const subtotal = Number(cart.total_amount);
+      const shippingAmount = 30000;
+      const taxAmount = subtotal * 0.1;
+      const discountAmount = 0;
+      const totalAmount = subtotal + shippingAmount + taxAmount - discountAmount;
 
-    const orderNumber = this.generateOrderNumber();
-    const subtotal = Number(cart.total_amount);
-    const shippingAmount = 30000;
-    const taxAmount = subtotal * 0.1;
-    const discountAmount = 0;
-    const totalAmount = subtotal + shippingAmount + taxAmount - discountAmount;
+      const reservations: Array<{ cartItem: CartItem; inventory: Inventory }> = [];
+      for (const cartItem of cart.items) {
+        const inventory = await this.reserveInventory(manager, cartItem.variant_id, cartItem.quantity);
+        reservations.push({ cartItem, inventory });
+      }
 
-    const order = this.orderRepository.create({
-      order_number: orderNumber,
-      user_id: userId,
-      cart_id: cart_id,
-      status: OrderStatus.PENDING,
-      payment_status: PaymentStatus.PENDING,
-      payment_method: payment_method,
-      shipping_address: shipping_address,
-      billing_address: billing_address || shipping_address,
-      subtotal: subtotal,
-      shipping_amount: shippingAmount,
-      tax_amount: taxAmount,
-      discount_amount: discountAmount,
-      total_amount: totalAmount,
-      currency: 'VND',
-      notes: notes
-    });
-
-    await this.orderRepository.save(order);
-
-    const orderItems = cart.items.map(cartItem => {
-      return this.orderItemRepository.create({
-        order_id: order.id,
-        variant_id: cartItem.variant_id,
-        product_snapshot: {
-          product_name: cartItem.variant?.product?.name || '',
-          variant_sku: cartItem.variant?.sku || '',
-          product_description: cartItem.variant?.product?.description || ''
-        },
-        quantity: cartItem.quantity,
-        unit_price: cartItem.unit_price,
-        total_price: cartItem.total_price,
-        discount_amount: 0
+      const order = manager.getRepository(Order).create({
+        order_number: orderNumber,
+        user_id: userId,
+        cart_id: cart_id,
+        status: OrderStatus.PENDING,
+        payment_status: PaymentStatus.PENDING,
+        payment_method: payment_method,
+        shipping_address: shipping_address,
+        billing_address: billing_address || shipping_address,
+        subtotal: subtotal,
+        shipping_amount: shippingAmount,
+        tax_amount: taxAmount,
+        discount_amount: discountAmount,
+        total_amount: totalAmount,
+        currency: 'VND',
+        notes: notes,
       });
+
+      await manager.save(order);
+
+      const orderItems = reservations.map(({ cartItem, inventory }) =>
+        manager.getRepository(OrderItem).create({
+          order_id: order.id,
+          variant_id: cartItem.variant_id,
+          warehouse_id: inventory.warehouse_id,
+          product_snapshot: {
+            product_name: cartItem.variant?.product?.name || '',
+            variant_sku: cartItem.variant?.sku || '',
+            product_description: cartItem.variant?.product?.description || '',
+            warehouse_id: inventory.warehouse_id,
+          },
+          quantity: cartItem.quantity,
+          unit_price: cartItem.unit_price,
+          total_price: cartItem.total_price,
+          discount_amount: 0,
+        })
+      );
+
+      await manager.save(orderItems);
+
+      const statusHistory = manager.getRepository(OrderStatusHistory).create({
+        order_id: order.id,
+        status: OrderStatus.PENDING,
+        notes: 'Order created',
+      });
+      await manager.save(statusHistory);
+
+      cart.status = CartStatus.CONVERTED;
+      await manager.save(cart);
+
+      return order.id;
     });
 
-    await this.orderItemRepository.save(orderItems);
-
-    const statusHistory = this.orderStatusHistoryRepository.create({
-      order_id: order.id,
-      status: OrderStatus.PENDING,
-      notes: 'Order created'
-    });
-    await this.orderStatusHistoryRepository.save(statusHistory);
-
-    cart.status = CartStatus.CONVERTED;
-    await this.cartRepository.save(cart);
-
-    return this.getOrderById(order.id);
+    return this.getOrderById(orderId);
   }
 
   async getOrderById(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
-      relations: ['items', 'items.variant', 'items.variant.product', 'items.variant.product.images']
+      relations: ['items', 'items.variant', 'items.variant.product', 'items.variant.product.images', 'items.warehouse']
     });
 
     if (!order) {
@@ -194,6 +212,7 @@ export class OrderService {
             color: variant.color,
             material: variant.material
           } : null,
+          warehouse_id: item.warehouse_id,
           product: product ? {
             id: product.id,
             name: product.name,
@@ -259,50 +278,61 @@ export class OrderService {
   }
 
   async cancelOrder(userId: number, orderId: number, reason?: string) {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId, user_id: userId }
+    return AppDataSource.transaction(async manager => {
+      const order = await manager
+        .getRepository(Order)
+        .createQueryBuilder('order')
+        .leftJoinAndSelect('order.items', 'items')
+        .setLock('pessimistic_write')
+        .where('order.id = :orderId', { orderId })
+        .andWhere('order.user_id = :userId', { userId })
+        .getOne();
+
+      if (!order) {
+        throw new AppError(
+          'Order not found',
+          HttpStatusCode.NOT_FOUND,
+          ErrorCode.ORDER_NOT_FOUND
+        );
+      }
+
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new AppError(
+          'Order is already cancelled',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.VALIDATION_ERROR
+        );
+      }
+
+      if (order.status === OrderStatus.SHIPPED || order.status === OrderStatus.DELIVERED) {
+        throw new AppError(
+          'Cannot cancel order that has been shipped or delivered',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.VALIDATION_ERROR
+        );
+      }
+
+      for (const item of order.items || []) {
+        await this.restoreInventoryForOrderItem(manager, item);
+      }
+
+      const previousStatus = order.status;
+      order.status = OrderStatus.CANCELLED;
+      await manager.save(order);
+
+      const statusHistory = manager.getRepository(OrderStatusHistory).create({
+        order_id: order.id,
+        status: OrderStatus.CANCELLED,
+        previous_status: previousStatus,
+        notes: reason || 'Order cancelled by customer',
+      });
+      await manager.save(statusHistory);
+
+      return {
+        message: 'Order cancelled successfully',
+        order_id: order.id,
+      };
     });
-
-    if (!order) {
-      throw new AppError(
-        'Order not found',
-        HttpStatusCode.NOT_FOUND,
-        ErrorCode.ORDER_NOT_FOUND
-      );
-    }
-
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new AppError(
-        'Order is already cancelled',
-        HttpStatusCode.BAD_REQUEST,
-        ErrorCode.VALIDATION_ERROR
-      );
-    }
-
-    if (order.status === OrderStatus.SHIPPED || order.status === OrderStatus.DELIVERED) {
-      throw new AppError(
-        'Cannot cancel order that has been shipped or delivered',
-        HttpStatusCode.BAD_REQUEST,
-        ErrorCode.VALIDATION_ERROR
-      );
-    }
-
-    const previousStatus = order.status;
-    order.status = OrderStatus.CANCELLED;
-    await this.orderRepository.save(order);
-
-    const statusHistory = this.orderStatusHistoryRepository.create({
-      order_id: order.id,
-      status: OrderStatus.CANCELLED,
-      previous_status: previousStatus,
-      notes: reason || 'Order cancelled by customer'
-    });
-    await this.orderStatusHistoryRepository.save(statusHistory);
-
-    return {
-      message: 'Order cancelled successfully',
-      order_id: order.id
-    };
   }
 
   private generateOrderNumber(): string {
@@ -310,6 +340,113 @@ export class OrderService {
     const year = new Date().getFullYear();
     const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
     return `${prefix}-${year}-${random}`;
+  }
+
+  private async reserveInventory(manager: EntityManager, variantId: number, quantity: number): Promise<Inventory> {
+    const inventory = await manager
+      .getRepository(Inventory)
+      .createQueryBuilder('inventory')
+      .leftJoin('inventory.warehouse', 'warehouse')
+      .setLock('pessimistic_write')
+      .where('inventory.variant_id = :variantId', { variantId })
+      .andWhere('inventory.quantity_available >= :quantity', { quantity })
+      .orderBy('warehouse.is_default', 'DESC')
+      .addOrderBy('inventory.quantity_available', 'DESC')
+      .addOrderBy('inventory.id', 'ASC')
+      .getOne();
+
+    if (!inventory) {
+      throw new AppError(
+        'Insufficient stock for one or more cart items',
+        HttpStatusCode.CONFLICT,
+        ErrorCode.INSUFFICIENT_STOCK
+      );
+    }
+
+    const result = await manager
+      .createQueryBuilder()
+      .update(Inventory)
+      .set({
+        quantity_available: () => 'quantity_available - :quantity',
+        quantity_reserved: () => 'quantity_reserved + :quantity',
+      })
+      .where('id = :inventoryId', { inventoryId: inventory.id })
+      .andWhere('quantity_available >= :quantity')
+      .setParameters({ quantity })
+      .execute();
+
+    if (result.affected !== 1) {
+      throw new AppError(
+        'Unable to reserve inventory for the requested cart items',
+        HttpStatusCode.CONFLICT,
+        ErrorCode.INSUFFICIENT_STOCK
+      );
+    }
+
+    return inventory;
+  }
+
+  private async restoreInventoryForOrderItem(manager: EntityManager, orderItem: OrderItem): Promise<void> {
+    const inventory = await this.resolveInventoryForOrderItem(manager, orderItem);
+
+    const result = await manager
+      .createQueryBuilder()
+      .update(Inventory)
+      .set({
+        quantity_available: () => 'quantity_available + :quantity',
+        quantity_reserved: () => 'quantity_reserved - :quantity',
+      })
+      .where('id = :inventoryId', { inventoryId: inventory.id })
+      .andWhere('quantity_reserved >= :quantity')
+      .setParameters({ quantity: orderItem.quantity })
+      .execute();
+
+    if (result.affected !== 1) {
+      throw new AppError(
+        'Inventory reservation state is inconsistent for this order item',
+        HttpStatusCode.CONFLICT,
+        ErrorCode.CONFLICT
+      );
+    }
+  }
+
+  private async resolveInventoryForOrderItem(manager: EntityManager, orderItem: OrderItem): Promise<Inventory> {
+    if (orderItem.warehouse_id) {
+      const inventory = await manager
+        .getRepository(Inventory)
+        .createQueryBuilder('inventory')
+        .setLock('pessimistic_write')
+        .where('inventory.variant_id = :variantId', { variantId: orderItem.variant_id })
+        .andWhere('inventory.warehouse_id = :warehouseId', { warehouseId: orderItem.warehouse_id })
+        .getOne();
+
+      if (!inventory) {
+        throw new AppError(
+          'Inventory record not found for this order item',
+          HttpStatusCode.CONFLICT,
+          ErrorCode.CONFLICT
+        );
+      }
+
+      return inventory;
+    }
+
+    const inventories = await manager
+      .getRepository(Inventory)
+      .createQueryBuilder('inventory')
+      .setLock('pessimistic_write')
+      .where('inventory.variant_id = :variantId', { variantId: orderItem.variant_id })
+      .getMany();
+
+    if (inventories.length === 1) {
+      return inventories[0];
+    }
+
+    throw new AppError(
+      'Order item is missing warehouse attribution and cannot be restored safely',
+      HttpStatusCode.INTERNAL_SERVER_ERROR,
+      ErrorCode.INTERNAL_SERVER_ERROR
+    );
   }
 }
 

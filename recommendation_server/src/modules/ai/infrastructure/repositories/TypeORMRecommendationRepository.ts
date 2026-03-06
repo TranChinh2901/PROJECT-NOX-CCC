@@ -60,6 +60,7 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
 
     // Create new cache entry
     const cacheEntry = this.repository.create({
+      cache_key: this.buildCacheKey(userId),
       user_id: userId,
       recommendation_type: 'personalized' as any,
       algorithm: 'content_based',
@@ -108,5 +109,9 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
     });
 
     return latestCache ? latestCache.generated_at >= freshSince : false;
+  }
+
+  private buildCacheKey(userId: number): string {
+    return `user:${userId}:type:personalized:algo:content_based`;
   }
 }

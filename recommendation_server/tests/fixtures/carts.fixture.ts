@@ -5,7 +5,7 @@ import { CartStatus } from '@/modules/cart/enum/cart.enum';
 export const EMPTY_CART: Cart = {
   id: 1,
   user_id: 2,
-  session_id: undefined,
+  guest_token: null,
   status: CartStatus.ACTIVE,
   total_amount: 0,
   item_count: 0,
@@ -19,7 +19,7 @@ export const EMPTY_CART: Cart = {
 export const CART_WITH_ITEMS: Cart = {
   id: 2,
   user_id: 2,
-  session_id: undefined,
+  guest_token: null,
   status: CartStatus.ACTIVE,
   total_amount: 848000,
   item_count: 2,
@@ -33,7 +33,7 @@ export const CART_WITH_ITEMS: Cart = {
 export const ABANDONED_CART: Cart = {
   id: 3,
   user_id: 3,
-  session_id: undefined,
+  guest_token: null,
   status: CartStatus.ABANDONED,
   total_amount: 349000,
   item_count: 1,

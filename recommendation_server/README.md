@@ -117,9 +117,16 @@ DB_NAME=fashion_ecommerce
 # Server Port
 PORT=5000
 
-# JWT Configuration (add your secret)
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRES_IN=7d
+# JWT Configuration
+# Supported aliases:
+# ACCESS_TOKEN_SECRET or JWT_SECRET
+# REFRESH_TOKEN_SECRET or REFRESH_SECRET
+# ACCESS_TOKEN_EXPIRES_IN or ACCESS_EXPIRES_IN
+# REFRESH_TOKEN_EXPIRES_IN or REFRESH_EXPIRES_IN
+JWT_SECRET=your_access_token_secret_here
+REFRESH_SECRET=your_refresh_token_secret_here
+ACCESS_EXPIRES_IN=1h
+REFRESH_EXPIRES_IN=5d
 
 # Cloudinary (for image uploads)
 CLOUD_NAME=your_cloud_name
@@ -179,7 +186,7 @@ The server will start at `http://localhost:5000`
 | Command | Description |
 |---------|-------------|
 | `npm run migration:run` | Run all pending migrations to create/update database tables |
-| `npm run migration:generate -- src/migrations/FileName` | Generate a new migration from entities (replace `FileName` with no accents/special chars) |
+| `npm run migration:generate -- src/database/migrations/FileName` | Generate a new migration from entities (replace `FileName` with no accents/special chars) |
 | `npm run migration:revert` | Revert the last executed migration |
 
 ### Database Seeding

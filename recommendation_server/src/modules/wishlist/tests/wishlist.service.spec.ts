@@ -36,6 +36,7 @@ describe("WishlistService", () => {
       updateItem: jest.fn(),
       findItem: jest.fn(),
       findItemById: jest.fn(),
+      findItemByUserIdAndVariantId: jest.fn(),
       countItems: jest.fn(),
     };
     service = new WishlistService(mockRepo);
@@ -114,8 +115,7 @@ describe("WishlistService", () => {
 
   describe("check", () => {
       it("should return true if item in wishlist", async () => {
-          const listWithItem = { ...mockWishlist, items: [mockItem] };
-          mockRepo.findByUserId.mockResolvedValue([listWithItem]);
+          mockRepo.findItemByUserIdAndVariantId.mockResolvedValue(mockItem);
 
           const result = await service.check(1, 100);
           expect(result.in_wishlist).toBe(true);
@@ -123,7 +123,7 @@ describe("WishlistService", () => {
       });
 
       it("should return false if item not in wishlist", async () => {
-          mockRepo.findByUserId.mockResolvedValue([mockWishlist]);
+          mockRepo.findItemByUserIdAndVariantId.mockResolvedValue(null);
           const result = await service.check(1, 999);
           expect(result.in_wishlist).toBe(false);
       });

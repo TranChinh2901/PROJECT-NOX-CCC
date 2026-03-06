@@ -321,7 +321,7 @@ describe('Database Integration Tests', () => {
 
       const cart = cartRepo.create({
         user_id: user.id,
-        session_id: session.id,
+        guest_token: session.session_token,
         status: CartStatus.ACTIVE,
         total_amount: 0,
         item_count: 0,

@@ -8,6 +8,8 @@ import { UserPreference } from '../../domain/entities/UserPreference';
 import { UserBehaviorLog } from '../../../ai/entity/user-behavior-log';
 import { AppDataSource } from '@/config/database.config';
 import { UserActionType } from '../../../ai/enum/user-behavior.enum';
+import { UserSession } from '@/modules/users/entity/user-session';
+import { DeviceType } from '@/modules/users/enum/user-session.enum';
 
 /**
  * Adapter: TypeORM User Behavior Repository
@@ -16,21 +18,24 @@ import { UserActionType } from '../../../ai/enum/user-behavior.enum';
  */
 export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
   private repository: Repository<UserBehaviorLog>;
+  private sessionRepository: Repository<UserSession>;
 
   constructor() {
     this.repository = AppDataSource.getRepository(UserBehaviorLog);
+    this.sessionRepository = AppDataSource.getRepository(UserSession);
   }
 
   async logBehavior(log: DomainUserBehaviorLog): Promise<void> {
+    const session = await this.resolveSession(log.userId, log.timestamp);
+
     const entity = this.repository.create({
       user_id: log.userId,
       product_id: log.productId,
       action_type: this.mapBehaviorTypeToAction(log.behaviorType),
       metadata: log.metadata as any,
       created_at: log.timestamp,
-      // Required fields with defaults
-      session_id: 0, // TODO: Get from context
-      device_type: 'desktop' as any,
+      session_id: session.id,
+      device_type: session.device_type,
       page_url: '',
     });
 
@@ -224,5 +229,26 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
     };
 
     return mapping[actionType] || BehaviorType.VIEW;
+  }
+
+  private async resolveSession(userId: number, startedAt: Date): Promise<UserSession> {
+    const existingSession = await this.sessionRepository.findOne({
+      where: { user_id: userId, is_active: true },
+      order: { started_at: 'DESC' },
+    });
+
+    if (existingSession) {
+      return existingSession;
+    }
+
+    const session = this.sessionRepository.create({
+      user_id: userId,
+      session_token: `behavior-${userId}-${startedAt.getTime()}`,
+      device_type: DeviceType.UNKNOWN,
+      started_at: startedAt,
+      is_active: true,
+    });
+
+    return this.sessionRepository.save(session);
   }
 }

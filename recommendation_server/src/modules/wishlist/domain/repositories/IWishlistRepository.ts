@@ -15,5 +15,6 @@ export interface IWishlistRepository {
   updateItem(itemId: number, data: Partial<WishlistItem>): Promise<WishlistItem>;
   findItem(wishlistId: number, variantId: number): Promise<WishlistItem | null>;
   findItemById(itemId: number): Promise<WishlistItem | null>;
+  findItemByUserIdAndVariantId(userId: number, variantId: number): Promise<WishlistItem | null>;
   countItems(wishlistId: number): Promise<number>;
 }

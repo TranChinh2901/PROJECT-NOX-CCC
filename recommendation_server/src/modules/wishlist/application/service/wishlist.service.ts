@@ -106,23 +106,9 @@ export class WishlistService {
   }
 
   async check(userId: number, variantId: number): Promise<{ in_wishlist: boolean; wishlist_id?: number; item_id?: number }> {
-    // Check all wishlists for the user
-    // This is a bit inefficient if user has many wishlists, but typically users have few.
-    // Ideally we would query wishlist_items joined with wishlists filtered by user_id
-
-    // Optimisation: We can add a method to repo findItemByUserIdAndVariantId
-    // For now let's just check default list or iterate.
-    // Actually, checking if a product is in ANY of the user's wishlists is a common requirement.
-
-    // Let's assume for simple check we look at the default wishlist or return a list of wishlists containing it.
-    // The requirement says `check(userId, variantId)`.
-
-    const wishlists = await this.wishlistRepo.findByUserId(userId);
-    for (const list of wishlists) {
-        const item = list.items?.find(i => i.variant_id === variantId);
-        if (item) {
-            return { in_wishlist: true, wishlist_id: list.id, item_id: item.id };
-        }
+    const item = await this.wishlistRepo.findItemByUserIdAndVariantId(userId, variantId);
+    if (item) {
+        return { in_wishlist: true, wishlist_id: item.wishlist_id, item_id: item.id };
     }
 
     return { in_wishlist: false };

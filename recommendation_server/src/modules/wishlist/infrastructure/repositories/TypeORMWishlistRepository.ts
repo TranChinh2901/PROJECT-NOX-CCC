@@ -92,6 +92,17 @@ export class TypeORMWishlistRepository implements IWishlistRepository {
     });
   }
 
+  async findItemByUserIdAndVariantId(userId: number, variantId: number): Promise<WishlistItem | null> {
+    return await this.itemRepo
+      .createQueryBuilder('item')
+      .innerJoinAndSelect('item.wishlist', 'wishlist')
+      .where('wishlist.user_id = :userId', { userId })
+      .andWhere('item.variant_id = :variantId', { variantId })
+      .orderBy('wishlist.is_default', 'DESC')
+      .addOrderBy('item.id', 'ASC')
+      .getOne();
+  }
+
   async countItems(wishlistId: number): Promise<number> {
     return await this.itemRepo.count({ where: { wishlist_id: wishlistId } });
   }

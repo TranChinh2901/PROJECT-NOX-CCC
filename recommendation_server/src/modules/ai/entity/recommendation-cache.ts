@@ -1,10 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index, Unique } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from "typeorm";
 import { User } from "@/modules/users/entity/user.entity";
 import { Product } from "@/modules/products/entity/product";
 import { RecommendationType } from "../enum/recommendation.enum";
 
 @Entity('recommendation_cache')
-@Unique(['user_id', 'product_id', 'recommendation_type'])
 @Index(['user_id'])
 @Index(['product_id'])
 @Index(['recommendation_type'])
@@ -13,6 +12,9 @@ import { RecommendationType } from "../enum/recommendation.enum";
 export class RecommendationCache {
   @PrimaryGeneratedColumn()
   id!: number;
+
+  @Column({ length: 191, unique: true })
+  cache_key!: string;
 
   @Column({ type: 'int', nullable: true })
   user_id?: number;

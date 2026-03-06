@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import { Cart } from './cart';
 import { CartItem } from './cart-item';
 import { User } from '@/modules/users/entity/user.entity';
-import { UserSession } from '@/modules/users/entity/user-session';
 import { CartStatus } from '../enum/cart.enum';
 
 describe('Cart Entity', () => {
@@ -11,7 +10,7 @@ describe('Cart Entity', () => {
       const cart = new Cart();
       cart.id = 1;
       cart.user_id = 100;
-      cart.session_id = 5;
+      cart.guest_token = 'guest-cart-5';
       cart.status = CartStatus.ACTIVE;
       cart.total_amount = 112.99;
       cart.item_count = 3;
@@ -19,37 +18,37 @@ describe('Cart Entity', () => {
 
       expect(cart.id).toBe(1);
       expect(cart.user_id).toBe(100);
-      expect(cart.session_id).toBe(5);
+      expect(cart.guest_token).toBe('guest-cart-5');
       expect(cart.status).toBe(CartStatus.ACTIVE);
       expect(cart.total_amount).toBe(112.99);
       expect(cart.item_count).toBe(3);
       expect(cart.currency).toBe('VND');
     });
 
-    it('should allow cart with user_id but no session_id (authenticated cart)', () => {
+    it('should allow cart with user_id but no guest_token (authenticated cart)', () => {
       const cart = new Cart();
       cart.user_id = 100;
-      cart.session_id = undefined;
+      cart.guest_token = null;
       cart.status = CartStatus.ACTIVE;
       cart.total_amount = 0;
       cart.item_count = 0;
       cart.currency = 'VND';
 
       expect(cart.user_id).toBe(100);
-      expect(cart.session_id).toBeUndefined();
+      expect(cart.guest_token).toBeNull();
     });
 
-    it('should allow cart with session_id but no user_id (anonymous cart)', () => {
+    it('should allow cart with guest_token but no user_id (anonymous cart)', () => {
       const cart = new Cart();
       cart.user_id = undefined;
-      cart.session_id = 10;
+      cart.guest_token = 'guest-cart-10';
       cart.status = CartStatus.ACTIVE;
       cart.total_amount = 0;
       cart.item_count = 0;
       cart.currency = 'VND';
 
       expect(cart.user_id).toBeUndefined();
-      expect(cart.session_id).toBe(10);
+      expect(cart.guest_token).toBe('guest-cart-10');
     });
 
     it('should have default status as ACTIVE', () => {
@@ -147,16 +146,11 @@ describe('Cart Entity', () => {
       expect(cart.user_id).toBe(100);
     });
 
-    it('should define relationship with UserSession entity', () => {
+    it('should store guest token for anonymous carts', () => {
       const cart = new Cart();
-      const session = new UserSession();
-      session.id = 5;
+      cart.guest_token = 'guest-token-5';
 
-      cart.session = session;
-      cart.session_id = session.id;
-
-      expect(cart.session).toBe(session);
-      expect(cart.session_id).toBe(5);
+      expect(cart.guest_token).toBe('guest-token-5');
     });
 
     it('should define relationship with CartItem entities (one-to-many)', () => {
@@ -234,34 +228,34 @@ describe('Cart Entity', () => {
   });
 
   describe('Business Logic Constraints', () => {
-    it('should allow either user_id or session_id to be set (not both required)', () => {
+    it('should allow either user_id or guest_token to be set (not both required)', () => {
       const authenticatedCart = new Cart();
       authenticatedCart.user_id = 100;
-      authenticatedCart.session_id = undefined;
+      authenticatedCart.guest_token = null;
 
       const anonymousCart = new Cart();
       anonymousCart.user_id = undefined;
-      anonymousCart.session_id = 5;
+      anonymousCart.guest_token = 'guest-cart-5';
 
       expect(authenticatedCart.user_id).toBe(100);
-      expect(authenticatedCart.session_id).toBeUndefined();
+      expect(authenticatedCart.guest_token).toBeNull();
       expect(anonymousCart.user_id).toBeUndefined();
-      expect(anonymousCart.session_id).toBe(5);
+      expect(anonymousCart.guest_token).toBe('guest-cart-5');
     });
 
-    it('should support cart claiming (session_id -> user_id migration)', () => {
+    it('should support cart claiming (guest_token -> user_id migration)', () => {
       const cart = new Cart();
-      cart.session_id = 10;
+      cart.guest_token = 'guest-cart-10';
       cart.user_id = undefined;
 
-      expect(cart.session_id).toBe(10);
+      expect(cart.guest_token).toBe('guest-cart-10');
       expect(cart.user_id).toBeUndefined();
 
       cart.user_id = 100;
-      cart.session_id = undefined;
+      cart.guest_token = null;
 
       expect(cart.user_id).toBe(100);
-      expect(cart.session_id).toBeUndefined();
+      expect(cart.guest_token).toBeNull();
     });
 
     it('should handle cart abandonment workflow', () => {
@@ -285,11 +279,11 @@ describe('Cart Entity', () => {
       expect(cart.user_id).toBe(999);
     });
 
-    it('should maintain referential integrity with session_id', () => {
+    it('should preserve guest token identity for anonymous carts', () => {
       const cart = new Cart();
-      cart.session_id = 15;
+      cart.guest_token = 'guest-cart-15';
 
-      expect(cart.session_id).toBe(15);
+      expect(cart.guest_token).toBe('guest-cart-15');
     });
 
     it('should allow updating cart total_amount', () => {

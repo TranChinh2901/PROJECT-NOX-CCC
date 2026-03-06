@@ -1,6 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Index } from "typeorm";
 import { User } from "@/modules/users/entity/user.entity";
-import { UserSession } from "@/modules/users/entity/user-session";
 import { CartItem } from "./cart-item";
 import { CartStatus } from "../enum/cart.enum";
 
@@ -21,10 +20,6 @@ export class Cart {
 
   @Column({ type: 'varchar', length: 64, nullable: true, unique: true })
   guest_token!: string | null;
-
-  session_id?: number;
-
-  session?: UserSession;
 
   @Column({ 
     type: 'simple-enum', 

@@ -127,9 +127,12 @@ export class AdminOrderService {
 
   async updateOrderStatus(id: number, dto: UpdateOrderStatusDto, adminEmail: string) {
     return this.dataSource.transaction(async manager => {
-      const order = await manager.findOne(Order, {
-        where: { id },
-      });
+      const order = await manager
+        .getRepository(Order)
+        .createQueryBuilder('order')
+        .setLock('pessimistic_write')
+        .where('order.id = :id', { id })
+        .getOne();
 
       if (!order) {
         throw new AppError(
@@ -168,10 +171,13 @@ export class AdminOrderService {
 
   async cancelOrder(id: number, adminEmail: string): Promise<void> {
     return this.dataSource.transaction(async manager => {
-      const order = await manager.findOne(Order, {
-        where: { id },
-        relations: ['items', 'items.variant'],
-      });
+      const order = await manager
+        .getRepository(Order)
+        .createQueryBuilder('order')
+        .leftJoinAndSelect('order.items', 'items')
+        .setLock('pessimistic_write')
+        .where('order.id = :id', { id })
+        .getOne();
 
       if (!order) {
         throw new AppError(
@@ -189,8 +195,10 @@ export class AdminOrderService {
         );
       }
 
-      for (const item of order.items!) {
-        await manager
+      for (const item of order.items || []) {
+        const inventory = await this.resolveInventoryForOrderItem(manager, item);
+
+        const result = await manager
           .createQueryBuilder()
           .update(Inventory)
           .set({
@@ -198,8 +206,17 @@ export class AdminOrderService {
             quantity_reserved: () => 'quantity_reserved - :qty',
           })
           .setParameter('qty', item.quantity)
-          .where('variant_id = :variantId', { variantId: item.variant_id })
+          .where('id = :inventoryId', { inventoryId: inventory.id })
+          .andWhere('quantity_reserved >= :qty')
           .execute();
+
+        if (result.affected !== 1) {
+          throw new AppError(
+            'Inventory reservation state is inconsistent for this order item',
+            HttpStatusCode.CONFLICT,
+            ErrorCode.CONFLICT
+          );
+        }
       }
 
       const previousStatus = order.status;
@@ -216,6 +233,48 @@ export class AdminOrderService {
 
       await manager.save(statusHistory);
     });
+  }
+
+  private async resolveInventoryForOrderItem(
+    manager: DataSource['manager'],
+    item: OrderItem
+  ): Promise<Inventory> {
+    if (item.warehouse_id) {
+      const inventory = await manager
+        .getRepository(Inventory)
+        .createQueryBuilder('inventory')
+        .setLock('pessimistic_write')
+        .where('inventory.variant_id = :variantId', { variantId: item.variant_id })
+        .andWhere('inventory.warehouse_id = :warehouseId', { warehouseId: item.warehouse_id })
+        .getOne();
+
+      if (!inventory) {
+        throw new AppError(
+          'Inventory record not found for this order item',
+          HttpStatusCode.CONFLICT,
+          ErrorCode.CONFLICT
+        );
+      }
+
+      return inventory;
+    }
+
+    const inventories = await manager
+      .getRepository(Inventory)
+      .createQueryBuilder('inventory')
+      .setLock('pessimistic_write')
+      .where('inventory.variant_id = :variantId', { variantId: item.variant_id })
+      .getMany();
+
+    if (inventories.length === 1) {
+      return inventories[0];
+    }
+
+    throw new AppError(
+      'Order item is missing warehouse attribution and cannot be restored safely',
+      HttpStatusCode.INTERNAL_SERVER_ERROR,
+      ErrorCode.INTERNAL_SERVER_ERROR
+    );
   }
 
   async addInternalNote(id: number, dto: AddInternalNoteDto): Promise<Order> {

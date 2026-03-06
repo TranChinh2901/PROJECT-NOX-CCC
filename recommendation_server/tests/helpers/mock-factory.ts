@@ -117,6 +117,7 @@ export function createMockCart(overrides?: Partial<Cart>): Cart {
   const cart = new Cart();
   cart.id = makeNumber(1, 10000);
   cart.user_id = makeNumber(1, 1000);
+  cart.guest_token = null;
   cart.status = CartStatus.ACTIVE;
   cart.total_amount = makeDecimal(0, 5000, 2);
   cart.item_count = makeNumber(0, 50);

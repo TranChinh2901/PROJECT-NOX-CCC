@@ -106,25 +106,25 @@ describe('CartService', () => {
       expect(result.id).toBe(existingCart.id);
     });
 
-    it('should return existing cart when cart found by session_id', async () => {
+    it('should return existing cart when cart found by guest_token', async () => {
       const userId = 12;
-      const sessionId = 222;
+      const guestToken = 'guest-token-222';
       const existingCart = createMockCart({
         id: 102,
         user_id: userId,
-        session_id: sessionId,
+        guest_token: guestToken,
         items: [],
       });
 
       cartRepository.findOne.mockResolvedValueOnce(existingCart);
 
-      const result = await service.getOrCreateCart(userId, sessionId);
+      const result = await service.getOrCreateCart(userId, guestToken);
       const whereConditions = cartRepository.findOne.mock.calls[0][0].where;
 
       expect(whereConditions).toEqual(
         expect.arrayContaining([
           { user_id: userId, status: CartStatus.ACTIVE },
-          { session_id: sessionId, status: CartStatus.ACTIVE },
+          { guest_token: guestToken, status: CartStatus.ACTIVE },
         ])
       );
       expect(result.id).toBe(existingCart.id);
@@ -192,7 +192,7 @@ describe('CartService', () => {
       );
     });
 
-    it('should ignore sessionId when sessionId is undefined', async () => {
+    it('should ignore guestToken when guestToken is undefined', async () => {
       const userId = 17;
       const existingCart = createMockCart({ id: 107, user_id: userId, items: [] });
 

@@ -1,7 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, Index } from "typeorm";
 import { OrderStatus } from "../enum/order.enum";
 import { Order } from "./order";
-import { User } from "@/modules/users/entity/user.entity";
 
 @Entity('order_status_histories')
 @Index(['order_id'])
@@ -22,13 +21,7 @@ export class OrderStatusHistory {
   @Column({ type: 'simple-enum', enum: OrderStatus, nullable: true })
   previous_status?: OrderStatus;
 
-  @Column({ nullable: true })
-  changed_by_user_id!: number | null;
-
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'changed_by_user_id' })
-  changed_by_user!: User | null;
-
+  @Column({ length: 100, nullable: true })
   changed_by?: string;
 
   @Column({ type: 'text', nullable: true })
