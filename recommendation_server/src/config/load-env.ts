@@ -13,8 +13,13 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toPort = (value: string | undefined, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 export const loadedEnv = {
-  port: firstDefined(process.env.PORT, "5000"),
+  port: toPort(process.env.PORT, 5000),
   db: {
     host: process.env.DB_HOST,
     port: toNumber(process.env.DB_PORT, 3306),

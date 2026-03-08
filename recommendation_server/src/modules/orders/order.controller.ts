@@ -74,15 +74,7 @@ class OrderController {
       }).sendResponse(res);
     }
 
-    const order = await orderService.getOrderById(orderId);
-
-    if (order.id !== orderId) {
-      return new AppResponse({
-        message: 'Unauthorized access to order',
-        statusCode: HttpStatusCode.FORBIDDEN,
-        data: null
-      }).sendResponse(res);
-    }
+    const order = await orderService.getOrderById(orderId, userId);
 
     return new AppResponse({
       message: 'Order retrieved successfully',

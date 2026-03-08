@@ -154,9 +154,9 @@ export class OrderService {
     return this.getOrderById(orderId);
   }
 
-  async getOrderById(orderId: number) {
+  async getOrderById(orderId: number, userId?: number) {
     const order = await this.orderRepository.findOne({
-      where: { id: orderId },
+      where: userId ? { id: orderId, user_id: userId } : { id: orderId },
       relations: ['items', 'items.variant', 'items.variant.product', 'items.variant.product.images', 'items.warehouse']
     });
 

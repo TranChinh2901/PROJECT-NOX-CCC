@@ -33,8 +33,8 @@ const OrdersPage = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await orderApi.getUserOrders();
-      const sortedOrders = data.sort((a, b) => 
+      const response = await orderApi.getUserOrders();
+      const sortedOrders = [...(response.data ?? [])].sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       setOrders(sortedOrders);

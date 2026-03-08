@@ -1,4 +1,4 @@
-import { ProductVariant, PaymentStatus, PaymentMethod } from './product.types';
+import { Product, ProductVariant, PaymentStatus, PaymentMethod } from './product.types';
 import { User } from './auth.types';
 
 export enum OrderStatus {
@@ -67,6 +67,36 @@ export interface Order {
   created_at: Date;
   updated_at: Date;
   deleted_at?: Date;
+}
+
+export interface OrderItemSnapshot {
+  product_name?: string;
+  variant_sku?: string;
+  product_description?: string;
+  warehouse_id?: number;
+  [key: string]: unknown;
+}
+
+export interface OrderStatusHistoryEntry {
+  status: OrderStatus;
+  previous_status?: OrderStatus;
+  notes?: string;
+  changed_by?: string;
+  created_at: Date;
+}
+
+export interface OrderDetailItem extends Omit<OrderItem, 'product_snapshot'> {
+  warehouse_id?: number;
+  product_snapshot: OrderItemSnapshot;
+  variant?: Pick<ProductVariant, 'id' | 'sku' | 'size' | 'color' | 'material'> | null;
+  product?: Pick<Product, 'id' | 'name' | 'slug'> & {
+    primary_image?: string | null;
+  } | null;
+}
+
+export interface OrderDetail extends Omit<Order, 'items'> {
+  items: OrderDetailItem[];
+  status_history: OrderStatusHistoryEntry[];
 }
 
 export interface CreateOrderDto {

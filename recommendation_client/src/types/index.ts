@@ -4,6 +4,9 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export { OrderStatus, CartStatus } from './order.types';
+export { PaymentStatus, PaymentMethod } from './product.types';
+
 export type {
   GenderType,
   RoleType,
@@ -27,9 +30,11 @@ export type {
 
 export type {
   Order,
+  OrderDetail,
+  OrderDetailItem,
   OrderItem,
-  OrderStatus,
-  CartStatus,
+  OrderItemSnapshot,
+  OrderStatusHistoryEntry,
   Address,
   CreateOrderDto,
   OrderFilters,
@@ -44,8 +49,6 @@ export type {
   Review,
   CreateReviewDto,
   ProductFilterOptions,
-  PaymentStatus,
-  PaymentMethod,
 } from './product.types';
 
 export interface PaginatedResponse<T> {
