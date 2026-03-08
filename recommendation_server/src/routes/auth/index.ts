@@ -10,7 +10,7 @@ import { asyncHandle } from '@/utils/handle-error';
 const router = Router();
 
 router.post('/register', 
-  // validateBody(RegisterSchema), 
+  validateBody(RegisterSchema),
   asyncHandle(authController.register)
 );
 
@@ -34,7 +34,8 @@ router.get('/profile',
 );
 
 router.get('/users',
-  // authMiddleware(),
+  authMiddleware(),
+  requireAdmin(),
   asyncHandle(authController.getAllUsers)
 );
 
@@ -45,7 +46,12 @@ router.put('/profile',
 );
 
 router.delete('/delete-account/:id',
-  // authMiddleware(),
+  authMiddleware(),
+  asyncHandle(authController.deleteAccount)
+);
+
+router.delete('/delete-account',
+  authMiddleware(),
   asyncHandle(authController.deleteAccount)
 );
 

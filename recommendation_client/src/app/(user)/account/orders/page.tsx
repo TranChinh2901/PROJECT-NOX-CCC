@@ -129,7 +129,7 @@ const OrdersPage = () => {
               </p>
               <Button
                 variant="primary"
-                onClick={() => router.push('/products')}
+                onClick={() => router.push('/')}
               >
                 Start Shopping
               </Button>

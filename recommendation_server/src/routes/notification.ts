@@ -8,6 +8,7 @@ import PreferenceController from '../modules/notification/presentation/Preferenc
 import AdminNotificationController from '../modules/notification/presentation/AdminNotificationController';
 import { requireAuth, requireAdmin } from '../middlewares/auth.middleware';
 import { validateBody, validateQuery, validateParams } from '../middlewares/validate.middleware';
+import { asyncHandle } from '../utils/handle-error';
 import {
   getNotificationsQuerySchema,
   markManyAsReadSchema,
@@ -37,7 +38,7 @@ router.get(
   '/',
   requireAuth(),
   validateQuery(getNotificationsQuerySchema),
-  NotificationController.getNotifications.bind(NotificationController),
+  asyncHandle(NotificationController.getNotifications.bind(NotificationController)),
 );
 
 /**
@@ -47,72 +48,7 @@ router.get(
 router.get(
   '/unread-count',
   requireAuth(),
-  NotificationController.getUnreadCount.bind(NotificationController),
-);
-
-/**
- * GET /api/v1/notifications/:id
- * Get a specific notification
- */
-router.get(
-  '/:id',
-  requireAuth(),
-  validateParams(idParamSchema),
-  NotificationController.getNotification.bind(NotificationController),
-);
-
-/**
- * POST /api/v1/notifications/:id/read
- * Mark a notification as read
- */
-router.post(
-  '/:id/read',
-  requireAuth(),
-  validateParams(idParamSchema),
-  NotificationController.markAsRead.bind(NotificationController),
-);
-
-/**
- * POST /api/v1/notifications/read
- * Mark multiple notifications as read
- */
-router.post(
-  '/read',
-  requireAuth(),
-  validateBody(markManyAsReadSchema),
-  NotificationController.markManyAsRead.bind(NotificationController),
-);
-
-/**
- * POST /api/v1/notifications/read-all
- * Mark all notifications as read
- */
-router.post(
-  '/read-all',
-  requireAuth(),
-  NotificationController.markAllAsRead.bind(NotificationController),
-);
-
-/**
- * POST /api/v1/notifications/:id/archive
- * Archive a notification
- */
-router.post(
-  '/:id/archive',
-  requireAuth(),
-  validateParams(idParamSchema),
-  NotificationController.archiveNotification.bind(NotificationController),
-);
-
-/**
- * DELETE /api/v1/notifications/:id
- * Delete a notification
- */
-router.delete(
-  '/:id',
-  requireAuth(),
-  validateParams(idParamSchema),
-  NotificationController.deleteNotification.bind(NotificationController),
+  asyncHandle(NotificationController.getUnreadCount.bind(NotificationController)),
 );
 
 // ========================================
@@ -126,7 +62,7 @@ router.delete(
 router.get(
   '/preferences',
   requireAuth(),
-  PreferenceController.getPreferences.bind(PreferenceController),
+  asyncHandle(PreferenceController.getPreferences.bind(PreferenceController)),
 );
 
 /**
@@ -137,7 +73,7 @@ router.put(
   '/preferences',
   requireAuth(),
   validateBody(updatePreferencesSchema),
-  PreferenceController.updatePreferences.bind(PreferenceController),
+  asyncHandle(PreferenceController.updatePreferences.bind(PreferenceController)),
 );
 
 /**
@@ -148,7 +84,7 @@ router.put(
   '/preferences/channels',
   requireAuth(),
   validateBody(channelPreferencesSchema),
-  PreferenceController.updateChannelPreferences.bind(PreferenceController),
+  asyncHandle(PreferenceController.updateChannelPreferences.bind(PreferenceController)),
 );
 
 /**
@@ -159,7 +95,7 @@ router.put(
   '/preferences/categories',
   requireAuth(),
   validateBody(categoryPreferencesSchema),
-  PreferenceController.updateCategoryPreferences.bind(PreferenceController),
+  asyncHandle(PreferenceController.updateCategoryPreferences.bind(PreferenceController)),
 );
 
 /**
@@ -170,7 +106,7 @@ router.put(
   '/preferences/quiet-hours',
   requireAuth(),
   validateBody(quietHoursSchema),
-  PreferenceController.updateQuietHours.bind(PreferenceController),
+  asyncHandle(PreferenceController.updateQuietHours.bind(PreferenceController)),
 );
 
 /**
@@ -181,7 +117,7 @@ router.put(
   '/preferences/email-digest',
   requireAuth(),
   validateBody(emailDigestSchema),
-  PreferenceController.updateEmailDigest.bind(PreferenceController),
+  asyncHandle(PreferenceController.updateEmailDigest.bind(PreferenceController)),
 );
 
 /**
@@ -191,7 +127,72 @@ router.put(
 router.post(
   '/preferences/reset',
   requireAuth(),
-  PreferenceController.resetToDefaults.bind(PreferenceController),
+  asyncHandle(PreferenceController.resetToDefaults.bind(PreferenceController)),
+);
+
+/**
+ * POST /api/v1/notifications/read
+ * Mark multiple notifications as read
+ */
+router.post(
+  '/read',
+  requireAuth(),
+  validateBody(markManyAsReadSchema),
+  asyncHandle(NotificationController.markManyAsRead.bind(NotificationController)),
+);
+
+/**
+ * POST /api/v1/notifications/read-all
+ * Mark all notifications as read
+ */
+router.post(
+  '/read-all',
+  requireAuth(),
+  asyncHandle(NotificationController.markAllAsRead.bind(NotificationController)),
+);
+
+/**
+ * GET /api/v1/notifications/:id
+ * Get a specific notification
+ */
+router.get(
+  '/:id',
+  requireAuth(),
+  validateParams(idParamSchema),
+  asyncHandle(NotificationController.getNotification.bind(NotificationController)),
+);
+
+/**
+ * POST /api/v1/notifications/:id/read
+ * Mark a notification as read
+ */
+router.post(
+  '/:id/read',
+  requireAuth(),
+  validateParams(idParamSchema),
+  asyncHandle(NotificationController.markAsRead.bind(NotificationController)),
+);
+
+/**
+ * POST /api/v1/notifications/:id/archive
+ * Archive a notification
+ */
+router.post(
+  '/:id/archive',
+  requireAuth(),
+  validateParams(idParamSchema),
+  asyncHandle(NotificationController.archiveNotification.bind(NotificationController)),
+);
+
+/**
+ * DELETE /api/v1/notifications/:id
+ * Delete a notification
+ */
+router.delete(
+  '/:id',
+  requireAuth(),
+  validateParams(idParamSchema),
+  asyncHandle(NotificationController.deleteNotification.bind(NotificationController)),
 );
 
 export default router;

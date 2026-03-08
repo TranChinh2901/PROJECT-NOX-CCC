@@ -26,5 +26,5 @@ export type {
   NotificationPriority,
   NotificationStatus,
   NotificationFilters,
-  NotificationPreferences,
+  NotificationPreferences as NotificationPreferencesData,
 } from '@/types/notification.types';

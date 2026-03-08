@@ -1,9 +1,15 @@
 
 import "reflect-metadata";
 import { DataSource } from "typeorm";
+import path from "path";
 
 import { loadedEnv } from "./load-env";
 import { entities } from "@/config/load-entities";
+
+const migrationPaths = [
+  path.join(__dirname, "..", "database", "migrations", "*{.ts,.js}"),
+  path.join(__dirname, "..", "migrations", "*{.ts,.js}"),
+];
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -13,7 +19,7 @@ export const AppDataSource = new DataSource({
   password: loadedEnv.db.password,
   database: loadedEnv.db.database,
   synchronize: false,
-  migrations: ["src/database/migrations/*{.ts,.js}"],
+  migrations: migrationPaths,
   logging: false,
   entities: entities,
 });

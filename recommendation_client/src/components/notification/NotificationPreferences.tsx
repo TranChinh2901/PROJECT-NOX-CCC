@@ -12,13 +12,10 @@ import {
   Moon,
   Clock,
   Save,
-  Check,
-  Trash2,
   AlertCircle,
 } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/notifications';
-import { NotificationType, NotificationPriority } from '@/types/notification.types';
-import type { NotificationPreferences as PreferencesType } from '@/types/notification.types';
+import { NotificationType } from '@/types/notification.types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/common/Button';
 
@@ -99,13 +96,11 @@ const notificationTypes: Record<NotificationType, { label: string; description: 
   },
 };
 
-export interface UserNotificationPreferencesProps {
-  preferences: PreferencesType | null;
+export interface NotificationPreferencesProps {
   isLoading?: boolean;
 }
 
-export function UserNotificationPreferences({
-  preferences: userPreferences,
+export function NotificationPreferences({
   isLoading = false,
 }: NotificationPreferencesProps) {
   const {
@@ -122,7 +117,7 @@ export function UserNotificationPreferences({
 
   const [isSaving, setIsSaving] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || contextLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CA8A04]" />

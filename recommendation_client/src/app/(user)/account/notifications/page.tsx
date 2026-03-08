@@ -6,18 +6,15 @@
  * User-facing notification center page accessible from account section.
  */
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Bell, Filter, Check, Trash2, Archive, Settings } from 'lucide-react';
-import { useNotifications } from '@/contexts/NotificationContext';
+import { useState } from 'react';
+import { Bell, Filter, Check, Archive, Settings } from 'lucide-react';
+import { NotificationProvider, useNotifications } from '@/contexts/NotificationContext';
 import { NotificationItem } from '@/components/notification/NotificationItem';
 import { NotificationEmptyState } from '@/components/notification/NotificationEmptyState';
-import { NotificationFilterChip } from '@/components/notification/NotificationFilterChip';
 import { Button } from '@/components/common/Button';
-import { NotificationType, NotificationPriority, NotificationStatus } from '@/types/notification.types';
+import { NotificationFilters, NotificationPriority, NotificationStatus } from '@/types/notification.types';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
 
 // Status options for filtering
 const statusOptions: { value: NotificationStatus | 'all'; label: string; icon: React.ReactNode }[] = [
@@ -36,8 +33,7 @@ const priorityOptions: { value: NotificationPriority | 'all'; label: string }[] 
   { value: 'low', label: 'Low' },
 ];
 
-export default function NotificationsPage() {
-  const router = useRouter();
+function NotificationsPageContent() {
   const {
     notifications,
     unreadCount,
@@ -56,7 +52,7 @@ export default function NotificationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filters, setFilters] = useState<NotificationFilters>({});
 
   // Handle status filter change
   const handleStatusChange = (status: NotificationStatus | 'all') => {
@@ -168,7 +164,7 @@ export default function NotificationsPage() {
 
             {/* Settings */}
             <Link
-              href="/account/settings/notifications"
+              href="/account/notifications/settings"
               className="p-2 rounded-lg text-[#A1A1AA] hover:text-[#FAFAF9] hover:bg-white/10 transition-colors"
               aria-label="Notification settings"
             >
@@ -328,5 +324,16 @@ export default function NotificationsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <NotificationProvider
+      wsEndpoint={process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000'}
+      enableToasts={true}
+    >
+      <NotificationsPageContent />
+    </NotificationProvider>
   );
 }

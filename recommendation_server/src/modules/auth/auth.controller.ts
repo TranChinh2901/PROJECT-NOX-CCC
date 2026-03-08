@@ -196,9 +196,6 @@ class AuthController {
       );
     }
 
-    console.log('Update user request body:', req.body);
-    console.log('is_verified in body:', req.body.is_verified);
-
     const result = await authService.updateUserById(userId, req.body);
     
     return new AppResponse({

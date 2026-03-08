@@ -65,7 +65,7 @@ export class AuthService {
   }
 
   async register(signupDto: SignupDto) {
-    const { fullname, email, password, phone_number, address, gender, date_of_birth, role } = signupDto;
+    const { fullname, email, password, phone_number, address, gender, date_of_birth } = signupDto;
 
     const existingUser = await this.userRepository.findOne({
       where: [
@@ -96,7 +96,7 @@ export class AuthService {
       password: hashedPassword,
       gender: gender as GenderType,
       date_of_birth: birthDate,
-      role: role || RoleType.USER,
+      role: RoleType.USER,
       is_verified: false,
      
     });

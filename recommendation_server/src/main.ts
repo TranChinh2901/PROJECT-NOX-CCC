@@ -22,7 +22,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(requestLogger);
-initDatabase();
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -32,6 +31,16 @@ app.use("/", router);
 
 app.use(exceptionHandler);
 
-app.listen(PORT, () => {
-  logger.success(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await initDatabase();
+    app.listen(PORT, () => {
+      logger.success(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error("Server startup aborted because the database is unavailable");
+    process.exit(1);
+  }
+};
+
+void startServer();

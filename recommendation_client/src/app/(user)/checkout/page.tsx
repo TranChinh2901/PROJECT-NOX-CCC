@@ -40,7 +40,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.COD);
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login?redirect=/checkout');
+      router.push('/account/login?redirect=/checkout');
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
             <div className="flex gap-4 justify-center">
               <Button
                 variant="outline"
-                onClick={() => router.push('/orders')}
+                onClick={() => router.push('/account/orders')}
               >
                 View Orders
               </Button>
