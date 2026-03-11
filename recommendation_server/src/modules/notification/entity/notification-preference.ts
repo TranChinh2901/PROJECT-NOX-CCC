@@ -15,6 +15,10 @@ import {
   Unique,
 } from 'typeorm';
 import { User } from '@/modules/users/entity/user.entity';
+import {
+  notificationEnumColumnType,
+  notificationTimeColumnType,
+} from './column-types';
 
 @Entity('notification_preferences')
 @Unique(['user_id'])
@@ -68,10 +72,10 @@ export class NotificationPreference {
   @Column({ type: 'boolean', default: false })
   quiet_hours_enabled!: boolean;
 
-  @Column({ type: 'time', nullable: true })
+  @Column({ type: notificationTimeColumnType, nullable: true })
   quiet_hours_start?: string;
 
-  @Column({ type: 'time', nullable: true })
+  @Column({ type: notificationTimeColumnType, nullable: true })
   quiet_hours_end?: string;
 
   // Email digest settings
@@ -79,7 +83,7 @@ export class NotificationPreference {
   email_digest_enabled!: boolean;
 
   @Column({
-    type: 'enum',
+    type: notificationEnumColumnType,
     enum: ['immediate', 'daily', 'weekly'],
     default: 'immediate',
   })

@@ -115,7 +115,7 @@ export function StatCard({
                   {change >= 0 ? '+' : ''}{change.toFixed(1)}%
                 </span>
               </div>
-              <span className="text-xs text-[rgb(var(--admin-text-muted))] font-medium">vs last period</span>
+              <span className="text-xs text-[rgb(var(--admin-text-muted))] font-medium">so với kỳ trước</span>
             </div>
           )}
         </div>

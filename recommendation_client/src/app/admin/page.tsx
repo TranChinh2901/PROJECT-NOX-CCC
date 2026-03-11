@@ -168,7 +168,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-600">Loading dashboard...</div>
+        <div className="text-slate-600">Đang tải bảng điều khiển...</div>
       </div>
     );
   }
@@ -212,6 +212,27 @@ export default function AdminDashboard() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const getStatusLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      pending: 'Chờ xử lý',
+      processing: 'Đang xử lý',
+      shipped: 'Đã giao vận',
+      delivered: 'Đã giao',
+      cancelled: 'Đã hủy',
+      refunded: 'Đã hoàn tiền',
+    };
+    return labels[status] || status;
+  };
+
+  const getPaymentStatusLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      paid: 'Đã thanh toán',
+      unpaid: 'Chưa thanh toán',
+      refunded: 'Đã hoàn tiền',
+    };
+    return labels[status] || status;
+  };
+
   const getPaymentStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       paid: 'bg-green-100 text-green-800',
@@ -240,15 +261,15 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen text-[rgb(var(--admin-text))]">
       <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold mb-2 tracking-tight text-[rgb(var(--admin-text))]">Dashboard</h1>
-        <p className="text-[rgb(var(--admin-text-muted))] text-base">Welcome back! Here&apos;s what&apos;s happening today.</p>
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2 tracking-tight text-[rgb(var(--admin-text))]">Bảng điều khiển</h1>
+        <p className="text-[rgb(var(--admin-text-muted))] text-base">Chào mừng trở lại! Đây là những gì đang diễn ra hôm nay.</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mb-10">
         <StatCard
-          title="Total Revenue"
-          subtitle="Last 30 days"
+          title="Tổng doanh thu"
+          subtitle="30 ngày qua"
           value={formatCurrency(stats.totalRevenue)}
           change={stats.revenueChange}
           sparklineData={analytics?.revenueByDay?.map(d => d.revenue) || []}
@@ -258,8 +279,8 @@ export default function AdminDashboard() {
         />
 
         <StatCard
-          title="Total Orders"
-          subtitle="Last 30 days"
+          title="Tổng đơn hàng"
+          subtitle="30 ngày qua"
           value={stats.totalOrders}
           change={stats.ordersChange}
           sparklineData={analytics?.revenueByDay?.map(d => d.orders) || []}
@@ -269,8 +290,8 @@ export default function AdminDashboard() {
         />
 
         <StatCard
-          title="Total Customers"
-          subtitle="Active users"
+          title="Tổng khách hàng"
+          subtitle="Người dùng hoạt động"
           value={stats.totalUsers}
           change={stats.usersChange}
           sparklineData={analytics?.userGrowth?.map(d => d.users) || []}
@@ -280,8 +301,8 @@ export default function AdminDashboard() {
         />
 
         <StatCard
-          title="Total Products"
-          subtitle="In catalog"
+          title="Tổng sản phẩm"
+          subtitle="Trong danh mục"
           value={stats.totalProducts}
           change={stats.productsChange}
           icon={<Package className="w-6 h-6" />}
@@ -296,7 +317,7 @@ export default function AdminDashboard() {
           {/* Revenue and Orders Trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 mb-10">
             <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
-              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Revenue Trend</h2>
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Xu hướng doanh thu</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={analytics.revenueByDay}>
                   <defs>
@@ -315,7 +336,7 @@ export default function AdminDashboard() {
             </GlassCard>
 
             <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
-              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Orders Overview</h2>
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Tổng quan đơn hàng</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.revenueByDay}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
@@ -331,7 +352,7 @@ export default function AdminDashboard() {
           {/* Top Products and Order Status */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 mb-10">
             <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
-              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Top Products</h2>
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Sản phẩm bán chạy</h2>
               <div className="space-y-4">
                 {analytics.topProducts.slice(0, 5).map((product, index) => (
                   <div key={product.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[rgb(var(--admin-background))] transition-colors duration-200">
@@ -341,7 +362,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <p className="font-semibold text-[rgb(var(--admin-text))]">{product.name}</p>
-                        <p className="text-sm text-[rgb(var(--admin-text-muted))]">{product.sales} sales</p>
+                        <p className="text-sm text-[rgb(var(--admin-text-muted))]">{product.sales} lượt bán</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -353,7 +374,7 @@ export default function AdminDashboard() {
             </GlassCard>
 
             <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
-              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Order Status Distribution</h2>
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Phân bổ trạng thái đơn hàng</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -381,7 +402,7 @@ export default function AdminDashboard() {
           {/* User Growth */}
           <div className="mb-10">
             <GlassCard className="p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300">
-              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">User Growth</h2>
+              <h2 className="text-xl font-bold mb-6 text-[rgb(var(--admin-text))] tracking-tight">Tăng trưởng người dùng</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={analytics.userGrowth}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
@@ -389,8 +410,8 @@ export default function AdminDashboard() {
                   <YAxis stroke="rgb(100, 116, 139)" fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                  <Line type="monotone" dataKey="users" stroke="rgb(var(--admin-chart-primary))" strokeWidth={3} name="Total Users" dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="active_users" stroke="rgb(var(--admin-chart-quaternary))" strokeWidth={3} name="Active Users" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="users" stroke="rgb(var(--admin-chart-primary))" strokeWidth={3} name="Tổng người dùng" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="active_users" stroke="rgb(var(--admin-chart-quaternary))" strokeWidth={3} name="Người dùng hoạt động" dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </GlassCard>
@@ -403,14 +424,14 @@ export default function AdminDashboard() {
         <div className="p-6 border-b border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-background))]/50">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Recent Orders</h2>
-              <p className="text-sm text-[rgb(var(--admin-text-muted))] mt-1">Latest orders from customers</p>
+              <h2 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Đơn hàng gần đây</h2>
+              <p className="text-sm text-[rgb(var(--admin-text-muted))] mt-1">Đơn hàng mới nhất từ khách hàng</p>
             </div>
             <Link
               href="/admin/orders"
               className="px-5 py-2.5 bg-[rgb(var(--admin-primary))] text-white rounded-lg hover:bg-[rgb(var(--admin-primary-hover))] transition-colors duration-200 font-semibold text-sm shadow-md hover:shadow-lg"
             >
-              View All
+              Xem tất cả
             </Link>
           </div>
         </div>
@@ -419,13 +440,13 @@ export default function AdminDashboard() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-background))]/30">
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Order</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Payment</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Đơn hàng</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Khách hàng</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Ngày</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Số tiền</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Thanh toán</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-[rgb(var(--admin-text-muted))] uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -434,20 +455,20 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4 font-mono text-sm text-[rgb(var(--admin-text))]">{order.order_number}</td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-semibold text-[rgb(var(--admin-text))]">{order.customer.fullname}</p>
-                      <p className="text-sm text-[rgb(var(--admin-text-muted))]">{order.customer.email}</p>
+                      <p className="font-semibold text-[rgb(var(--admin-text))]">{order.customer?.fullname ?? 'Unknown customer'}</p>
+                      <p className="text-sm text-[rgb(var(--admin-text-muted))]">{order.customer?.email ?? 'No email available'}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-[rgb(var(--admin-text-muted))]">{formatDate(order.created_at)}</td>
                   <td className="px-6 py-4 font-bold text-[rgb(var(--admin-text))]">{formatCurrency(order.total_amount)}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                      {order.status}
+                      {getStatusLabel(order.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${getPaymentStatusColor(order.payment_status)}`}>
-                      {order.payment_status}
+                      {getPaymentStatusLabel(order.payment_status)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -455,7 +476,7 @@ export default function AdminDashboard() {
                       href={`/admin/orders/${order.id}`}
                       className="text-[rgb(var(--admin-primary))] hover:text-[rgb(var(--admin-primary-hover))] font-semibold text-sm hover:underline transition-all duration-200"
                     >
-                      View
+                      Xem
                     </Link>
                   </td>
                 </tr>

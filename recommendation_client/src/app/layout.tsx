@@ -1,24 +1,11 @@
 import type { Metadata } from "next";
-import { Cormorant, Montserrat } from "next/font/google";
+import type { CSSProperties } from "react";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
-
-const cormorant = Cormorant({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const montserrat = Montserrat({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "TechNova - Cửa Hàng Công Nghệ Cao Cấp",
@@ -33,14 +20,25 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body
-        className={`${cormorant.variable} ${montserrat.variable} antialiased bg-background text-text font-body`}
+        className="antialiased bg-background text-text font-body"
+        style={
+          {
+            ['--font-heading' as string]: '"Iowan Old Style", "Book Antiqua", Georgia, serif',
+            ['--font-body' as string]: '"Avenir Next", "Segoe UI", Helvetica, sans-serif',
+          } as CSSProperties
+        }
       >
         <AuthProvider>
-          <WishlistProvider>
-            <CartProvider>
-              {children}
-            </CartProvider>
-          </WishlistProvider>
+          <NotificationProvider
+            wsEndpoint={process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000'}
+            enableToasts={true}
+          >
+            <WishlistProvider>
+              <CartProvider>
+                {children}
+              </CartProvider>
+            </WishlistProvider>
+          </NotificationProvider>
         </AuthProvider>
         <Toaster 
           position="top-right"

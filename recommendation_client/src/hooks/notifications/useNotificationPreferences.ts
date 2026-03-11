@@ -77,9 +77,24 @@ export function useNotificationPreferences() {
 
   const toggleMasterSwitch = useCallback(
     async (enabled: boolean) => {
-      await updatePreferences({ enabled });
+      await updatePreferences({
+        enabled,
+        channels: enabled
+          ? {
+              inApp: true,
+              email: true,
+              push: preferences?.channels.push ?? false,
+              sms: preferences?.channels.sms ?? false,
+            }
+          : {
+              inApp: false,
+              email: false,
+              push: false,
+              sms: false,
+            },
+      });
     },
-    [updatePreferences]
+    [preferences, updatePreferences]
   );
 
   return {

@@ -1,13 +1,22 @@
 import apiClient from './apiClient';
 import { 
   Product, 
-  ProductFilterOptions,
-  PaginatedResponse 
+  ProductFilterOptions
 } from '@/types';
 
+export interface ProductListResponse {
+  data: Product[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+}
+
 export const productApi = {
-  async getAllProducts(options?: ProductFilterOptions): Promise<PaginatedResponse<Product>> {
-    return await apiClient.get<PaginatedResponse<Product>>('/products', {
+  async getAllProducts(options?: ProductFilterOptions): Promise<ProductListResponse> {
+    return await apiClient.get<ProductListResponse>('/products', {
       params: options
     });
   },

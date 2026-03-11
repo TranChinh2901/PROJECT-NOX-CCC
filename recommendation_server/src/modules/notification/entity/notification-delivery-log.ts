@@ -15,6 +15,7 @@ import {
 } from 'typeorm';
 import { Notification } from './notification';
 import { DeliveryChannel, DeliveryStatus } from '../enum/notification.enum';
+import { notificationJsonColumnType } from './column-types';
 
 @Entity('notification_delivery_logs')
 @Index(['notification_id', 'channel'])
@@ -61,7 +62,7 @@ export class NotificationDeliveryLog {
   @Column({ type: 'text', nullable: true })
   error_message?: string;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: notificationJsonColumnType, nullable: true })
   metadata?: Record<string, any>;
 
   @ManyToOne(() => Notification, { onDelete: 'CASCADE' })

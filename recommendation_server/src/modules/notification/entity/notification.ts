@@ -18,6 +18,10 @@ import {
   NotificationType,
   NotificationPriority,
 } from '../enum/notification.enum';
+import {
+  notificationEnumColumnType,
+  notificationJsonColumnType,
+} from './column-types';
 
 @Entity('notifications')
 @Index(['user_id', 'is_read', 'is_archived', 'created_at'])
@@ -35,7 +39,7 @@ export class Notification {
   user_id!: number;
 
   @Column({
-    type: 'enum',
+    type: notificationEnumColumnType,
     enum: NotificationType,
     default: NotificationType.GENERAL,
   })
@@ -48,13 +52,13 @@ export class Notification {
   message!: string;
 
   @Column({
-    type: 'enum',
+    type: notificationEnumColumnType,
     enum: NotificationPriority,
     default: NotificationPriority.NORMAL,
   })
   priority!: NotificationPriority;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: notificationJsonColumnType, nullable: true })
   data?: Record<string, any>;
 
   @Column({ length: 500, nullable: true })

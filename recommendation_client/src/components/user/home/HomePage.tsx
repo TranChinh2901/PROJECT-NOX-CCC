@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
@@ -119,10 +119,23 @@ function FlyToCartAnimation({
   );
 }
 
-export default function HomePage() {
+function HomeSearchParamsSync({
+  onQueryChange,
+}: {
+  onQueryChange: (query: string) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    onQueryChange(searchParams.get('q') || '');
+  }, [onQueryChange, searchParams]);
+
+  return null;
+}
+
+function HomePageContent() {
   const INITIAL_VISIBLE_PRODUCTS = 10;
   const { addToCart: addToCartContext, itemCount } = useCart();
-  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
@@ -175,11 +188,6 @@ export default function HomePage() {
 
     fetchProducts();
   }, [selectedCategory]);
-
-  useEffect(() => {
-    const queryParam = searchParams.get('q') || '';
-    setSearchQuery(queryParam);
-  }, [searchParams]);
 
   useEffect(() => {
     const trimmedQuery = searchQuery.trim();
@@ -347,6 +355,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 mt-7">
+      <Suspense fallback={null}>
+        <HomeSearchParamsSync onQueryChange={setSearchQuery} />
+      </Suspense>
       <Header />
 
       {flyingItems.map((item) => (
@@ -535,6 +546,14 @@ export default function HomePage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageContent />
+    </Suspense>
   );
 }
 

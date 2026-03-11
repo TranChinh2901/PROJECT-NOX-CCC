@@ -1,0 +1,532 @@
+erDiagram
+  %% Source of truth: recommendation_server/src/database/migrations/1771000000000-V2BaselineSchema.ts
+  %% Plus recommendation_server/src/database/migrations/1771000100000-AddOrderItemWarehouse.ts
+  %% Logical polymorphic refs without foreign keys:
+  %% - NOTIFICATIONS(reference_type, reference_id)
+  %% - NOTIFICATION_SUBSCRIPTIONS(topic_type, topic_id)
+  %% - PROMOTIONS(applicable_ids)
+
+  USERS {
+    INT id PK
+    VARCHAR fullname
+    VARCHAR email
+    VARCHAR phone_number
+    VARCHAR address
+    VARCHAR avatar
+    VARCHAR password
+    ENUM gender
+    DATE date_of_birth
+    BOOLEAN is_verified
+    ENUM role
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  USER_SESSIONS {
+    INT id PK
+    INT user_id FK
+    VARCHAR session_token
+    VARCHAR ip_address
+    VARCHAR user_agent
+    ENUM device_type
+    DATETIME started_at
+    DATETIME ended_at
+    BOOLEAN is_active
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  USER_ADDRESSES {
+    INT id PK
+    INT user_id FK
+    VARCHAR label
+    VARCHAR address_line1
+    VARCHAR address_line2
+    VARCHAR city
+    VARCHAR state
+    VARCHAR postal_code
+    VARCHAR country
+    BOOLEAN is_default
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  CATEGORIES {
+    INT id PK
+    VARCHAR name
+    VARCHAR slug
+    TEXT description
+    INT parent_id FK
+    VARCHAR image_url
+    INT sort_order
+    BOOLEAN is_active
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  BRANDS {
+    INT id PK
+    VARCHAR name
+    VARCHAR slug
+    TEXT description
+    VARCHAR logo_url
+    VARCHAR website_url
+    BOOLEAN is_active
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  PRODUCTS {
+    INT id PK
+    INT category_id FK
+    INT brand_id FK
+    VARCHAR name
+    VARCHAR slug
+    VARCHAR sku
+    TEXT description
+    VARCHAR short_description
+    DECIMAL base_price
+    DECIMAL compare_at_price
+    DECIMAL cost_price
+    DECIMAL weight_kg
+    BOOLEAN is_active
+    BOOLEAN is_featured
+    VARCHAR meta_title
+    VARCHAR meta_description
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  PRODUCT_VARIANTS {
+    INT id PK
+    INT product_id FK
+    VARCHAR sku
+    VARCHAR size
+    VARCHAR color
+    VARCHAR color_code
+    VARCHAR material
+    DECIMAL price_adjustment
+    DECIMAL final_price
+    DECIMAL weight_kg
+    VARCHAR barcode
+    BOOLEAN is_active
+    INT sort_order
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  PRODUCT_IMAGES {
+    INT id PK
+    INT product_id FK
+    INT variant_id FK
+    VARCHAR image_url
+    VARCHAR thumbnail_url
+    VARCHAR alt_text
+    INT sort_order
+    BOOLEAN is_primary
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  WAREHOUSES {
+    INT id PK
+    VARCHAR name
+    VARCHAR code
+    VARCHAR address
+    VARCHAR city
+    VARCHAR country
+    VARCHAR contact_name
+    VARCHAR contact_phone
+    VARCHAR contact_email
+    BOOLEAN is_active
+    BOOLEAN is_default
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  INVENTORY {
+    INT id PK
+    INT variant_id FK
+    INT warehouse_id FK
+    INT quantity_available
+    INT quantity_reserved
+    INT quantity_total
+    INT reorder_level
+    INT reorder_quantity
+    DATETIME last_counted_at
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  INVENTORY_LOGS {
+    INT id PK
+    INT inventory_id FK
+    ENUM action_type
+    INT quantity_change
+    INT quantity_before
+    INT quantity_after
+    INT reference_id
+    VARCHAR reference_type
+    TEXT notes
+    INT performed_by_user_id FK
+    DATETIME created_at
+  }
+
+  CARTS {
+    INT id PK
+    INT user_id FK
+    VARCHAR guest_token
+    ENUM status
+    DECIMAL total_amount
+    INT item_count
+    VARCHAR currency
+    DATETIME expires_at
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  CART_ITEMS {
+    INT id PK
+    INT cart_id FK
+    INT variant_id FK
+    INT quantity
+    DECIMAL unit_price
+    DECIMAL total_price
+    DATETIME added_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  ORDERS {
+    INT id PK
+    VARCHAR order_number
+    INT user_id FK
+    INT cart_id FK
+    ENUM status
+    ENUM payment_status
+    ENUM payment_method
+    JSON shipping_address
+    JSON billing_address
+    DECIMAL subtotal
+    DECIMAL discount_amount
+    DECIMAL shipping_amount
+    DECIMAL tax_amount
+    DECIMAL total_amount
+    VARCHAR currency
+    TEXT notes
+    TEXT internal_notes
+    VARCHAR tracking_number
+    DATETIME shipped_at
+    DATETIME delivered_at
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  ORDER_ITEMS {
+    INT id PK
+    INT order_id FK
+    INT warehouse_id FK
+    INT variant_id FK
+    JSON product_snapshot
+    INT quantity
+    DECIMAL unit_price
+    DECIMAL total_price
+    DECIMAL discount_amount
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  ORDER_STATUS_HISTORIES {
+    INT id PK
+    INT order_id FK
+    ENUM status
+    ENUM previous_status
+    VARCHAR changed_by
+    TEXT notes
+    DATETIME created_at
+  }
+
+  REVIEWS {
+    INT id PK
+    INT product_id FK
+    INT user_id FK
+    INT order_item_id FK
+    INT rating
+    VARCHAR title
+    TEXT content
+    BOOLEAN is_verified_purchase
+    BOOLEAN is_approved
+    INT helpful_count
+    INT not_helpful_count
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  REVIEW_HELPFUL {
+    INT id PK
+    INT review_id FK
+    INT user_id FK
+    BOOLEAN is_helpful
+    DATETIME created_at
+  }
+
+  WISHLISTS {
+    INT id PK
+    INT user_id FK
+    VARCHAR name
+    BOOLEAN is_default
+    BOOLEAN is_public
+    VARCHAR share_token
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  WISHLIST_ITEMS {
+    INT id PK
+    INT wishlist_id FK
+    INT variant_id FK
+    VARCHAR notes
+    ENUM priority
+    DATETIME added_at
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  PROMOTIONS {
+    INT id PK
+    VARCHAR code
+    VARCHAR name
+    TEXT description
+    ENUM type
+    DECIMAL value
+    DECIMAL min_order_amount
+    DECIMAL max_discount_amount
+    INT usage_limit
+    INT usage_limit_per_user
+    DATETIME starts_at
+    DATETIME ends_at
+    BOOLEAN is_active
+    ENUM applies_to
+    JSON applicable_ids
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME deleted_at
+  }
+
+  PROMOTION_USAGE {
+    INT id PK
+    INT promotion_id FK
+    INT order_id FK
+    INT user_id FK
+    DECIMAL discount_amount
+    DATETIME used_at
+  }
+
+  USER_BEHAVIOR_LOGS {
+    INT id PK
+    INT session_id FK
+    INT user_id FK
+    ENUM action_type
+    INT product_id FK
+    INT variant_id FK
+    VARCHAR search_query
+    JSON metadata
+    ENUM device_type
+    VARCHAR referrer_url
+    VARCHAR page_url
+    VARCHAR ip_address
+    INT session_duration_seconds
+    DATETIME created_at
+  }
+
+  PRODUCT_FEATURES {
+    INT id PK
+    INT product_id FK
+    ENUM feature_type
+    VARCHAR feature_value
+    DECIMAL confidence_score
+    ENUM source
+    INT weight
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  RECOMMENDATION_CACHE {
+    INT id PK
+    VARCHAR cache_key
+    INT user_id FK
+    INT product_id FK
+    ENUM recommendation_type
+    VARCHAR algorithm
+    JSON recommended_products
+    JSON context_data
+    DATETIME expires_at
+    DATETIME generated_at
+    INT cache_hit_count
+    BOOLEAN is_active
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  NOTIFICATIONS {
+    INT id PK
+    INT user_id FK
+    ENUM type
+    VARCHAR title
+    TEXT message
+    ENUM priority
+    JSON data
+    VARCHAR action_url
+    VARCHAR image_url
+    BOOLEAN is_read
+    DATETIME read_at
+    BOOLEAN is_archived
+    DATETIME archived_at
+    DATETIME expires_at
+    INT reference_id
+    VARCHAR reference_type
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  NOTIFICATION_PREFERENCES {
+    INT id PK
+    INT user_id FK
+    BOOLEAN in_app_enabled
+    BOOLEAN email_enabled
+    BOOLEAN push_enabled
+    BOOLEAN sms_enabled
+    BOOLEAN order_updates
+    BOOLEAN promotions
+    BOOLEAN recommendations
+    BOOLEAN reviews
+    BOOLEAN price_alerts
+    BOOLEAN newsletter
+    BOOLEAN system_updates
+    BOOLEAN quiet_hours_enabled
+    TIME quiet_hours_start
+    TIME quiet_hours_end
+    BOOLEAN email_digest_enabled
+    ENUM email_frequency
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  NOTIFICATION_TEMPLATES {
+    INT id PK
+    ENUM type
+    ENUM channel
+    VARCHAR name
+    VARCHAR title_template
+    TEXT message_template
+    TEXT email_subject_template
+    TEXT email_body_template
+    JSON default_data
+    BOOLEAN is_active
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  NOTIFICATION_DELIVERY_LOGS {
+    INT id PK
+    INT notification_id FK
+    ENUM channel
+    ENUM status
+    INT attempt_number
+    INT retry_count
+    DATETIME next_retry_at
+    DATETIME sent_at
+    DATETIME delivered_at
+    TEXT error_message
+    JSON metadata
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  NOTIFICATION_SUBSCRIPTIONS {
+    INT id PK
+    INT user_id FK
+    VARCHAR topic_type
+    INT topic_id
+    BOOLEAN is_active
+    DATETIME created_at
+  }
+
+  NOTIFICATION_BATCH_JOBS {
+    INT id PK
+    VARCHAR job_name
+    VARCHAR job_type
+    INT total_notifications
+    INT sent_count
+    INT failed_count
+    VARCHAR status
+    DATETIME started_at
+    DATETIME completed_at
+    TEXT error_message
+    JSON metadata
+    DATETIME created_at
+    DATETIME updated_at
+  }
+
+  USERS ||--o{ USER_SESSIONS : user_id
+  USERS ||--o{ USER_ADDRESSES : user_id
+  USERS ||--o{ INVENTORY_LOGS : performed_by_user_id
+  USERS ||--o{ CARTS : user_id
+  USERS ||--o{ ORDERS : user_id
+  USERS ||--o{ REVIEWS : user_id
+  USERS ||--o{ REVIEW_HELPFUL : user_id
+  USERS ||--o{ WISHLISTS : user_id
+  USERS ||--o{ PROMOTION_USAGE : user_id
+  USERS ||--o{ USER_BEHAVIOR_LOGS : user_id
+  USERS ||--o{ RECOMMENDATION_CACHE : user_id
+  USERS ||--o{ NOTIFICATIONS : user_id
+  USERS ||--|| NOTIFICATION_PREFERENCES : user_id
+  USERS ||--o{ NOTIFICATION_SUBSCRIPTIONS : user_id
+
+  USER_SESSIONS ||--o{ USER_BEHAVIOR_LOGS : session_id
+
+  CATEGORIES ||--o{ CATEGORIES : parent_id
+  CATEGORIES ||--o{ PRODUCTS : category_id
+  BRANDS ||--o{ PRODUCTS : brand_id
+
+  PRODUCTS ||--o{ PRODUCT_VARIANTS : product_id
+  PRODUCTS ||--o{ PRODUCT_IMAGES : product_id
+  PRODUCTS ||--o{ REVIEWS : product_id
+  PRODUCTS ||--o{ USER_BEHAVIOR_LOGS : product_id
+  PRODUCTS ||--o{ PRODUCT_FEATURES : product_id
+  PRODUCTS ||--o{ RECOMMENDATION_CACHE : product_id
+
+  PRODUCT_VARIANTS ||--o{ PRODUCT_IMAGES : variant_id
+  PRODUCT_VARIANTS ||--o{ INVENTORY : variant_id
+  PRODUCT_VARIANTS ||--o{ CART_ITEMS : variant_id
+  PRODUCT_VARIANTS ||--o{ ORDER_ITEMS : variant_id
+  PRODUCT_VARIANTS ||--o{ WISHLIST_ITEMS : variant_id
+  PRODUCT_VARIANTS ||--o{ USER_BEHAVIOR_LOGS : variant_id
+
+  WAREHOUSES ||--o{ INVENTORY : warehouse_id
+  WAREHOUSES ||--o{ ORDER_ITEMS : warehouse_id
+  INVENTORY ||--o{ INVENTORY_LOGS : inventory_id
+
+  CARTS ||--o{ CART_ITEMS : cart_id
+  CARTS ||--o{ ORDERS : cart_id
+
+  ORDERS ||--o{ ORDER_ITEMS : order_id
+  ORDERS ||--o{ ORDER_STATUS_HISTORIES : order_id
+  ORDERS ||--o{ PROMOTION_USAGE : order_id
+
+  ORDER_ITEMS ||--o{ REVIEWS : order_item_id
+  REVIEWS ||--o{ REVIEW_HELPFUL : review_id
+
+  WISHLISTS ||--o{ WISHLIST_ITEMS : wishlist_id
+  PROMOTIONS ||--o{ PROMOTION_USAGE : promotion_id
+
+  NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_LOGS : notification_id

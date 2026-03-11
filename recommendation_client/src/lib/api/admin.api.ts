@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { Brand, Category, User } from '@/types';
 
 // Types for admin API responses
 export interface DashboardStats {
@@ -48,7 +49,7 @@ export interface AnalyticsData {
 export interface AdminOrder {
   id: number;
   order_number: string;
-  customer: {
+  customer?: {
     id: number;
     fullname: string;
     email: string;
@@ -79,6 +80,34 @@ export interface OrderDetails extends AdminOrder {
   payment_method?: string;
 }
 
+interface RawAdminOrder {
+  id: number;
+  order_number: string;
+  user_id?: number;
+  user?: {
+    id: number;
+    fullname?: string;
+    email?: string;
+  } | null;
+  total_amount: number;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  updated_at: string;
+  items?: Array<unknown>;
+  items_count?: number;
+}
+
+interface RawAdminOrdersResponse {
+  data: RawAdminOrder[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface UpdateOrderStatusDto {
   status: string;
 }
@@ -88,6 +117,16 @@ export interface AdminProductStats {
   activeProducts: number;
   inactiveProducts: number;
   lowStockProducts: number;
+}
+
+export interface AdminUsersResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
 }
 
 export const adminApi = {
@@ -121,7 +160,31 @@ export const adminApi = {
     limit: number;
     totalPages: number;
   }> {
-    return await apiClient.get('/admin/orders', { params });
+    const response = await apiClient.get<RawAdminOrdersResponse>('/admin/orders', { params });
+
+    return {
+      data: response.data.map((order) => ({
+        id: order.id,
+        order_number: order.order_number,
+        customer: order.user
+          ? {
+              id: order.user.id,
+              fullname: order.user.fullname || 'Unknown customer',
+              email: order.user.email || 'No email available',
+            }
+          : undefined,
+        total_amount: Number(order.total_amount),
+        status: order.status,
+        payment_status: order.payment_status,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        items_count: order.items_count ?? order.items?.length ?? 0,
+      })),
+      total: response.pagination.total,
+      page: response.pagination.page,
+      limit: response.pagination.limit,
+      totalPages: response.pagination.totalPages,
+    };
   },
 
   async getOrderById(orderId: number): Promise<OrderDetails> {
@@ -151,17 +214,29 @@ export const adminApi = {
     return await apiClient.get('/admin/users/stats');
   },
 
+  async getAllUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }): Promise<AdminUsersResponse<User>> {
+    return await apiClient.get<AdminUsersResponse<User>>('/admin/users', { params });
+  },
+
   // Category management
-  async getAllCategories(): Promise<any[]> {
-    return await apiClient.get('/admin/categories');
+  async getAllCategories(): Promise<Category[]> {
+    const response = await apiClient.get<AdminUsersResponse<Category>>('/admin/categories');
+    return Array.isArray(response.data) ? response.data : [];
   },
 
-  async createCategory(data: { name: string; description?: string }): Promise<any> {
-    return await apiClient.post('/admin/categories', data);
+  async createCategory(data: { name: string; description?: string }): Promise<Category> {
+    return await apiClient.post<Category>('/admin/categories', data);
   },
 
-  async updateCategory(categoryId: number, data: { name?: string; description?: string }): Promise<any> {
-    return await apiClient.patch(`/admin/categories/${categoryId}`, data);
+  async updateCategory(categoryId: number, data: { name?: string; description?: string }): Promise<Category> {
+    return await apiClient.patch<Category>(`/admin/categories/${categoryId}`, data);
   },
 
   async deleteCategory(categoryId: number): Promise<void> {
@@ -169,16 +244,16 @@ export const adminApi = {
   },
 
   // Brand management
-  async getAllBrands(): Promise<any[]> {
-    return await apiClient.get('/admin/brands');
+  async getAllBrands(): Promise<Brand[]> {
+    return await apiClient.get<Brand[]>('/admin/brands');
   },
 
-  async createBrand(data: { name: string; description?: string }): Promise<any> {
-    return await apiClient.post('/admin/brands', data);
+  async createBrand(data: { name: string; description?: string }): Promise<Brand> {
+    return await apiClient.post<Brand>('/admin/brands', data);
   },
 
-  async updateBrand(brandId: number, data: { name?: string; description?: string }): Promise<any> {
-    return await apiClient.patch(`/admin/brands/${brandId}`, data);
+  async updateBrand(brandId: number, data: { name?: string; description?: string }): Promise<Brand> {
+    return await apiClient.patch<Brand>(`/admin/brands/${brandId}`, data);
   },
 
   async deleteBrand(brandId: number): Promise<void> {

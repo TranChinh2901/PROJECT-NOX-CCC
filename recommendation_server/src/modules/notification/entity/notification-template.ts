@@ -12,6 +12,7 @@ import {
   Index,
 } from 'typeorm';
 import { NotificationType } from '../enum/notification.enum';
+import { notificationJsonColumnType } from './column-types';
 
 @Entity('notification_templates')
 @Index(['type', 'is_active'])
@@ -45,7 +46,7 @@ export class NotificationTemplate {
   @Column({ type: 'text', nullable: true })
   email_body_template?: string;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: notificationJsonColumnType, nullable: true })
   default_data?: Record<string, any>;
 
   @Column({ type: 'boolean', default: true })

@@ -64,7 +64,11 @@ export class TypeORMWishlistRepository implements IWishlistRepository {
       priority: priority || WishlistPriority.MEDIUM,
       added_at: new Date()
     });
-    return await this.itemRepo.save(item);
+    const savedItem = await this.itemRepo.save(item);
+    return await this.itemRepo.findOneOrFail({
+      where: { id: savedItem.id },
+      relations: ['variant', 'variant.product', 'variant.product.images']
+    });
   }
 
   async removeItem(itemId: number): Promise<void> {

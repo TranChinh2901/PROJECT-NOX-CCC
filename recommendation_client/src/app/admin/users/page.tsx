@@ -1,13 +1,19 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types';
 import { RoleType } from '@/types/auth.types';
+import { adminApi } from '@/lib/api/admin.api';
+import { AdminPagination } from '@/components/admin/AdminPagination';
+
+const PAGE_SIZE = 10;
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<RoleType | ''>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,34 +21,55 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const deferredSearchTerm = useDeferredValue(searchTerm.trim());
 
-  const { getAllUsers, deleteUserById, updateUserById, isLoading } = useAuth();
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getAllUsers({
-        sort: 'created_at',
-        limit: 10,
-      });
-      setUsers(response);
-      setTotalPages(1); 
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [getAllUsers]);
+  const { deleteUserById, updateUserById, isLoading } = useAuth();
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchTerm, selectedRole]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsFetching(true);
+        const response = await adminApi.getAllUsers({
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search: deferredSearchTerm || undefined,
+          role: selectedRole || undefined,
+          sortBy: 'created_at',
+          sortOrder: 'DESC',
+        });
+
+        setUsers(response.data);
+        setTotalUsers(response.pagination.total);
+        setTotalPages(response.pagination.total_pages);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setIsFetching(false);
+        setInitialLoading(false);
+      }
+    };
+
     fetchUsers();
-  }, [fetchUsers, searchTerm, selectedRole, currentPage]);
+  }, [currentPage, deferredSearchTerm, selectedRole]);
 
   const handleDeleteUser = async (userId: number) => {
     try {
       await deleteUserById(userId);
-      setUsers(users.filter(user => user.id !== userId));
       setShowDeleteConfirm(null);
+      const isLastItemOnPage = users.length === 1 && currentPage > 1;
+      setCurrentPage((page) => (isLastItemOnPage ? page - 1 : page));
+      if (!isLastItemOnPage) {
+        setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userId));
+        setTotalUsers((count) => {
+          const nextTotal = Math.max(0, count - 1);
+          setTotalPages(Math.ceil(nextTotal / PAGE_SIZE));
+          return nextTotal;
+        });
+      }
     } catch (error) {
       console.error('Failed to delete user:', error);
     }
@@ -73,15 +100,15 @@ export default function UserManagement() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-slate-600">Checking authentication...</div>
+        <div className="text-slate-600">Đang kiểm tra xác thực...</div>
       </div>
     );
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-slate-600">Loading users...</div>
+        <div className="text-slate-600">Đang tải người dùng...</div>
       </div>
     );
   }
@@ -89,8 +116,8 @@ export default function UserManagement() {
   return (
     <div className="min-h-screen text-slate-900">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">User Management</h1>
-        <p className="text-slate-500">Manage registered users, view their details, and update their information.</p>
+        <h1 className="text-3xl font-bold mb-2">Quản lý người dùng</h1>
+        <p className="text-slate-500">Quản lý người dùng đã đăng ký, xem thông tin chi tiết và cập nhật thông tin của họ.</p>
       </div>
 
       {/* Filters */}
@@ -99,7 +126,7 @@ export default function UserManagement() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="Tìm kiếm theo tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
@@ -111,9 +138,9 @@ export default function UserManagement() {
               onChange={(e) => setSelectedRole(e.target.value as RoleType | '')}
               className="px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
             >
-              <option value="">All Roles</option>
-              <option value={RoleType.ADMIN}>Admin</option>
-              <option value={RoleType.USER}>User</option>
+              <option value="">Tất cả vai trò</option>
+              <option value={RoleType.ADMIN}>Quản trị viên</option>
+              <option value={RoleType.USER}>Người dùng</option>
             </select>
           </div>
         </div>
@@ -123,9 +150,9 @@ export default function UserManagement() {
       <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Users</h2>
+            <h2 className="text-xl font-semibold">Người dùng</h2>
             <span className="text-sm text-slate-500">
-              {users.length} users found
+              Tìm thấy {totalUsers} người dùng
             </span>
           </div>
         </div>
@@ -135,12 +162,12 @@ export default function UserManagement() {
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">ID</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">User</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Role</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Phone</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Verified</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Joined</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Actions</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Người dùng</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Vai trò</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Điện thoại</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Xác thực</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Ngày tham gia</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-slate-500">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -180,7 +207,7 @@ export default function UserManagement() {
                         ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {user.is_verified ? 'Verified' : 'Not Verified'}
+                      {user.is_verified ? 'Đã xác thực' : 'Chưa xác thực'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-500">{formatDate(user.created_at)}</td>
@@ -190,46 +217,39 @@ export default function UserManagement() {
                         onClick={() => handleEditUser(user)}
                         className="px-3 py-1 text-sm bg-[#7366ff] text-white rounded hover:bg-[#5d54cc] transition-colors"
                       >
-                        Edit
+                        Chỉnh sửa
                       </button>
                       <button
                         onClick={() => setShowDeleteConfirm(user.id)}
                         className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                       >
-                        Delete
+                        Xóa
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-500">
+                    Không có người dùng nào phù hợp với bộ lọc hiện tại.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="p-4 flex items-center justify-between">
-            <div className="text-sm text-slate-500">
-              Showing page {currentPage} of {totalPages}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalUsers}
+          pageSize={PAGE_SIZE}
+          itemLabel="users"
+          onPageChange={setCurrentPage}
+          isFetching={isFetching}
+        />
       </div>
 
       {/* Edit User Modal */}

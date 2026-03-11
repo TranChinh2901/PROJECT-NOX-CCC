@@ -1,6 +1,6 @@
   'use client';
 
-  import React, { useState } from 'react';
+  import React, { Suspense, useEffect, useState } from 'react';
   import Link from 'next/link';
   import Image from 'next/image';
   import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,12 +9,25 @@
   import { useAuth } from '@/contexts/AuthContext';
   import { useWishlist } from '@/contexts/WishlistContext';
 
+  function HeaderSearchParamsSync({
+    onQueryChange,
+  }: {
+    onQueryChange: (query: string) => void;
+  }) {
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+      onQueryChange(searchParams.get('q') || '');
+    }, [onQueryChange, searchParams]);
+
+    return null;
+  }
+
   export const Header: React.FC = () => {
     const { itemCount } = useCart();
     const { wishlistCount } = useWishlist();
     const { user, isAuthenticated, logout } = useAuth();
     const router = useRouter();
-    const searchParams = useSearchParams();
     
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -30,11 +43,6 @@
       return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    React.useEffect(() => {
-      const query = searchParams.get('q') || '';
-      setSearchValue(query);
-    }, [searchParams]);
-
     const handleSearch = () => {
       const trimmedQuery = searchValue.trim();
       const targetUrl = trimmedQuery.length >= 2 ? `/?q=${encodeURIComponent(trimmedQuery)}` : '/';
@@ -49,7 +57,11 @@
     ];
 
     return (
-      <header className="fixed top-0 left-0 right-0 z-50">
+      <>
+        <Suspense fallback={null}>
+          <HeaderSearchParamsSync onQueryChange={setSearchValue} />
+        </Suspense>
+        <header className="fixed top-0 left-0 right-0 z-50">
         <div className={`bg-white border-b border-gray-200 shadow-sm transition-all ${isScrolled ? 'py-2' : 'py-3'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
@@ -389,6 +401,7 @@
             </div>
           </div>
         )}
-      </header>
+        </header>
+      </>
     );
   };

@@ -43,7 +43,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
 
     try {
       await addToCart({ variant_id: variantId, quantity: 1 });
-      toast.success('Da them vao gio hang');
+      toast.success('Đã thêm vào giỏ hàng');
     } catch (error) {
       console.error('Failed to add wishlist item to cart:', error);
       toast.error('Khong the cap nhat gio hang');

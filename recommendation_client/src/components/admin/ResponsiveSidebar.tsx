@@ -29,12 +29,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { href: '/admin/users', icon: Users, label: 'Users' },
-  { href: '/admin/products', icon: Package, label: 'Products' },
-  { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
-  { href: '/admin/categories', icon: Tags, label: 'Categories' },
-  { href: '/admin/notifications', icon: Bell, label: 'Notifications' },
+  { href: '/admin', icon: LayoutDashboard, label: 'Bảng điều khiển', exact: true },
+  { href: '/admin/users', icon: Users, label: 'Người dùng' },
+  { href: '/admin/products', icon: Package, label: 'Sản phẩm' },
+  { href: '/admin/orders', icon: ShoppingCart, label: 'Đơn hàng' },
+  { href: '/admin/categories', icon: Tags, label: 'Danh mục' },
+  { href: '/admin/notifications', icon: Bell, label: 'Thông báo' },
 ];
 
 interface ResponsiveSidebarProps {
@@ -152,7 +152,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
         >
           <Menu className="w-6 h-6" />
         </button>
-        <h1 className="ml-4 text-lg font-bold text-[rgb(var(--admin-text))] tracking-tight">Admin Panel</h1>
+        <h1 className="ml-4 text-lg font-bold text-[rgb(var(--admin-text))] tracking-tight">Trang quản trị</h1>
       </div>
 
       {/* Mobile Overlay */}
@@ -175,7 +175,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
         <div className="flex flex-col h-full">
           {/* Mobile Header */}
           <div className="p-6 border-b border-[rgb(var(--admin-border))] flex items-center justify-between">
-            <h1 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Admin Panel</h1>
+            <h1 className="text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight">Trang quản trị</h1>
             <button
               onClick={closeMobileDrawer}
               className="p-2 text-[rgb(var(--admin-text-muted))] hover:text-[rgb(var(--admin-primary))] hover:bg-[rgb(var(--admin-primary))]/8 rounded-lg transition-all duration-200"
@@ -198,7 +198,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
               className="flex items-center space-x-3 px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-primary))]/8 hover:text-[rgb(var(--admin-primary))] transition-all duration-200 font-medium"
             >
               <Home className="w-5 h-5" />
-              <span>Back to Store</span>
+              <span>Về trang cửa hàng</span>
             </Link>
 
             <button
@@ -209,7 +209,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
               className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-error))]/10 hover:text-[rgb(var(--admin-error))] transition-all duration-200 mt-2 font-medium"
             >
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span>Đăng xuất</span>
             </button>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
               'text-xl font-bold text-[rgb(var(--admin-text))] tracking-tight transition-all duration-200',
               collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
             )}>
-              Admin Panel
+              Trang quản trị
             </h1>
             <button
               onClick={toggleDesktopSidebar}
@@ -261,15 +261,15 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
                 'flex items-center px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-primary))]/8 hover:text-[rgb(var(--admin-primary))] transition-all duration-200 font-medium',
                 collapsed ? 'justify-center' : 'space-x-3'
               )}
-              aria-label="Back to Store"
-              title={collapsed ? 'Back to Store' : undefined}
+              aria-label="Về trang cửa hàng"
+              title={collapsed ? 'Về trang cửa hàng' : undefined}
             >
               <Home className="w-5 h-5 flex-shrink-0" />
               <span className={cn(
                 'transition-all duration-200',
                 collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
               )}>
-                Back to Store
+                Về trang cửa hàng
               </span>
             </Link>
 
@@ -279,15 +279,15 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
                 'w-full flex items-center px-4 py-3 rounded-lg text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-error))]/10 hover:text-[rgb(var(--admin-error))] transition-all duration-200 mt-2 font-medium',
                 collapsed ? 'justify-center' : 'space-x-3'
               )}
-              aria-label="Logout"
-              title={collapsed ? 'Logout' : undefined}
+              aria-label="Đăng xuất"
+              title={collapsed ? 'Đăng xuất' : undefined}
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <span className={cn(
                 'transition-all duration-200',
                 collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
               )}>
-                Logout
+                Đăng xuất
               </span>
             </button>
           </div>

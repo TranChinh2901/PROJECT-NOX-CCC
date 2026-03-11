@@ -85,7 +85,7 @@ export interface OrderStatusHistoryEntry {
   created_at: Date;
 }
 
-export interface OrderDetailItem extends Omit<OrderItem, 'product_snapshot'> {
+export interface OrderDetailItem extends Omit<OrderItem, 'product_snapshot' | 'variant'> {
   warehouse_id?: number;
   product_snapshot: OrderItemSnapshot;
   variant?: Pick<ProductVariant, 'id' | 'sku' | 'size' | 'color' | 'material'> | null;

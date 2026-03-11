@@ -10,6 +10,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { notificationJsonColumnType } from './column-types';
 
 export type BatchJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type BatchJobType = 'broadcast' | 'scheduled' | 'triggered' | 'campaign';
@@ -46,7 +47,7 @@ export class NotificationBatchJob {
   @Column({ type: 'text', nullable: true })
   error_message?: string;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: notificationJsonColumnType, nullable: true })
   metadata?: Record<string, any>;
 
   @CreateDateColumn({ type: 'datetime' })

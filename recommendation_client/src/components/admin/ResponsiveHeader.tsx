@@ -26,7 +26,7 @@ export default function ResponsiveHeader({ sidebarCollapsed = false }: Responsiv
             <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[rgb(var(--admin-text-subtle))] w-5 h-5 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Tìm kiếm..."
               className={cn(
                 'w-full pl-11 pr-4 py-2.5 bg-[rgb(var(--admin-background))] text-[rgb(var(--admin-text))]',
                 'border border-transparent rounded-lg',

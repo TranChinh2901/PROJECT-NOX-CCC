@@ -12,8 +12,8 @@ interface Category {
   slug?: string;
   parent_id?: number | null;
   products_count?: number;
-  created_at: string;
-  updated_at: string;
+  created_at: Date | string;
+  updated_at: Date | string;
 }
 
 export default function CategoriesManagement() {
@@ -130,7 +130,7 @@ export default function CategoriesManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-slate-600">Loading categories...</div>
+        <div className="text-slate-600">Đang tải danh mục...</div>
       </div>
     );
   }
@@ -139,8 +139,8 @@ export default function CategoriesManagement() {
     <div className="min-h-screen text-slate-900">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Categories Management</h1>
-        <p className="text-slate-500">Organize products by categories for better navigation.</p>
+        <h1 className="text-3xl font-bold mb-2">Quản lý danh mục</h1>
+        <p className="text-slate-500">Tổ chức sản phẩm theo danh mục để điều hướng tốt hơn.</p>
       </div>
 
       {/* Stats Cards */}
@@ -148,7 +148,7 @@ export default function CategoriesManagement() {
         <GlassCard hover className="p-6 cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total Categories</p>
+              <p className="text-sm text-slate-500">Tổng danh mục</p>
               <p className="text-2xl font-bold mt-1">{categories.length}</p>
             </div>
             <div className="w-12 h-12 bg-[#7C3AED]/10 rounded-lg flex items-center justify-center">
@@ -160,7 +160,7 @@ export default function CategoriesManagement() {
         <GlassCard hover className="p-6 cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total Products</p>
+              <p className="text-sm text-slate-500">Tổng sản phẩm</p>
               <p className="text-2xl font-bold mt-1">{totalProducts}</p>
             </div>
             <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
@@ -172,7 +172,7 @@ export default function CategoriesManagement() {
         <GlassCard hover className="p-6 cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Avg Products/Category</p>
+              <p className="text-sm text-slate-500">TB sản phẩm/danh mục</p>
               <p className="text-2xl font-bold mt-1">
                 {categories.length > 0 ? Math.round(totalProducts / categories.length) : 0}
               </p>
@@ -192,7 +192,7 @@ export default function CategoriesManagement() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search categories..."
+                placeholder="Tìm kiếm danh mục..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all"
@@ -204,7 +204,7 @@ export default function CategoriesManagement() {
             className="flex items-center space-x-2 px-4 py-2.5 bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Category</span>
+            <span>Thêm danh mục</span>
           </button>
         </div>
       </GlassCard>
@@ -239,12 +239,12 @@ export default function CategoriesManagement() {
               {category.name}
             </h3>
             <p className="text-sm text-slate-600 mb-4 line-clamp-2">
-              {category.description || 'No description'}
+              {category.description || 'Không có mô tả'}
             </p>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <span className="text-sm text-slate-500">
-                {category.products_count || 0} products
+                {category.products_count || 0} sản phẩm
               </span>
               <span className="text-xs text-slate-400">
                 ID: {category.id}
@@ -258,16 +258,16 @@ export default function CategoriesManagement() {
       {filteredCategories.length === 0 && (
         <div className="text-center py-12">
           <FolderTree className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No categories found</h3>
+          <h3 className="text-lg font-semibold mb-2">Không tìm thấy danh mục</h3>
           <p className="text-slate-500 mb-4">
-            {searchTerm ? 'Try adjusting your search.' : 'Get started by creating your first category.'}
+            {searchTerm ? 'Thử điều chỉnh tìm kiếm.' : 'Hãy bắt đầu bằng cách tạo danh mục đầu tiên.'}
           </p>
           {!searchTerm && (
             <button
               onClick={() => setIsCreating(true)}
               className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] transition-colors"
             >
-              Create Category
+              Tạo danh mục
             </button>
           )}
         </div>
@@ -278,25 +278,25 @@ export default function CategoriesManagement() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <GlassCard className="p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold mb-4">
-              {isCreating ? 'Create Category' : 'Edit Category'}
+              {isCreating ? 'Tạo danh mục' : 'Chỉnh sửa danh mục'}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Name</label>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Tên</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter category name"
+                  placeholder="Nhập tên danh mục"
                   className="w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Description</label>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Mô tả</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter category description"
+                  placeholder="Nhập mô tả danh mục"
                   rows={3}
                   className="w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all resize-none"
                 />
@@ -307,14 +307,14 @@ export default function CategoriesManagement() {
                 onClick={closeModal}
                 className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={isCreating ? handleCreateCategory : handleUpdateCategory}
                 disabled={saving || !formData.name.trim()}
                 className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Saving...' : isCreating ? 'Create' : 'Save Changes'}
+                {saving ? 'Đang lưu...' : isCreating ? 'Tạo' : 'Lưu thay đổi'}
               </button>
             </div>
           </GlassCard>
@@ -325,22 +325,22 @@ export default function CategoriesManagement() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <GlassCard className="p-6 max-w-sm w-full mx-4">
-            <h3 className="text-xl font-bold mb-4 text-red-500">Delete Category</h3>
+            <h3 className="text-xl font-bold mb-4 text-red-500">Xóa danh mục</h3>
             <p className="text-slate-500 mb-6">
-              Are you sure you want to delete this category? Products in this category will become uncategorized.
+              Bạn có chắc chắn muốn xóa danh mục này không? Sản phẩm trong danh mục này sẽ trở thành chưa phân loại.
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
                 className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={() => handleDeleteCategory(showDeleteConfirm)}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
-                Delete
+                Xóa
               </button>
             </div>
           </GlassCard>
