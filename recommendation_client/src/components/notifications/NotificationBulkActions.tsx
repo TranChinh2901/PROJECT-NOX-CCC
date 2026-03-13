@@ -37,11 +37,11 @@ export function NotificationBulkActions({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="font-medium">{selectedCount} selected</span>
+        <span className="font-medium">{selectedCount} đã chọn</span>
         <button
           onClick={onClearSelection}
           className="p-1 hover:bg-white/20 rounded"
-          aria-label="Clear selection"
+          aria-label="Bỏ chọn"
         >
           <X className="w-4 h-4" />
         </button>
@@ -57,7 +57,7 @@ export function NotificationBulkActions({
           )}
         >
           <Check className="w-4 h-4" />
-          <span className="hidden sm:inline">Mark as read</span>
+          <span className="hidden sm:inline">Đánh dấu đã đọc</span>
         </button>
         <button
           onClick={onArchive}
@@ -68,7 +68,7 @@ export function NotificationBulkActions({
           )}
         >
           <Archive className="w-4 h-4" />
-          <span className="hidden sm:inline">Archive</span>
+          <span className="hidden sm:inline">Lưu trữ</span>
         </button>
         <button
           onClick={onDelete}
@@ -79,7 +79,7 @@ export function NotificationBulkActions({
           )}
         >
           <Trash2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Delete</span>
+          <span className="hidden sm:inline">Xóa</span>
         </button>
       </div>
     </div>

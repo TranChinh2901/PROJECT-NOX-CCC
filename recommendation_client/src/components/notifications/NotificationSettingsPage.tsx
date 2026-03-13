@@ -14,14 +14,14 @@ import { NotificationType, NotificationPreferences } from '@/types/notification.
 import { cn } from '@/lib/utils';
 
 const notificationTypeLabels: Record<NotificationType, { label: string; description: string }> = {
-  order: { label: 'Order Updates', description: 'Get notified about order status changes' },
-  inventory: { label: 'Inventory Alerts', description: 'Low stock and out of stock notifications' },
-  review: { label: 'New Reviews', description: 'Notifications when customers leave reviews' },
-  user: { label: 'User Activity', description: 'New user registrations and account changes' },
-  system: { label: 'System Announcements', description: 'Important system updates and maintenance' },
-  promotion: { label: 'Promotions', description: 'Promotional campaigns and discounts' },
-  payment: { label: 'Payment Alerts', description: 'Payment confirmations and issues' },
-  shipping: { label: 'Shipping Updates', description: 'Shipping status and delivery notifications' },
+  order: { label: 'Cập nhật đơn hàng', description: 'Nhận thông báo về thay đổi trạng thái đơn hàng' },
+  inventory: { label: 'Cảnh báo kho hàng', description: 'Thông báo khi hàng sắp hết hoặc hết hàng' },
+  review: { label: 'Đánh giá mới', description: 'Thông báo khi khách hàng để lại đánh giá' },
+  user: { label: 'Hoạt động người dùng', description: 'Đăng ký người dùng mới và thay đổi tài khoản' },
+  system: { label: 'Thông báo hệ thống', description: 'Cập nhật hệ thống và bảo trì quan trọng' },
+  promotion: { label: 'Khuyến mãi', description: 'Chiến dịch khuyến mãi và giảm giá' },
+  payment: { label: 'Cảnh báo thanh toán', description: 'Xác nhận thanh toán và sự cố' },
+  shipping: { label: 'Cập nhật vận chuyển', description: 'Trạng thái vận chuyển và thông báo giao hàng' },
 };
 
 const channelIcons = {
@@ -32,9 +32,9 @@ const channelIcons = {
 };
 
 const channelLabels = {
-  inApp: 'In-App',
+  inApp: 'Trong ứng dụng',
   email: 'Email',
-  push: 'Push',
+  push: 'Đẩy',
   sms: 'SMS',
 };
 
@@ -63,12 +63,12 @@ export function NotificationSettingsPage() {
   if (!preferences) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-slate-500">Unable to load notification preferences.</p>
+        <p className="text-slate-500">Không thể tải tùy chọn thông báo.</p>
         <Link
           href="/admin/notifications"
           className="text-[rgb(var(--admin-primary))] hover:underline"
         >
-          Back to notifications
+          Quay lại thông báo
         </Link>
       </div>
     );
@@ -83,11 +83,11 @@ export function NotificationSettingsPage() {
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to notifications
+          Quay lại thông báo
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900">Notification Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Cài đặt thông báo</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Manage how and when you receive notifications
+          Quản lý cách thức và thời điểm bạn nhận thông báo
         </p>
       </div>
 
@@ -95,8 +95,8 @@ export function NotificationSettingsPage() {
       <section className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
-            <p className="text-sm text-slate-500">Enable or disable all notifications</p>
+            <h2 className="text-lg font-semibold text-slate-900">Thông báo</h2>
+            <p className="text-sm text-slate-500">Bật hoặc tắt tất cả thông báo</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -104,7 +104,7 @@ export function NotificationSettingsPage() {
               checked={preferences.enabled}
               onChange={(e) => toggleMasterSwitch(e.target.checked)}
               className="sr-only peer"
-              aria-label="Enable notifications"
+              aria-label="Bật thông báo"
             />
             <div className={cn(
               'w-11 h-6 rounded-full peer transition-colors',
@@ -121,9 +121,9 @@ export function NotificationSettingsPage() {
         <>
           {/* Delivery channels */}
           <section className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Delivery Channels</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Kênh nhận thông báo</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Choose how you want to receive notifications
+              Chọn cách thức bạn muốn nhận thông báo
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {(Object.keys(preferences.channels) as (keyof typeof preferences.channels)[]).map((channel) => {
@@ -159,9 +159,9 @@ export function NotificationSettingsPage() {
 
           {/* Notification categories */}
           <section className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Notification Categories</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Danh mục thông báo</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Customize notifications for each category
+              Tùy chỉnh thông báo cho từng danh mục
             </p>
             <div className="divide-y divide-slate-100">
               {(Object.keys(notificationTypeLabels) as NotificationType[]).map((type) => {
@@ -234,8 +234,8 @@ export function NotificationSettingsPage() {
             <div className="flex items-center gap-3 mb-4">
               <Moon className="w-5 h-5 text-slate-400" />
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Quiet Hours</h2>
-                <p className="text-sm text-slate-500">Pause notifications during specific times</p>
+                <h2 className="text-lg font-semibold text-slate-900">Giờ yên tĩnh</h2>
+                <p className="text-sm text-slate-500">Tạm dừng thông báo trong thời gian nhất định</p>
               </div>
             </div>
 
@@ -251,7 +251,7 @@ export function NotificationSettingsPage() {
                     timezone: preferences.quietHours?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
                   })}
                   className="sr-only peer"
-                  aria-label="Enable quiet hours"
+                  aria-label="Bật giờ yên tĩnh"
                 />
                 <div className={cn(
                   'w-11 h-6 rounded-full peer transition-colors',
@@ -261,14 +261,14 @@ export function NotificationSettingsPage() {
                   'after:transition-all peer-checked:after:translate-x-5'
                 )} />
               </label>
-              <span className="text-sm text-slate-700">Enable quiet hours</span>
+              <span className="text-sm text-slate-700">Bật giờ yên tĩnh</span>
             </div>
 
             {preferences.quietHours?.enabled && (
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
-                  <label className="text-sm text-slate-600">From</label>
+                  <label className="text-sm text-slate-600">Từ</label>
                   <input
                     type="time"
                     value={preferences.quietHours.start}
@@ -283,7 +283,7 @@ export function NotificationSettingsPage() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-slate-600">To</label>
+                  <label className="text-sm text-slate-600">Đến</label>
                   <input
                     type="time"
                     value={preferences.quietHours.end}
@@ -303,15 +303,15 @@ export function NotificationSettingsPage() {
 
           {/* Notification frequency */}
           <section className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Email Frequency</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Tần suất email</h2>
             <p className="text-sm text-slate-500 mb-6">
-              How often would you like to receive email notifications?
+              Bạn muốn nhận email thông báo bao lâu một lần?
             </p>
             <div className="space-y-3">
               {[
-                { value: 'realtime' as const, label: 'Real-time', description: 'Get notified immediately' },
-                { value: 'digest_daily' as const, label: 'Daily Digest', description: 'One summary email per day' },
-                { value: 'digest_weekly' as const, label: 'Weekly Digest', description: 'One summary email per week' },
+                { value: 'realtime' as const, label: 'Thời gian thực', description: 'Nhận thông báo ngay lập tức' },
+                { value: 'digest_daily' as const, label: 'Tóm tắt hàng ngày', description: 'Một email tóm tắt mỗi ngày' },
+                { value: 'digest_weekly' as const, label: 'Tóm tắt hàng tuần', description: 'Một email tóm tắt mỗi tuần' },
               ].map((option) => (
                 <label
                   key={option.value}
@@ -354,7 +354,7 @@ export function NotificationSettingsPage() {
             )}
           >
             <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>
         </div>
       )}

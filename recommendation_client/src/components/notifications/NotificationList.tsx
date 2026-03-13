@@ -84,10 +84,10 @@ export function NotificationList({
           </svg>
         </div>
         <h3 className="text-lg font-medium text-slate-900 mb-1">
-          No notifications found
+          Không tìm thấy thông báo
         </h3>
         <p className="text-sm text-slate-500 max-w-sm">
-          There are no notifications matching your current filters. Try adjusting your filters or check back later.
+          Không có thông báo nào phù hợp với bộ lọc hiện tại. Hãy thử điều chỉnh bộ lọc hoặc kiểm tra lại sau.
         </p>
       </div>
     );
@@ -97,7 +97,7 @@ export function NotificationList({
     <div
       className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden"
       role="list"
-      aria-label="Notifications"
+      aria-label="Thông báo"
     >
       {notifications.map((notification, index) => {
         const isLast = index === notifications.length - 1;
@@ -152,7 +152,7 @@ export function NotificationList({
       {/* Load more indicator */}
       {!isLoading && hasMore && (
         <div className="py-4 text-center">
-          <span className="text-sm text-slate-500">Scroll for more</span>
+          <span className="text-sm text-slate-500">Cuộn để xem thêm</span>
         </div>
       )}
     </div>

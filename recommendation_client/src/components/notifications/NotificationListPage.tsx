@@ -99,10 +99,10 @@ export function NotificationListPage() {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Thông báo</h1>
             <p className="text-sm text-slate-500 mt-1">
-              {totalCount} total notifications
-              {unreadCount > 0 && ` (${unreadCount} unread)`}
+              {totalCount} thông báo
+              {unreadCount > 0 && ` (${unreadCount} chưa đọc)`}
             </p>
           </div>
 
@@ -115,10 +115,10 @@ export function NotificationListPage() {
                   ? 'bg-green-100 text-green-700'
                   : 'bg-slate-100 text-slate-600'
               )}
-              aria-label={isConnected ? 'Connected to real-time updates' : 'Disconnected'}
+              aria-label={isConnected ? 'Đã kết nối cập nhật thời gian thực' : 'Mất kết nối'}
             >
               {isConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isConnected ? 'Live' : 'Offline'}</span>
+              <span className="hidden sm:inline">{isConnected ? 'Trực tiếp' : 'Ngoại tuyến'}</span>
             </span>
 
             {/* Refresh */}
@@ -129,7 +129,7 @@ export function NotificationListPage() {
                 'p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100',
                 'transition-colors disabled:opacity-50'
               )}
-              aria-label="Refresh notifications"
+              aria-label="Làm mới thông báo"
             >
               <RefreshCw className={cn('w-5 h-5', isLoading && 'animate-spin')} />
             </button>
@@ -145,7 +145,7 @@ export function NotificationListPage() {
                 )}
               >
                 <Check className="w-4 h-4" />
-                <span className="hidden sm:inline">Mark all read</span>
+                <span className="hidden sm:inline">Đánh dấu tất cả đã đọc</span>
               </button>
             )}
 
@@ -164,7 +164,7 @@ export function NotificationListPage() {
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               )}
             >
-              {selectMode ? 'Cancel' : 'Select'}
+              {selectMode ? 'Hủy' : 'Chọn'}
             </button>
 
             {/* Settings link */}
@@ -174,7 +174,7 @@ export function NotificationListPage() {
                 'p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100',
                 'transition-colors'
               )}
-              aria-label="Notification settings"
+              aria-label="Cài đặt thông báo"
             >
               <Settings className="w-5 h-5" />
             </Link>
@@ -188,14 +188,14 @@ export function NotificationListPage() {
               onClick={handleSelectAll}
               className="text-sm text-[rgb(var(--admin-primary))] hover:underline"
             >
-              Select all ({notifications.length})
+              Chọn tất cả ({notifications.length})
             </button>
             {selectedIds.size > 0 && (
               <button
                 onClick={handleClearSelection}
                 className="text-sm text-slate-500 hover:underline"
               >
-                Clear selection
+                Bỏ chọn
               </button>
             )}
           </div>

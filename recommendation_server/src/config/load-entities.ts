@@ -29,6 +29,7 @@ import { NotificationTemplate } from "@/modules/notification/entity/notification
 import { NotificationDeliveryLog } from "@/modules/notification/entity/notification-delivery-log";
 import { NotificationSubscription } from "@/modules/notification/entity/notification-subscription";
 import { NotificationBatchJob } from "@/modules/notification/entity/notification-batch-job";
+import { SiteNavigationItem } from "@/modules/navigation/entity/site-navigation-item";
 
 export const entities = [
   User,
@@ -62,4 +63,5 @@ export const entities = [
   NotificationDeliveryLog,
   NotificationSubscription,
   NotificationBatchJob,
+  SiteNavigationItem,
 ];

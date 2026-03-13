@@ -6,10 +6,7 @@ import path from "path";
 import { loadedEnv } from "./load-env";
 import { entities } from "@/config/load-entities";
 
-const migrationPaths = [
-  path.join(__dirname, "..", "database", "migrations", "*{.ts,.js}"),
-  path.join(__dirname, "..", "migrations", "*{.ts,.js}"),
-];
+const migrationPaths = [path.join(__dirname, "..", "database", "migrations", "*{.ts,.js}")];
 
 export const AppDataSource = new DataSource({
   type: "mysql",

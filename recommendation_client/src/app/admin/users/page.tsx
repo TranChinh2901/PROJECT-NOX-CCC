@@ -256,10 +256,10 @@ export default function UserManagement() {
       {editingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4">Edit User</h3>
+            <h3 className="text-xl font-bold mb-4">Chỉnh sửa người dùng</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Full Name</label>
+                <label className="block text-sm font-medium mb-2">Họ và tên</label>
                 <input
                   type="text"
                   value={userForm.fullname || ''}
@@ -277,7 +277,7 @@ export default function UserManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
+                <label className="block text-sm font-medium mb-2">Điện thoại</label>
                 <input
                   type="tel"
                   value={userForm.phone_number || ''}
@@ -286,14 +286,14 @@ export default function UserManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Role</label>
+                <label className="block text-sm font-medium mb-2">Vai trò</label>
                 <select
                   value={userForm.role || ''}
                   onChange={(e) => setUserForm({ ...userForm, role: e.target.value as RoleType })}
                   className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
                 >
-                  <option value={RoleType.USER}>User</option>
-                  <option value={RoleType.ADMIN}>Admin</option>
+                  <option value={RoleType.USER}>Người dùng</option>
+                  <option value={RoleType.ADMIN}>Quản trị viên</option>
                 </select>
               </div>
             </div>
@@ -302,13 +302,13 @@ export default function UserManagement() {
                 onClick={() => { setEditingUser(null); setUserForm({}); }}
                 className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={handleUpdateUser}
                 className="px-4 py-2 bg-[#7366ff] text-white rounded hover:bg-[#5d54cc] transition-colors"
               >
-                Save Changes
+                Lưu thay đổi
               </button>
             </div>
           </div>
@@ -319,22 +319,22 @@ export default function UserManagement() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-xl font-bold mb-4 text-red-500">Delete User</h3>
+            <h3 className="text-xl font-bold mb-4 text-red-500">Xóa người dùng</h3>
             <p className="text-slate-500 mb-6">
-              Are you sure you want to delete this user? This action cannot be undone.
+              Bạn có chắc chắn muốn xóa người dùng này không? Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
                 className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={() => handleDeleteUser(showDeleteConfirm)}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
               >
-                Delete
+                Xóa
               </button>
             </div>
           </div>

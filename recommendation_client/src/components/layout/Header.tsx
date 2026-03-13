@@ -4,10 +4,12 @@
   import Link from 'next/link';
   import Image from 'next/image';
   import { useRouter, useSearchParams } from 'next/navigation';
-  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart } from 'lucide-react';
+  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart, ShieldCheck } from 'lucide-react';
   import { useCart } from '@/contexts/CartContext';
   import { useAuth } from '@/contexts/AuthContext';
   import { useWishlist } from '@/contexts/WishlistContext';
+  import { RoleType } from '@/types/auth.types';
+  import { navigationApi, type NavigationItem } from '@/lib/api/navigation.api';
 
   function HeaderSearchParamsSync({
     onQueryChange,
@@ -34,6 +36,7 @@
     const [showCartPreview, setShowCartPreview] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [searchValue, setSearchValue] = useState('');
+    const [navLinks, setNavLinks] = useState<NavigationItem[]>([]);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const cartPreviewRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +46,29 @@
       };
       window.addEventListener('scroll', handleScroll);
       return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+      let isMounted = true;
+
+      const loadNavigation = async () => {
+        try {
+          const response = await navigationApi.getHeaderNavigation();
+          if (isMounted) {
+            setNavLinks(response);
+          }
+        } catch {
+          if (isMounted) {
+            setNavLinks([]);
+          }
+        }
+      };
+
+      loadNavigation();
+
+      return () => {
+        isMounted = false;
+      };
     }, []);
 
     useEffect(() => {
@@ -90,13 +116,6 @@
       const targetUrl = trimmedQuery.length >= 2 ? `/?q=${encodeURIComponent(trimmedQuery)}` : '/';
       router.push(targetUrl);
     };
-
-    const navLinks = [
-      { label: 'Khuyến Mãi Hôm Nay', href: '/deals' },
-      { label: 'Dịch Vụ Khách Hàng', href: '/service' },
-      { label: 'Thẻ Quà Tặng', href: '/giftcards' },
-      { label: 'Bán Hàng', href: '/sell' },
-    ];
 
     return (
       <>
@@ -239,8 +258,19 @@
                           <MapPinIcon className="w-4 h-4" />
                           <span>Địa chỉ</span>
                         </Link>
+                        {user.role === RoleType.ADMIN && (
+                          <Link
+                            href="/admin"
+                            role="menuitem"
+                            onClick={() => setShowUserDropdown(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-[#B47B04] hover:bg-amber-50 transition-colors"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Admin Panel</span>
+                          </Link>
+                        )}
                         <hr className="my-2 border-gray-200" />
-                        <button
+                        <button 
                           type="button"
                           onClick={async () => {
                             await logout();
@@ -360,13 +390,15 @@
               </button>
               
               {navLinks.map((link) => (
-                <a
-                  key={link.label}
+                <Link
+                  key={link.id}
                   href={link.href}
                   className="text-sm text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+                  target={link.target === '_blank' ? '_blank' : undefined}
+                  rel={link.target === '_blank' ? 'noreferrer' : undefined}
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -438,6 +470,17 @@
                     <span>Địa chỉ</span>
                   </Link>
 
+                  {user?.role === RoleType.ADMIN && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-3 text-[#B47B04] hover:text-[#8F5B00] transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <ShieldCheck className="w-5 h-5" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  )}
+
                   <hr className="border-gray-200" />
 
                   <button
@@ -483,14 +526,16 @@
               <hr className="border-gray-200" />
               
               {navLinks.map((link) => (
-                <a
-                  key={link.label}
+                <Link
+                  key={link.id}
                   href={link.href}
                   className="block text-gray-600 hover:text-gray-900 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
+                  target={link.target === '_blank' ? '_blank' : undefined}
+                  rel={link.target === '_blank' ? 'noreferrer' : undefined}
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>

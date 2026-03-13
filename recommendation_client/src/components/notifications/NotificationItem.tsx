@@ -177,7 +177,7 @@ export function NotificationItem({
             'opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity',
             showActions && 'opacity-100 bg-slate-100'
           )}
-          aria-label="More actions"
+          aria-label="Thêm thao tác"
           aria-expanded={showActions}
         >
           <MoreHorizontal className="w-4 h-4" />
@@ -207,7 +207,7 @@ export function NotificationItem({
                   role="menuitem"
                 >
                   <Check className="w-4 h-4" />
-                  Mark as read
+                  Đánh dấu đã đọc
                 </button>
               )}
               {notification.href && (
@@ -220,7 +220,7 @@ export function NotificationItem({
                   role="menuitem"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  View details
+                  Xem chi tiết
                 </button>
               )}
               {onArchive && (
@@ -230,7 +230,7 @@ export function NotificationItem({
                   role="menuitem"
                 >
                   <Archive className="w-4 h-4" />
-                  Archive
+                  Lưu trữ
                 </button>
               )}
               {onDelete && (
@@ -240,7 +240,7 @@ export function NotificationItem({
                   role="menuitem"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Delete
+                  Xóa
                 </button>
               )}
             </div>

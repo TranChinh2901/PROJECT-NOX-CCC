@@ -8,6 +8,7 @@ import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { RoleType } from '@/types/auth.types';
 
 function LoginForm() {
   const router = useRouter();
@@ -55,9 +56,11 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      const authResponse = await login({ email, password });
       
-      const redirectTo = searchParams.get('redirect') || '/';
+      const redirectTo =
+        searchParams.get('redirect') ||
+        (authResponse.user.role === RoleType.ADMIN ? '/admin' : '/');
       router.push(redirectTo);
     } catch (error) {
       setErrors({

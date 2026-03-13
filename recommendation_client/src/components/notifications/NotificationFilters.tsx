@@ -23,30 +23,30 @@ export interface NotificationFiltersProps {
 }
 
 const typeOptions: { value: NotificationType | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Types' },
-  { value: 'order', label: 'Orders' },
-  { value: 'inventory', label: 'Inventory' },
-  { value: 'review', label: 'Reviews' },
-  { value: 'user', label: 'Users' },
-  { value: 'system', label: 'System' },
-  { value: 'promotion', label: 'Promotions' },
-  { value: 'payment', label: 'Payments' },
-  { value: 'shipping', label: 'Shipping' },
+  { value: 'all', label: 'Tất cả loại' },
+  { value: 'order', label: 'Đơn hàng' },
+  { value: 'inventory', label: 'Kho hàng' },
+  { value: 'review', label: 'Đánh giá' },
+  { value: 'user', label: 'Người dùng' },
+  { value: 'system', label: 'Hệ thống' },
+  { value: 'promotion', label: 'Khuyến mãi' },
+  { value: 'payment', label: 'Thanh toán' },
+  { value: 'shipping', label: 'Vận chuyển' },
 ];
 
 const priorityOptions: { value: NotificationPriority | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Priorities' },
-  { value: 'urgent', label: 'Urgent' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
+  { value: 'all', label: 'Tất cả độ ưu tiên' },
+  { value: 'urgent', label: 'Khẩn cấp' },
+  { value: 'high', label: 'Cao' },
+  { value: 'medium', label: 'Trung bình' },
+  { value: 'low', label: 'Thấp' },
 ];
 
 const statusOptions: { value: NotificationStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Status' },
-  { value: 'unread', label: 'Unread' },
-  { value: 'read', label: 'Read' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'unread', label: 'Chưa đọc' },
+  { value: 'read', label: 'Đã đọc' },
+  { value: 'archived', label: 'Đã lưu trữ' },
 ];
 
 export function NotificationFilters({
@@ -100,14 +100,14 @@ export function NotificationFilters({
             type="text"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Search notifications..."
+            placeholder="Tìm kiếm thông báo..."
             className={cn(
               'w-full pl-10 pr-4 py-2 text-sm',
               'bg-slate-50 border border-slate-200 rounded-lg',
               'focus:outline-none focus:ring-2 focus:ring-[rgb(var(--admin-primary))] focus:border-transparent',
               'placeholder:text-slate-400'
             )}
-            aria-label="Search notifications"
+            aria-label="Tìm kiếm thông báo"
           />
           {searchValue && (
             <button
@@ -133,7 +133,7 @@ export function NotificationFilters({
       >
         <span className="flex items-center gap-2">
           <Filter className="w-4 h-4" />
-          Filters
+          Bộ lọc
           {hasActiveFilters && (
             <span className="px-1.5 py-0.5 text-xs bg-[rgb(var(--admin-primary))] text-white rounded-full">
               Active
@@ -159,7 +159,7 @@ export function NotificationFilters({
         {/* Status filter */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
-            Status
+            Trạng thái
           </label>
           <div className="flex flex-wrap gap-2">
             {statusOptions.map((option) => (
@@ -182,7 +182,7 @@ export function NotificationFilters({
         {/* Type filter */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
-            Type
+            Loại
           </label>
           <select
             value={filters.type || 'all'}
@@ -205,7 +205,7 @@ export function NotificationFilters({
         {/* Priority filter */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
-            Priority
+            Độ ưu tiên
           </label>
           <select
             value={filters.priority || 'all'}
@@ -232,7 +232,7 @@ export function NotificationFilters({
             className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
           >
             <X className="w-4 h-4" />
-            Clear all filters
+            Xóa tất cả bộ lọc
           </button>
         )}
       </div>
