@@ -1,6 +1,6 @@
   'use client';
 
-  import React, { Suspense, useEffect, useState } from 'react';
+  import React, { Suspense, useEffect, useRef, useState } from 'react';
   import Link from 'next/link';
   import Image from 'next/image';
   import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,6 +34,8 @@
     const [showCartPreview, setShowCartPreview] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [searchValue, setSearchValue] = useState('');
+    const userMenuRef = useRef<HTMLDivElement>(null);
+    const cartPreviewRef = useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
       const handleScroll = () => {
@@ -42,6 +44,46 @@
       window.addEventListener('scroll', handleScroll);
       return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+      const handlePointerDown = (event: PointerEvent) => {
+        const target = event.target as Node;
+
+        if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+          setShowUserDropdown(false);
+        }
+
+        if (cartPreviewRef.current && !cartPreviewRef.current.contains(target)) {
+          setShowCartPreview(false);
+        }
+      };
+
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setShowUserDropdown(false);
+          setShowCartPreview(false);
+          setIsMenuOpen(false);
+        }
+      };
+
+      document.addEventListener('pointerdown', handlePointerDown);
+      document.addEventListener('keydown', handleEscape);
+
+      return () => {
+        document.removeEventListener('pointerdown', handlePointerDown);
+        document.removeEventListener('keydown', handleEscape);
+      };
+    }, []);
+
+    const handleBlurWithin =
+      (setter: React.Dispatch<React.SetStateAction<boolean>>) =>
+      (event: React.FocusEvent<HTMLDivElement>) => {
+        const nextFocused = event.relatedTarget;
+
+        if (!nextFocused || !event.currentTarget.contains(nextFocused as Node)) {
+          setter(false);
+        }
+      };
 
     const handleSearch = () => {
       const trimmedQuery = searchValue.trim();
@@ -97,11 +139,13 @@
                     placeholder="Tìm kiếm sản phẩm..."
                     value={searchValue}
                     onChange={(event) => setSearchValue(event.target.value)}
+                    aria-label="Tìm kiếm sản phẩm"
                     className="w-full pl-4 pr-12 py-2.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-500 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 transition-all"
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md bg-[#CA8A04] flex items-center justify-center hover:bg-[#B47B04] transition-colors"
+                    aria-label="Tìm kiếm"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-md bg-[#CA8A04] flex items-center justify-center hover:bg-[#B47B04] transition-colors"
                   >
                     <Search className="w-4 h-4 text-white" />
                   </button>
@@ -110,13 +154,24 @@
 
               <div className="flex items-center gap-2 sm:gap-4">
                 {isAuthenticated && user ? (
-                  <div 
+                  <div
+                    ref={userMenuRef}
                     className="relative"
                     onMouseEnter={() => setShowUserDropdown(true)}
                     onMouseLeave={() => setShowUserDropdown(false)}
+                    onFocus={() => setShowUserDropdown(true)}
+                    onBlur={handleBlurWithin(setShowUserDropdown)}
                   >
                     <div className="flex">
-                      <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors pb-2">
+                      <button
+                        type="button"
+                        aria-haspopup="menu"
+                        aria-expanded={showUserDropdown}
+                        aria-controls="user-account-menu"
+                        aria-label="Mở menu tài khoản"
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors pb-2"
+                        onClick={() => setShowUserDropdown(true)}
+                      >
                         {user?.avatar ? (
                           <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200">
                             <Image 
@@ -143,9 +198,15 @@
                     </div>
 
                     {showUserDropdown && (
-                      <div className="absolute top-full right-0 w-56 bg-white rounded-xl border border-gray-200 shadow-2xl py-2 z-50">
+                      <div
+                        id="user-account-menu"
+                        className="absolute top-full right-0 w-56 bg-white rounded-xl border border-gray-200 shadow-2xl py-2 z-50"
+                        role="menu"
+                      >
                         <Link 
                           href="/account/profile"
+                          role="menuitem"
+                          onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <UserCircle className="w-4 h-4" />
@@ -153,6 +214,8 @@
                         </Link>
                         <Link 
                           href="/account/orders"
+                          role="menuitem"
+                          onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <Package className="w-4 h-4" />
@@ -160,6 +223,8 @@
                         </Link>
                         <Link
                           href="/account/wishlist"
+                          role="menuitem"
+                          onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <Heart className="w-4 h-4" />
@@ -167,17 +232,22 @@
                         </Link>
                         <Link 
                           href="/account/addresses"
+                          role="menuitem"
+                          onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <MapPinIcon className="w-4 h-4" />
                           <span>Địa chỉ</span>
                         </Link>
                         <hr className="my-2 border-gray-200" />
-                        <button 
+                        <button
+                          type="button"
                           onClick={async () => {
                             await logout();
+                            setShowUserDropdown(false);
                             window.location.href = '/';
                           }}
+                          role="menuitem"
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
                         >
                           <LogOut className="w-4 h-4" />
@@ -205,6 +275,7 @@
 
                 <Link
                   href="/account/wishlist"
+                  aria-label={`Yêu thích${wishlistCount > 0 ? `, ${wishlistCount} mục` : ''}`}
                   className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <div className="relative">
@@ -218,36 +289,59 @@
                   <span className="font-medium text-gray-900 hidden sm:block">Yêu thích</span>
                 </Link>
 
-                <Link
-                  href="/cart"
-                  className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                <div
+                  ref={cartPreviewRef}
+                  className="relative"
                   onMouseEnter={() => setShowCartPreview(true)}
                   onMouseLeave={() => setShowCartPreview(false)}
+                  onFocus={() => setShowCartPreview(true)}
+                  onBlur={handleBlurWithin(setShowCartPreview)}
                 >
-                  <div className="relative" data-cart-icon>
-                    <ShoppingCart className="w-6 h-6" />
-                    {itemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#CA8A04] rounded-full text-xs text-white flex items-center justify-center font-bold">
-                        {itemCount > 9 ? '9+' : itemCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-medium text-gray-900 hidden sm:block">Giỏ hàng</span>
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={showCartPreview}
+                    aria-controls="cart-preview-panel"
+                    aria-label={`Mở xem trước giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ''}`}
+                    className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                    onClick={() => setShowCartPreview(true)}
+                  >
+                    <div className="relative" data-cart-icon>
+                      <ShoppingCart className="w-6 h-6" />
+                      {itemCount > 0 && (
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#CA8A04] rounded-full text-xs text-white flex items-center justify-center font-bold">
+                          {itemCount > 9 ? '9+' : itemCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-gray-900 hidden sm:block">Giỏ hàng</span>
+                  </button>
 
-                  {showCartPreview && itemCount > 0 && (
-                    <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-2xl p-4 z-50">
+                  {showCartPreview && (
+                    <div
+                      id="cart-preview-panel"
+                      className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-2xl p-4 z-50"
+                      role="dialog"
+                      aria-label="Xem trước giỏ hàng"
+                    >
                       <p className="text-sm text-gray-900 font-medium mb-2">
-                        {itemCount} sản phẩm trong giỏ
+                        {itemCount > 0 ? `${itemCount} sản phẩm trong giỏ` : 'Giỏ hàng của bạn đang trống'}
                       </p>
-                      <div className="w-full py-2 bg-[#CA8A04] text-white rounded-lg text-sm font-medium hover:bg-[#B47B04] transition-colors text-center">
+                      <Link
+                        href="/cart"
+                        onClick={() => setShowCartPreview(false)}
+                        className="block w-full py-2 bg-[#CA8A04] text-white rounded-lg text-sm font-medium hover:bg-[#B47B04] transition-colors text-center"
+                      >
                         Xem giỏ hàng
-                      </div>
+                      </Link>
                     </div>
                   )}
-                </Link>
+                </div>
 
                 <button 
-                  className="md:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  type="button"
+                  aria-label={isMenuOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'}
+                  className="md:hidden w-11 h-11 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
                   {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

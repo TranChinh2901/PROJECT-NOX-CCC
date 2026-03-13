@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { Bell, Filter, Check, Archive, Settings } from 'lucide-react';
-import { NotificationProvider, useNotifications } from '@/contexts/NotificationContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { NotificationItem } from '@/components/notification/NotificationItem';
 import { NotificationEmptyState } from '@/components/notification/NotificationEmptyState';
 import { Button } from '@/components/common/Button';
@@ -328,12 +328,5 @@ function NotificationsPageContent() {
 }
 
 export default function NotificationsPage() {
-  return (
-    <NotificationProvider
-      wsEndpoint={process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000'}
-      enableToasts={true}
-    >
-      <NotificationsPageContent />
-    </NotificationProvider>
-  );
+  return <NotificationsPageContent />;
 }

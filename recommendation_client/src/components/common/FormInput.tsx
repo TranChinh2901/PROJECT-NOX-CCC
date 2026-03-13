@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -15,12 +15,24 @@ export const FormInput: React.FC<FormInputProps> = ({
   leftIcon,
   rightIcon,
   className = '',
+  id,
+  name,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   ...props
 }) => {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const errorId = `${inputId}-error`;
+  const helperTextId = `${inputId}-helper`;
+  const describedBy = [ariaDescribedBy, error ? errorId : undefined, helperText && !error ? helperTextId : undefined]
+    .filter(Boolean)
+    .join(' ') || undefined;
+
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
           {label}
         </label>
       )}
@@ -31,6 +43,10 @@ export const FormInput: React.FC<FormInputProps> = ({
           </div>
         )}
         <input
+          id={inputId}
+          name={name}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : ariaInvalid}
           className={`
             w-full px-4 py-2.5 rounded-lg border transition-all
             ${leftIcon ? 'pl-10' : ''}
@@ -51,10 +67,10 @@ export const FormInput: React.FC<FormInputProps> = ({
         )}
       </div>
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p id={errorId} className="mt-1 text-sm text-red-600">{error}</p>
       )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p id={helperTextId} className="mt-1 text-sm text-gray-500">{helperText}</p>
       )}
     </div>
   );
