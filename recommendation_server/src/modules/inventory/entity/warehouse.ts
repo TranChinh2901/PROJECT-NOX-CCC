@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, DeleteDateColumn, Unique } from "typeorm";
 
 @Entity('warehouses')
+@Unique('UQ_warehouses_code', ['code'])
 export class Warehouse {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -8,7 +9,7 @@ export class Warehouse {
   @Column({ length: 100 })
   name!: string;
 
-  @Column({ length: 20, unique: true })
+  @Column({ length: 20 })
   code!: string;
 
   @Column({ length: 255 })
@@ -35,12 +36,12 @@ export class Warehouse {
   @Column({ type: 'boolean', default: false })
   is_default!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'datetime', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
   deleted_at?: Date;
 }

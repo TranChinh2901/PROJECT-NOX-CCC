@@ -7,8 +7,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -21,16 +19,16 @@ import {
 } from './column-types';
 
 @Entity('notification_preferences')
-@Unique(['user_id'])
-@Index(['user_id', 'email_enabled'])
-@Index(['user_id', 'in_app_enabled'])
-@Index(['user_id', 'quiet_hours_enabled'])
+@Unique('UQ_notification_preferences_user_id', ['user_id'])
+@Index('IDX_notification_preferences_user_id', ['user_id'])
+@Index('IDX_notification_preferences_user_email_enabled', ['user_id', 'email_enabled'])
+@Index('IDX_notification_preferences_user_in_app_enabled', ['user_id', 'in_app_enabled'])
+@Index('IDX_notification_preferences_user_quiet_hours_enabled', ['user_id', 'quiet_hours_enabled'])
 export class NotificationPreference {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  @Index()
+  @Column({ type: 'int' })
   user_id!: number;
 
   // Channel preferences
@@ -89,13 +87,17 @@ export class NotificationPreference {
   })
   email_frequency!: 'immediate' | 'daily' | 'weekly';
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_notification_preferences_user' })
   user?: User;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

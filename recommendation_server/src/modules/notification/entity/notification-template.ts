@@ -7,16 +7,14 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
   Index,
 } from 'typeorm';
 import { NotificationType } from '../enum/notification.enum';
 import { notificationJsonColumnType } from './column-types';
 
 @Entity('notification_templates')
-@Index(['type', 'is_active'])
-@Index(['is_active'])
+@Index('IDX_notification_templates_type_active', ['type', 'is_active'])
+@Index('IDX_notification_templates_is_active', ['is_active'])
 export class NotificationTemplate {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -25,7 +23,6 @@ export class NotificationTemplate {
     type: 'simple-enum',
     enum: NotificationType,
   })
-  @Index()
   type!: NotificationType;
 
   @Column({ type: 'simple-enum', enum: ['email', 'sms', 'push', 'in_app'], default: 'in_app' })
@@ -52,9 +49,13 @@ export class NotificationTemplate {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

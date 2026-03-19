@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('user_addresses')
+@Index('IDX_user_addresses_user_id', ['user_id'])
 export class UserAddress {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -9,8 +10,8 @@ export class UserAddress {
   @Column()
   user_id!: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_user_addresses_user' })
   user!: User;
 
   @Column({ type: 'varchar', length: 100 })
@@ -37,9 +38,9 @@ export class UserAddress {
   @Column({ type: 'boolean', default: false })
   is_default!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 }

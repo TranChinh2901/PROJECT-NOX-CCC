@@ -24,9 +24,9 @@ export class SiteNavigationItem {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @CreateDateColumn({ type: 'datetime', precision: 6 })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @UpdateDateColumn({ type: 'datetime', precision: 6 })
   updated_at!: Date;
 }

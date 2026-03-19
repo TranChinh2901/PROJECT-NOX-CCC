@@ -1,9 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from "typeorm";
 import { OrderStatus } from "../enum/order.enum";
 import { Order } from "./order";
 
 @Entity('order_status_histories')
-@Index(['order_id'])
+@Index('IDX_order_status_histories_order_id', ['order_id'])
 export class OrderStatusHistory {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -11,8 +11,8 @@ export class OrderStatusHistory {
   @Column()
   order_id!: number;
 
-  @ManyToOne(() => Order, (order) => order.status_histories, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'order_id' })
+  @ManyToOne(() => Order, (order) => order.status_histories, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'order_id', foreignKeyConstraintName: 'FK_order_status_histories_order' })
   order!: Order;
 
   @Column({ type: 'simple-enum', enum: OrderStatus })
@@ -27,6 +27,6 @@ export class OrderStatusHistory {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 }

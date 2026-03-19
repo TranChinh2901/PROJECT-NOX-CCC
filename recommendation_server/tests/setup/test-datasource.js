@@ -16,7 +16,9 @@ require("reflect-metadata");
 const path_1 = __importDefault(require("path"));
 const typeorm_1 = require("typeorm");
 const load_entities_1 = require("@/config/load-entities");
+const typeorm_naming_strategy_1 = require("@/database/typeorm-naming.strategy");
 let testDataSource;
+const resolveTestDatabaseType = () => (process.env.TEST_DATABASE_TYPE ?? process.env.TEST_DB_TYPE ?? 'mariadb');
 function createTestDataSource() {
     const hasMysqlConfig = Boolean(process.env.TEST_DB_HOST &&
         process.env.TEST_DB_PORT &&
@@ -24,7 +26,7 @@ function createTestDataSource() {
         process.env.TEST_DB_NAME);
     if (hasMysqlConfig) {
         return new typeorm_1.DataSource({
-            type: 'mysql',
+            type: resolveTestDatabaseType(),
             host: process.env.TEST_DB_HOST,
             port: Number(process.env.TEST_DB_PORT),
             username: process.env.TEST_DB_USERNAME,
@@ -34,6 +36,7 @@ function createTestDataSource() {
             migrations: [path_1.default.join(process.cwd(), 'src/database/migrations/*{.ts,.js}')],
             migrationsRun: true,
             logging: false,
+            namingStrategy: new typeorm_naming_strategy_1.ProjectNamingStrategy(),
         });
     }
     return new typeorm_1.DataSource({
@@ -61,7 +64,7 @@ async function resetTestDatabase() {
     if (!dataSource.isInitialized) {
         await dataSource.initialize();
     }
-    if (dataSource.options.type === 'mysql') {
+    if (dataSource.options.type === 'mysql' || dataSource.options.type === 'mariadb') {
         await dataSource.dropDatabase();
         await dataSource.runMigrations();
         return;

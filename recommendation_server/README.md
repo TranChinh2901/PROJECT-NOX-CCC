@@ -42,13 +42,13 @@ following features:
 - **TypeScript** - Type safety
 
 ### Database:
-- **MySQL** - Relational database
+- **MySQL / MariaDB** - Relational database
 
 ## Installation
 
 ### Requirements
 - Node.js >= 22.16.0
-- MySQL 8.0+ installed and running
+- MySQL 8.0+ or MariaDB installed and running
 
 ### 1. Clone the Repository
 
@@ -113,6 +113,7 @@ DB_PORT=3306
 DB_USERNAME=fashion_user
 DB_PASSWORD=fashion_pass
 DB_NAME=fashion_ecommerce
+DATABASE_TYPE=mariadb
 
 # Server Port
 PORT=5000
@@ -141,6 +142,12 @@ Create the database tables:
 ```bash
 npm run migration:run
 ```
+
+Database notes:
+
+- The active migration path is `src/database/migrations`.
+- `src/migrations` contains legacy migration history and should not be used as the current schema source of truth.
+- Set `DATABASE_TYPE=mariadb` for MariaDB servers and `DATABASE_TYPE=mysql` for MySQL servers.
 
 ### 5. Seed Database with Sample Data
 
@@ -188,6 +195,7 @@ The server will start at `http://localhost:5000`
 | `npm run migration:run` | Run all pending migrations to create/update database tables |
 | `npm run migration:generate -- src/database/migrations/FileName` | Generate a new migration from entities (replace `FileName` with no accents/special chars) |
 | `npm run migration:revert` | Revert the last executed migration |
+| `npm run schema:drift` | Print the current entity/schema drift against the configured database |
 
 ### Database Seeding
 | Command | Description |

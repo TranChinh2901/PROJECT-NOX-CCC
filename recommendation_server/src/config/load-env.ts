@@ -21,6 +21,7 @@ const toPort = (value: string | undefined, fallback: number): number => {
 export const loadedEnv = {
   port: toPort(process.env.PORT, 5000),
   db: {
+    type: firstDefinedOr("mariadb", process.env.DATABASE_TYPE, process.env.DB_TYPE) as "mysql" | "mariadb",
     host: process.env.DB_HOST,
     port: toNumber(process.env.DB_PORT, 3306),
     username: process.env.DB_USERNAME,

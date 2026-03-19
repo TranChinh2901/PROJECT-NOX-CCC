@@ -2,14 +2,14 @@
 
 Monorepo for a fashion e-commerce application with:
 
-- `recommendation_server`: Express + TypeScript + TypeORM + MySQL backend
+- `recommendation_server`: Express + TypeScript + TypeORM + MySQL/MariaDB backend
 - `recommendation_client`: Next.js frontend
 
 ## Prerequisites
 
 - Node.js 20+
 - npm
-- MySQL 8+
+- MySQL 8+ or MariaDB
 
 ## Project Structure
 
@@ -38,6 +38,7 @@ Use a real `.env` file in `recommendation_server` with at least:
 PORT=5000
 
 # database
+DATABASE_TYPE=mariadb
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USERNAME=your_mysql_user
@@ -68,6 +69,7 @@ Notes:
 
 - The backend also accepts `ACCESS_TOKEN_SECRET` / `REFRESH_TOKEN_SECRET`.
 - `DB_HOST` and `DB_PORT` must be real values. Placeholders like `....` will fail.
+- Set `DATABASE_TYPE=mariadb` when the server is MariaDB. Use `mysql` only for MySQL servers.
 
 ### Create the database
 
@@ -83,6 +85,12 @@ CREATE DATABASE IF NOT EXISTS `project-ccc`
 
 ```bash
 npm run migration:run
+```
+
+### Inspect schema drift
+
+```bash
+npm run schema:drift
 ```
 
 ### Seed data

@@ -1,19 +1,11 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  ManyToOne, 
-  JoinColumn, 
-  CreateDateColumn, 
-  UpdateDateColumn,
-  Index 
-} from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index, Unique } from "typeorm";
 import { User } from "./user.entity";
 import { DeviceType } from "../enum/user-session.enum";
 
 @Entity('user_sessions')
-@Index(['user_id'])
-@Index(['is_active'])
+@Unique('UQ_user_sessions_session_token', ['session_token'])
+@Index('IDX_user_sessions_user_id', ['user_id'])
+@Index('IDX_user_sessions_is_active', ['is_active'])
 export class UserSession {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -21,7 +13,7 @@ export class UserSession {
   @Column({ type: 'int', nullable: true })
   user_id?: number;
 
-  @Column({ length: 255, unique: true })
+  @Column({ length: 255 })
   session_token!: string;
 
   @Column({ length: 45, nullable: true })
@@ -37,22 +29,22 @@ export class UserSession {
   })
   device_type!: DeviceType;
 
-  @Column({ type: 'datetime' })
+  @Column({ type: 'datetime', precision: 0 })
   started_at!: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'datetime', precision: 0, nullable: true })
   ended_at?: Date;
 
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @ManyToOne(() => User, (user) => user.sessions, { nullable: true })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, (user) => user.sessions, { nullable: true, onDelete: 'SET NULL', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_user_sessions_user' })
   user?: User;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 }

@@ -7,7 +7,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -16,16 +15,16 @@ import {
 import { User } from '@/modules/users/entity/user.entity';
 
 @Entity('notification_subscriptions')
-@Unique(['user_id', 'topic_type', 'topic_id'])
-@Index(['topic_type', 'topic_id', 'is_active'])
-@Index(['user_id', 'is_active'])
-@Index(['user_id', 'topic_type'])
+@Unique('UQ_notification_subscriptions_user_topic', ['user_id', 'topic_type', 'topic_id'])
+@Index('IDX_notification_subscriptions_topic_active', ['topic_type', 'topic_id', 'is_active'])
+@Index('IDX_notification_subscriptions_user_active', ['user_id', 'is_active'])
+@Index('IDX_notification_subscriptions_user_topic_type', ['user_id', 'topic_type'])
+@Index('IDX_notification_subscriptions_user_id', ['user_id'])
 export class NotificationSubscription {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  @Index()
+  @Column({ type: 'int' })
   user_id!: number;
 
   @Column({ length: 50 })
@@ -37,10 +36,10 @@ export class NotificationSubscription {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_notification_subscriptions_user' })
   user?: User;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 }

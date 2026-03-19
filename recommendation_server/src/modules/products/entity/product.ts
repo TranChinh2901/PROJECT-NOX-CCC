@@ -1,14 +1,18 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, DeleteDateColumn, Index, Unique } from "typeorm";
 import { Category } from "./category";
 import { Brand } from "./brand";
 import { ProductVariant } from "./product-variant";
 import { ProductImage } from "./product-image";
 
 @Entity('products')
-@Index(['category_id'])
-@Index(['brand_id'])
-@Index(['is_active'])
-@Index(['is_featured'])
+@Unique('UQ_products_slug', ['slug'])
+@Unique('UQ_products_sku', ['sku'])
+@Index('IDX_products_category_id', ['category_id'])
+@Index('IDX_products_brand_id', ['brand_id'])
+@Index('IDX_products_is_active', ['is_active'])
+@Index('IDX_products_is_featured', ['is_featured'])
+@Index('IDX_products_slug', ['slug'])
+@Index('IDX_products_sku', ['sku'])
 export class Product {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -16,24 +20,24 @@ export class Product {
   @Column()
   category_id!: number;
 
-  @ManyToOne(() => Category, category => category.children)
-  @JoinColumn({ name: 'category_id' })
+  @ManyToOne(() => Category, category => category.children, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'category_id', foreignKeyConstraintName: 'FK_products_category' })
   category!: Category;
 
   @Column({ nullable: true })
   brand_id?: number;
 
-  @ManyToOne(() => Brand, brand => brand.id, { nullable: true })
-  @JoinColumn({ name: 'brand_id' })
+  @ManyToOne(() => Brand, { nullable: true, onDelete: 'SET NULL', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'brand_id', foreignKeyConstraintName: 'FK_products_brand' })
   brand?: Brand;
 
   @Column({ length: 200 })
   name!: string;
 
-  @Column({ length: 200, unique: true })
+  @Column({ length: 200 })
   slug!: string;
 
-  @Column({ length: 100, unique: true })
+  @Column({ length: 100 })
   sku!: string;
 
   @Column({ type: 'text' })
@@ -66,13 +70,13 @@ export class Product {
   @Column({ length: 500, nullable: true })
   meta_description?: string;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'datetime', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
   deleted_at?: Date;
 
   @OneToMany(() => ProductVariant, variant => variant.product)

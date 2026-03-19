@@ -7,8 +7,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -24,18 +22,18 @@ import {
 } from './column-types';
 
 @Entity('notifications')
-@Index(['user_id', 'is_read', 'is_archived', 'created_at'])
-@Index(['user_id', 'is_read', 'created_at'])
-@Index(['user_id', 'priority', 'is_read', 'created_at'])
-@Index(['user_id', 'expires_at'])
-@Index(['reference_type', 'reference_id'])
-@Index(['created_at'])
+@Index('IDX_notifications_user_id', ['user_id'])
+@Index('IDX_notifications_user_read_archived_created', ['user_id', 'is_read', 'is_archived', 'created_at'])
+@Index('IDX_notifications_user_read_created', ['user_id', 'is_read', 'created_at'])
+@Index('IDX_notifications_user_priority_read_created', ['user_id', 'priority', 'is_read', 'created_at'])
+@Index('IDX_notifications_user_expires_at', ['user_id', 'expires_at'])
+@Index('IDX_notifications_reference', ['reference_type', 'reference_id'])
+@Index('IDX_notifications_created_at', ['created_at'])
 export class Notification {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  @Index()
+  @Column({ type: 'int' })
   user_id!: number;
 
   @Column({
@@ -68,7 +66,6 @@ export class Notification {
   image_url?: string;
 
   @Column({ type: 'boolean', default: false })
-  @Index()
   is_read!: boolean;
 
   @Column({ type: 'datetime', nullable: true })
@@ -89,13 +86,17 @@ export class Notification {
   @Column({ length: 50, nullable: true })
   reference_type?: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_notifications_user' })
   user?: User;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

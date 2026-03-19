@@ -8,8 +8,12 @@ import 'reflect-metadata';
 import path from 'path';
 import { DataSource } from 'typeorm';
 import { entities } from '@/config/load-entities';
+import { ProjectNamingStrategy } from '@/database/typeorm-naming.strategy';
 
 let testDataSource: DataSource;
+
+const resolveTestDatabaseType = (): 'mysql' | 'mariadb' =>
+  (process.env.TEST_DATABASE_TYPE ?? process.env.TEST_DB_TYPE ?? 'mariadb') as 'mysql' | 'mariadb';
 
 export function createTestDataSource(): DataSource {
   const hasMysqlConfig = Boolean(
@@ -21,7 +25,7 @@ export function createTestDataSource(): DataSource {
 
   if (hasMysqlConfig) {
     return new DataSource({
-      type: 'mysql',
+      type: resolveTestDatabaseType(),
       host: process.env.TEST_DB_HOST,
       port: Number(process.env.TEST_DB_PORT),
       username: process.env.TEST_DB_USERNAME,
@@ -31,6 +35,7 @@ export function createTestDataSource(): DataSource {
       migrations: [path.join(process.cwd(), 'src/database/migrations/*{.ts,.js}')],
       migrationsRun: true,
       logging: false,
+      namingStrategy: new ProjectNamingStrategy(),
     });
   }
 
@@ -63,7 +68,7 @@ export async function resetTestDatabase(): Promise<void> {
     await dataSource.initialize();
   }
 
-  if (dataSource.options.type === 'mysql') {
+  if (dataSource.options.type === 'mysql' || dataSource.options.type === 'mariadb') {
     await dataSource.dropDatabase();
     await dataSource.runMigrations();
     return;

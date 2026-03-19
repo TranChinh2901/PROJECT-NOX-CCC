@@ -1,33 +1,34 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index, Unique } from "typeorm";
 import { User } from "@/modules/users/entity/user.entity";
 import { Product } from "@/modules/products/entity/product";
 import { RecommendationType } from "../enum/recommendation.enum";
 
 @Entity('recommendation_cache')
-@Index(['user_id'])
-@Index(['product_id'])
-@Index(['recommendation_type'])
-@Index(['expires_at'])
-@Index(['is_active'])
+@Unique('UQ_recommendation_cache_cache_key', ['cache_key'])
+@Index('IDX_recommendation_cache_user_id', ['user_id'])
+@Index('IDX_recommendation_cache_product_id', ['product_id'])
+@Index('IDX_recommendation_cache_recommendation_type', ['recommendation_type'])
+@Index('IDX_recommendation_cache_expires_at', ['expires_at'])
+@Index('IDX_recommendation_cache_is_active', ['is_active'])
 export class RecommendationCache {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ length: 191, unique: true })
+  @Column({ length: 191 })
   cache_key!: string;
 
   @Column({ type: 'int', nullable: true })
   user_id?: number;
 
-  @ManyToOne(() => User, user => user.id, { nullable: true })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, user => user.id, { nullable: true, onDelete: 'SET NULL', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'FK_recommendation_cache_user' })
   user?: User;
 
   @Column({ type: 'int', nullable: true })
   product_id?: number;
 
-  @ManyToOne(() => Product, product => product.id, { nullable: true })
-  @JoinColumn({ name: 'product_id' })
+  @ManyToOne(() => Product, product => product.id, { nullable: true, onDelete: 'SET NULL', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'product_id', foreignKeyConstraintName: 'FK_recommendation_cache_product' })
   product?: Product;
 
   @Column({ type: 'simple-enum', enum: RecommendationType })
@@ -54,9 +55,13 @@ export class RecommendationCache {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

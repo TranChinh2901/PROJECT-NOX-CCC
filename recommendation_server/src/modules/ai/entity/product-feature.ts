@@ -1,13 +1,13 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index, Unique } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index, Unique } from "typeorm";
 import { Product } from "@/modules/products/entity/product";
 import { User } from "@/modules/users/entity/user.entity";
 import { ProductFeatureType, FeatureSource } from "../enum/product-feature.enum";
 
 @Entity('product_features')
-@Unique(['product_id', 'feature_type', 'feature_value'])
-@Index(['product_id'])
-@Index(['feature_type'])
-@Index(['feature_value'])
+@Unique('UQ_product_features_product_type_value', ['product_id', 'feature_type', 'feature_value'])
+@Index('IDX_product_features_product_id', ['product_id'])
+@Index('IDX_product_features_feature_type', ['feature_type'])
+@Index('IDX_product_features_feature_value', ['feature_value'])
 export class ProductFeature {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -15,8 +15,8 @@ export class ProductFeature {
   @Column()
   product_id!: number;
 
-  @ManyToOne(() => Product, product => product.id)
-  @JoinColumn({ name: 'product_id' })
+  @ManyToOne(() => Product, product => product.id, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'product_id', foreignKeyConstraintName: 'FK_product_features_product' })
   product!: Product;
 
   @Column({ type: 'simple-enum', enum: ProductFeatureType })
@@ -34,9 +34,13 @@ export class ProductFeature {
   @Column({ default: 1 })
   weight!: number;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

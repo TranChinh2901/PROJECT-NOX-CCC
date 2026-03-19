@@ -1,15 +1,17 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Index } from "typeorm";
-import { Category } from "./category";
+import { Entity, Column, PrimaryGeneratedColumn, DeleteDateColumn, Index, Unique } from "typeorm";
 
 @Entity('brands')
+@Unique('UQ_brands_name', ['name'])
+@Unique('UQ_brands_slug', ['slug'])
+@Index('IDX_brands_slug', ['slug'])
 export class Brand {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ length: 100, unique: true })
+  @Column({ length: 100 })
   name!: string;
 
-  @Column({ length: 100, unique: true })
+  @Column({ length: 100 })
   slug!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -24,12 +26,12 @@ export class Brand {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 
-  @DeleteDateColumn({ type: 'datetime', nullable: true })
+  @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
   deleted_at?: Date;
 }

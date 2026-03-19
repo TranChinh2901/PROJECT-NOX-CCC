@@ -5,6 +5,10 @@
 import path from 'path';
 import { DataSource } from 'typeorm';
 import { entities } from '@/config/load-entities';
+import { ProjectNamingStrategy } from '@/database/typeorm-naming.strategy';
+
+const resolveTestDatabaseType = (): 'mysql' | 'mariadb' =>
+  (process.env.TEST_DATABASE_TYPE ?? process.env.TEST_DB_TYPE ?? 'mysql') as 'mysql' | 'mariadb';
 
 export class TestDatabase {
   private static instance: TestDatabase;
@@ -33,7 +37,7 @@ export class TestDatabase {
 
     this.dataSource = hasMysqlConfig
       ? new DataSource({
-          type: 'mysql',
+          type: resolveTestDatabaseType(),
           host: process.env.TEST_DB_HOST,
           port: Number(process.env.TEST_DB_PORT),
           username: process.env.TEST_DB_USERNAME,
@@ -43,6 +47,7 @@ export class TestDatabase {
           migrations: [path.join(process.cwd(), 'src/database/migrations/*{.ts,.js}')],
           migrationsRun: true,
           logging: false,
+          namingStrategy: new ProjectNamingStrategy(),
         })
       : new DataSource({
           type: 'sqlite',

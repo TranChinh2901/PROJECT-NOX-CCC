@@ -7,8 +7,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -18,17 +16,17 @@ import { DeliveryChannel, DeliveryStatus } from '../enum/notification.enum';
 import { notificationJsonColumnType } from './column-types';
 
 @Entity('notification_delivery_logs')
-@Index(['notification_id', 'channel'])
-@Index(['status', 'retry_count', 'created_at'])
-@Index(['channel', 'status', 'created_at'])
-@Index(['channel', 'status'])
-@Index(['created_at'])
+@Index('IDX_notification_delivery_logs_notification_id', ['notification_id'])
+@Index('IDX_notification_delivery_logs_notification_channel', ['notification_id', 'channel'])
+@Index('IDX_notification_delivery_logs_status_retry_created', ['status', 'retry_count', 'created_at'])
+@Index('IDX_notification_delivery_logs_channel_status_created', ['channel', 'status', 'created_at'])
+@Index('IDX_notification_delivery_logs_channel_status', ['channel', 'status'])
+@Index('IDX_notification_delivery_logs_created_at', ['created_at'])
 export class NotificationDeliveryLog {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  @Index()
+  @Column({ type: 'int' })
   notification_id!: number;
 
   @Column({
@@ -65,13 +63,17 @@ export class NotificationDeliveryLog {
   @Column({ type: notificationJsonColumnType, nullable: true })
   metadata?: Record<string, any>;
 
-  @ManyToOne(() => Notification, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'notification_id' })
+  @ManyToOne(() => Notification, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'notification_id', foreignKeyConstraintName: 'FK_notification_delivery_logs_notification' })
   notification?: Notification;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }

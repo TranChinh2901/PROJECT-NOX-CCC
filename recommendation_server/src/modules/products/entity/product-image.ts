@@ -1,11 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from "typeorm";
 import { Product } from "./product";
 import { ProductVariant } from "./product-variant";
 
 @Entity('product_images')
-@Index(['product_id'])
-@Index(['variant_id'])
-@Index(['is_primary'])
+@Index('IDX_product_images_product_id', ['product_id'])
+@Index('IDX_product_images_variant_id', ['variant_id'])
+@Index('IDX_product_images_is_primary', ['is_primary'])
 export class ProductImage {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -13,15 +13,15 @@ export class ProductImage {
   @Column()
   product_id!: number;
 
-  @ManyToOne(() => Product, product => product.id, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'product_id' })
+  @ManyToOne(() => Product, product => product.images, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'product_id', foreignKeyConstraintName: 'FK_product_images_product' })
   product!: Product;
 
   @Column({ nullable: true })
   variant_id?: number;
 
-  @ManyToOne(() => ProductVariant, variant => variant.id, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'variant_id' })
+  @ManyToOne(() => ProductVariant, variant => variant.images, { nullable: true, onDelete: 'SET NULL', onUpdate: 'RESTRICT' })
+  @JoinColumn({ name: 'variant_id', foreignKeyConstraintName: 'FK_product_images_variant' })
   variant?: ProductVariant;
 
   @Column({ length: 500 })
@@ -39,10 +39,10 @@ export class ProductImage {
   @Column({ type: 'boolean', default: false })
   is_primary!: boolean;
 
-  @CreateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'datetime' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 
   deleted_at?: Date;
