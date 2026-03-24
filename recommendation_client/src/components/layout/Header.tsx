@@ -327,14 +327,11 @@
                   onFocus={() => setShowCartPreview(true)}
                   onBlur={handleBlurWithin(setShowCartPreview)}
                 >
-                  <button
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-expanded={showCartPreview}
-                    aria-controls="cart-preview-panel"
-                    aria-label={`Mở xem trước giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ''}`}
+                  <Link
+                    href="/cart"
+                    aria-label={`Mở giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ''}`}
                     className="relative flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                    onClick={() => setShowCartPreview(true)}
+                    onClick={() => setShowCartPreview(false)}
                   >
                     <div className="relative" data-cart-icon>
                       <ShoppingCart className="w-6 h-6" />
@@ -345,7 +342,7 @@
                       )}
                     </div>
                     <span className="font-medium text-gray-900 hidden sm:block">Giỏ hàng</span>
-                  </button>
+                  </Link>
 
                   {showCartPreview && (
                     <div

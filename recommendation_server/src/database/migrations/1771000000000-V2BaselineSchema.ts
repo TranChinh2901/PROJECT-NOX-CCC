@@ -4,6 +4,11 @@ export class V2BaselineSchema1771000000000 implements MigrationInterface {
   name = 'V2BaselineSchema1771000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const hasUsersTable = await queryRunner.hasTable('users');
+    if (hasUsersTable) {
+      return;
+    }
+
     await queryRunner.query(`
       CREATE TABLE \`users\` (
         \`id\` INT NOT NULL AUTO_INCREMENT,
