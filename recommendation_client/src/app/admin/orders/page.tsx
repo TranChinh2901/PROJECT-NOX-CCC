@@ -87,6 +87,11 @@ export default function OrdersManagement() {
       return;
     }
 
+    const currentOrder = orders.find((order) => order.id === orderId);
+    if (!currentOrder || currentOrder.status === newStatus) {
+      return;
+    }
+
     try {
       setUpdatingOrderId(orderId);
       await adminApi.updateOrderStatus(orderId, { status: newStatus });
