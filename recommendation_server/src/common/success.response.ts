@@ -11,7 +11,7 @@ export class AppResponse {
     data = {},
   }: {
     message: string;
-    statusCode: number;
+    statusCode?: number;
     data?: any;
   }) {
     this.message = message;
@@ -26,4 +26,21 @@ export class AppResponse {
       data: this.data,
     });
   }
+}
+
+/**
+ * Helper function to send success responses
+ */
+export function successResponse(
+  res: Response,
+  statusCode: number,
+  message: string,
+  data?: any
+): Response {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    data,
+  });
+  
 }

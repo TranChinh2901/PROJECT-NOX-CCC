@@ -2,6 +2,7 @@ export const HttpStatusCode = {
   // success
   OK: 200,
   CREATED: 201,
+  ACCEPTED: 202,
   NO_CONTENT: 204,
 
   // error
@@ -13,3 +14,6 @@ export const HttpStatusCode = {
 
   INTERNAL_SERVER_ERROR: 500,
 } as const;
+
+// Export as StatusCode alias for convenience
+export const StatusCode = HttpStatusCode;

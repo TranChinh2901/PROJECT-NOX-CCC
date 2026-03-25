@@ -10,12 +10,18 @@ import { logger } from "@/utils/logger";
 const app = express();
 const PORT = loadedEnv.port;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(requestLogger);
-initDatabase();
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -25,6 +31,16 @@ app.use("/", router);
 
 app.use(exceptionHandler);
 
-app.listen(PORT, () => {
-  logger.success(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await initDatabase();
+    app.listen(PORT, () => {
+      logger.success(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error("Server startup aborted because the database is unavailable");
+    process.exit(1);
+  }
+};
+
+void startServer();

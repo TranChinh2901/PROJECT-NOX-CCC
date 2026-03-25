@@ -1,6 +1,5 @@
 import { GenderType } from "@/modules/users/enum/user.enum";
 import Joi from "joi";
-import { RoleType } from "../enum/auth.enum";
 
 export const RegisterSchema = Joi.object({
   fullname: Joi.string().min(2).max(100).required().messages({
@@ -32,10 +31,6 @@ export const RegisterSchema = Joi.object({
       )}`,
     }),
   date_of_birth: Joi.date().iso().optional(),
-  role: Joi.string()
-    .valid(...Object.values(RoleType))
-    .default(RoleType.USER)
-    .optional(),
 });
 
 export const RefreshTokenSchema = Joi.object({

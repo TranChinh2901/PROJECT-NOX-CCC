@@ -1,10 +1,14 @@
 
 
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, Index, Unique } from "typeorm";
 import { GenderType } from "../enum/user.enum";
 import { RoleType } from "@/modules/auth/enum/auth.enum";
+import { UserSession } from "./user-session";
 
 @Entity('users')
+@Unique('UQ_users_email', ['email'])
+@Unique('UQ_users_phone_number', ['phone_number'])
+@Index('IDX_users_email', ['email'])
 export class User {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -12,10 +16,10 @@ export class User {
   @Column({ length: 100 })
   fullname!: string;
 
-  @Column({ length: 150, unique: true })
+  @Column({ length: 150 })
   email!: string;
 
-  @Column({ length: 20, unique: true })
+  @Column({ length: 20 })
   phone_number!: string;
   
   @Column({ length: 255, nullable: true })
@@ -27,7 +31,7 @@ export class User {
   @Column({ length: 255 })
   password!: string;
 
-  @Column({ type: 'enum', enum: GenderType, nullable: true })
+  @Column({ type: 'simple-enum', enum: GenderType, nullable: true })
   gender?: GenderType;
 
   @Column({ type: 'date', nullable: true }) 
@@ -36,12 +40,18 @@ export class User {
   @Column({ type: 'boolean', default: false })
   is_verified!: boolean;
 
-  @Column({ type: 'enum', enum: RoleType, default: RoleType.USER })
+  @Column({ type: 'simple-enum', enum: RoleType, default: RoleType.USER })
   role!: RoleType;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @OneToMany(() => UserSession, (session) => session.user)
+  sessions?: UserSession[];
+
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
+
+  @Column({ type: 'datetime', precision: 0, nullable: true, default: null })
+  deleted_at!: Date | null;
 }

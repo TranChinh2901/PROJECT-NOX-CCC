@@ -4,6 +4,7 @@
   "main": "src/main.ts",
   "scripts": {
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-users-roles.ts",
+    "seed:ecommerce": "ts-node -r tsconfig-paths/register src/scripts/seed-ecommerce.ts",
     "test:api": "ts-node -r tsconfig-paths/register src/scripts/test-api.ts",
     "test": "jest",
     "seed:blog": "ts-node -r tsconfig-paths/register src/scripts/seed-blog.ts",
@@ -13,7 +14,8 @@
     "start": "node dist/main.js",
     "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/config/database.config.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/database.config.ts",
-    "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/database.config.ts"
+    "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/database.config.ts",
+    "schema:drift": "ts-node -r tsconfig-paths/register src/database/schema-drift-report.ts"
   },
   "author": "",
   "license": "ISC",
@@ -28,6 +30,7 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "fuse.js": "^7.1.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
@@ -38,6 +41,7 @@
     "typeorm": "^0.3.25"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "@types/axios": "^0.14.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
@@ -48,6 +52,7 @@
     "@types/node": "^20.19.2",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
+    "sqlite3": "^5.1.7",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",

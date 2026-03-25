@@ -7,6 +7,7 @@ export const initDatabase = async () => {
     logger.success("Database connected!");
   } catch (error) {
     logger.error(`Failed to connect database: ${error}`);
+    throw error;
   }
 };
 

@@ -1,19 +1,11 @@
-// ĐỊnh hình và gọi api tại đây
-
-// Ví dụ 
-// export const authApi = {
-//   login: async (credentials: LoginDto): Promise<AuthResponse> => {
-//     const response = await apiClient.post('/auth/login', credentials);
-//     return response.data;
-//   },
-  
-//   register: async (userData: RegisterDto): Promise<RegisterResponse> => {
-//     const response = await apiClient.post('/auth/register', userData);
-//     return response.data;
-
-//   },
-  
-//   logout: () => {
-//     return apiClient.post('/auth/logout');
-//   },
-// }
+export { authApi } from './auth.api';
+export { productApi } from './product.api';
+export { categoryApi } from './category.api';
+export { cartApi } from './cart.api';
+export { orderApi } from './order.api';
+export { reviewApi } from './review.api';
+export { notificationApi } from './notification.api';
+export { wishlistApi } from './wishlist.api';
+export { navigationApi } from './navigation.api';
+export { paymentApi } from './payment.api';
+export { default as apiClient } from './apiClient';

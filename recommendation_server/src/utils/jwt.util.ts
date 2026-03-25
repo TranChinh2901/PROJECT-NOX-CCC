@@ -1,9 +1,10 @@
 import jwt, { Secret, SignOptions } from "jsonwebtoken";
+import { loadedEnv } from "@/config/load-env";
 
-const JWT_SECRET: Secret = process.env.ACCESS_TOKEN_SECRET || 'access_secret';
-const REFRESH_SECRET: Secret = process.env.REFRESH_TOKEN_SECRET || 'refresh_secret';
-const ACCESS_EXPIRES_IN: any = process.env.ACCESS_TOKEN_EXPIRES_IN || '30m';
-const REFRESH_EXPIRES_IN: any = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+const JWT_SECRET: Secret = loadedEnv.jwt.accessSecret;
+const REFRESH_SECRET: Secret = loadedEnv.jwt.refreshSecret;
+const ACCESS_EXPIRES_IN: any = loadedEnv.jwt.accessExpiresIn;
+const REFRESH_EXPIRES_IN: any = loadedEnv.jwt.refreshExpiresIn;
 
 
 export const JwtUtils = {

@@ -1,0 +1,230 @@
+# Prometheus Alerting Rules for Notification System
+# Place this file in your Prometheus configuration directory and reference it in prometheus.yml
+#
+# prometheus.yml example:
+# rule_files:
+#   - 'alerts/notification-alerts.yml'
+
+groups:
+  - name: notification_critical
+    interval: 30s
+    rules:
+      # Database Connection Failure
+      - alert: NotificationDatabaseDown
+        expr: up{job="notification-service"} == 0 or absent(up{job="notification-service"})
+        for: 1m
+        labels:
+          severity: critical
+          service: notification
+          alert_type: infrastructure
+        annotations:
+          summary: "Notification service database connection failed"
+          description: "Database connection for notification service has been down for more than 1 minute. This will prevent all notification operations."
+          runbook_url: "https://docs.example.com/runbooks/notification-db-down"
+          pagerduty_priority: "P1"
+
+      # Redis Connection Failure
+      - alert: NotificationRedisDown
+        expr: redis_up{service="notification"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: notification
+          alert_type: infrastructure
+        annotations:
+          summary: "Notification service Redis connection failed"
+          description: "Redis connection for notification service has been down for more than 1 minute. Caching and WebSocket sessions may be affected."
+          runbook_url: "https://docs.example.com/runbooks/notification-redis-down"
+          pagerduty_priority: "P1"
+
+      # High Error Rate
+      - alert: NotificationHighErrorRate
+        expr: |
+          (
+            sum(rate(api_requests_total{service="notification", status=~"5.."}[5m]))
+            /
+            sum(rate(api_requests_total{service="notification"}[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+          service: notification
+          alert_type: application
+        annotations:
+          summary: "High error rate in notification service"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%). This indicates a serious issue with the notification service."
+          runbook_url: "https://docs.example.com/runbooks/high-error-rate"
+          pagerduty_priority: "P2"
+
+      # WebSocket Delivery Failure
+      - alert: NotificationWebSocketHighFailureRate
+        expr: |
+          (
+            sum(rate(notification_failed_total{channel="in_app"}[5m]))
+            /
+            (sum(rate(notification_delivered_total{channel="in_app"}[5m])) + sum(rate(notification_failed_total{channel="in_app"}[5m])))
+          ) * 100 > 20
+        for: 5m
+        labels:
+          severity: critical
+          service: notification
+          alert_type: delivery
+        annotations:
+          summary: "High WebSocket delivery failure rate"
+          description: "WebSocket delivery failure rate is {{ $value | humanizePercentage }} (threshold: 20%). Users may not be receiving real-time notifications."
+          runbook_url: "https://docs.example.com/runbooks/websocket-failures"
+          pagerduty_priority: "P2"
+
+  - name: notification_warning
+    interval: 1m
+    rules:
+      # Email Delivery Latency
+      - alert: NotificationEmailHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(email_delivery_duration_seconds_bucket[5m])) by (le)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: performance
+        annotations:
+          summary: "High email delivery latency"
+          description: "95th percentile email delivery time is {{ $value | humanizeDuration }} (threshold: 30s). Email notifications are experiencing delays."
+          runbook_url: "https://docs.example.com/runbooks/email-latency"
+          slack_channel: "#alerts-notification"
+
+      # Low Cache Hit Rate
+      - alert: NotificationLowCacheHitRate
+        expr: |
+          (
+            sum(rate(cache_hits_total{service="notification"}[10m]))
+            /
+            (sum(rate(cache_hits_total{service="notification"}[10m])) + sum(rate(cache_misses_total{service="notification"}[10m])))
+          ) * 100 < 70
+        for: 15m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: performance
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%). This may indicate cache invalidation issues or increased database load."
+          runbook_url: "https://docs.example.com/runbooks/low-cache-hit-rate"
+          slack_channel: "#alerts-notification"
+
+      # High API Latency
+      - alert: NotificationHighAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(api_latency_seconds_bucket{service="notification"}[5m])) by (le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: performance
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile API latency is {{ $value | humanizeDuration }} (threshold: 500ms). Users may experience slow response times."
+          runbook_url: "https://docs.example.com/runbooks/high-api-latency"
+          slack_channel: "#alerts-notification"
+
+      # High Queue Depth
+      - alert: NotificationHighQueueDepth
+        expr: queue_depth{service="notification"} > 10000
+        for: 10m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: capacity
+        annotations:
+          summary: "High notification queue depth"
+          description: "Queue depth is {{ $value }} (threshold: 10,000). Notification processing may be falling behind."
+          runbook_url: "https://docs.example.com/runbooks/high-queue-depth"
+          slack_channel: "#alerts-notification"
+
+      # High WebSocket Reconnection Rate
+      - alert: NotificationHighReconnectionRate
+        expr: |
+          (
+            rate(websocket_reconnections_total[5m])
+            /
+            rate(websocket_connections_total[5m])
+          ) * 100 > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: stability
+        annotations:
+          summary: "High WebSocket reconnection rate"
+          description: "WebSocket reconnection rate is {{ $value | humanizePercentage }} (threshold: 10%). This may indicate network issues or server instability."
+          runbook_url: "https://docs.example.com/runbooks/websocket-reconnections"
+          slack_channel: "#alerts-notification"
+
+      # Database Query Slow
+      - alert: NotificationSlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(database_query_duration_seconds_bucket{service="notification"}[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: notification
+          alert_type: performance
+        annotations:
+          summary: "Slow database queries"
+          description: "95th percentile database query time is {{ $value | humanizeDuration }} (threshold: 1s). Database performance may be degraded."
+          runbook_url: "https://docs.example.com/runbooks/slow-queries"
+          slack_channel: "#alerts-notification"
+
+  - name: notification_info
+    interval: 5m
+    rules:
+      # Low Notification Volume (potential issue)
+      - alert: NotificationLowVolume
+        expr: rate(notification_created_total[30m]) < 0.1
+        for: 30m
+        labels:
+          severity: info
+          service: notification
+          alert_type: traffic
+        annotations:
+          summary: "Unusually low notification volume"
+          description: "Notification creation rate is {{ $value | humanize }}/sec (threshold: 0.1/sec). This may indicate an upstream issue."
+          slack_channel: "#alerts-notification"
+
+      # High Unread Notification Count
+      - alert: NotificationHighUnreadCount
+        expr: avg(unread_notifications) > 100
+        for: 1h
+        labels:
+          severity: info
+          service: notification
+          alert_type: user_experience
+        annotations:
+          summary: "High average unread notification count"
+          description: "Average unread notifications per user is {{ $value | humanize }} (threshold: 100). Users may be overwhelmed with notifications."
+          slack_channel: "#alerts-notification"
+
+      # Queue Processing Delay
+      - alert: NotificationQueueProcessingDelay
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(queue_job_duration_seconds_bucket[10m])) by (le)
+          ) > 5
+        for: 15m
+        labels:
+          severity: info
+          service: notification
+          alert_type: performance
+        annotations:
+          summary: "Queue job processing taking longer than expected"
+          description: "95th percentile queue job duration is {{ $value | humanizeDuration }} (threshold: 5s). Job processing may be slow."
+          slack_channel: "#alerts-notification"
+
+# Additional annotations for all alerts
+# These can be referenced in alertmanager configuration

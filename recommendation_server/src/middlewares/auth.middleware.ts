@@ -31,7 +31,6 @@ export const authMiddleware = (requiredRole?: RoleType) => {
 
     try {
       const decoded = authService.verifyToken(token);
-      console.log(decoded);
       if (!decoded) {
         throw new AppError(
           'Invalid or malformed authentication token',

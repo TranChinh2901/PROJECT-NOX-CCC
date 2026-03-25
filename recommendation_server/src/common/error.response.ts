@@ -1,3 +1,4 @@
+import { Response } from "express";
 
 export class AppError extends Error {
   statusCode: number;
@@ -15,4 +16,22 @@ export class AppError extends Error {
     this.errorCode = errorCode;
     this.details = details;
   }
+}
+
+/**
+ * Helper function to send error responses
+ */
+export function errorResponse(
+  res: Response,
+  statusCode: number,
+  message: string,
+  errorCode?: string,
+  details?: any
+): Response {
+  return res.status(statusCode).json({
+    success: false,
+    message,
+    errorCode,
+    details,
+  });
 }
