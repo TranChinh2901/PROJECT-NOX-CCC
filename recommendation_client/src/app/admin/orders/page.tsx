@@ -5,8 +5,8 @@ import { Search, Filter, Download, Eye, Edit, Package, Clock, CheckCircle, XCirc
 import { GlassCard } from '@/components/ui/GlassCard';
 import { adminApi, type AdminOrder } from '@/lib/api/admin.api';
 
-type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | '';
-type PaymentStatus = 'paid' | 'unpaid' | 'refunded' | '';
+type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | '';
+type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | '';
 
 export default function OrdersManagement() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -21,8 +21,8 @@ export default function OrdersManagement() {
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
 
   const generateMockOrders = useCallback((): AdminOrder[] => {
-    const statuses: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-    const paymentStatuses: PaymentStatus[] = ['paid', 'unpaid', 'refunded'];
+    const statuses: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+    const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed', 'refunded'];
 
     return Array.from({ length: 10 }, (_, i) => ({
       id: i + 1 + (currentPage - 1) * 10,
@@ -69,7 +69,6 @@ export default function OrdersManagement() {
       setTotalOrders(response.total);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
-      // Use mock data as fallback
       const mockOrders = generateMockOrders();
       setOrders(mockOrders);
       setTotalOrders(50);
@@ -84,12 +83,16 @@ export default function OrdersManagement() {
   }, [fetchOrders]);
 
   const handleStatusUpdate = async (orderId: number, newStatus: string) => {
+    if (!newStatus) {
+      return;
+    }
+
     try {
       setUpdatingOrderId(orderId);
       await adminApi.updateOrderStatus(orderId, { status: newStatus });
 
       // Update the order in the list
-      setOrders(orders.map(order =>
+      setOrders(currentOrders => currentOrders.map(order =>
         order.id === orderId ? { ...order, status: newStatus } : order
       ));
     } catch (error) {
@@ -120,18 +123,21 @@ export default function OrdersManagement() {
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       pending: 'bg-yellow-100 text-yellow-800',
+      confirmed: 'bg-indigo-100 text-indigo-800',
       processing: 'bg-blue-100 text-blue-800',
       shipped: 'bg-cyan-100 text-cyan-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
+      refunded: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const getPaymentStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
+      pending: 'bg-yellow-100 text-yellow-800',
       paid: 'bg-green-100 text-green-800',
-      unpaid: 'bg-red-100 text-red-800',
+      failed: 'bg-red-100 text-red-800',
       refunded: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
@@ -139,8 +145,9 @@ export default function OrdersManagement() {
 
   const getPaymentStatusLabel = (status: string) => {
     const labels: { [key: string]: string } = {
+      pending: 'Đang chờ thanh toán',
       paid: 'Đã thanh toán',
-      unpaid: 'Chưa thanh toán',
+      failed: 'Thanh toán thất bại',
       refunded: 'Đã hoàn tiền',
     };
     return labels[status] || status;
@@ -149,10 +156,12 @@ export default function OrdersManagement() {
   const orderStatusOptions = [
     { value: '', label: 'Tất cả trạng thái' },
     { value: 'pending', label: 'Chờ xử lý' },
+    { value: 'confirmed', label: 'Đã xác nhận' },
     { value: 'processing', label: 'Đang xử lý' },
     { value: 'shipped', label: 'Đã giao vận' },
     { value: 'delivered', label: 'Đã giao' },
     { value: 'cancelled', label: 'Đã hủy' },
+    { value: 'refunded', label: 'Đã hoàn tiền' },
   ];
 
   const filteredOrders = orders.filter(order => {
@@ -349,10 +358,12 @@ export default function OrdersManagement() {
                         }`}
                       >
                         <option value="pending">Chờ xử lý</option>
+                        <option value="confirmed">Đã xác nhận</option>
                         <option value="processing">Đang xử lý</option>
                         <option value="shipped">Đã giao vận</option>
                         <option value="delivered">Đã giao</option>
                         <option value="cancelled">Đã hủy</option>
+                        <option value="refunded">Đã hoàn tiền</option>
                       </select>
                     </div>
                   </td>
