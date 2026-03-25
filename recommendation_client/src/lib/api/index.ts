@@ -7,4 +7,5 @@ export { reviewApi } from './review.api';
 export { notificationApi } from './notification.api';
 export { wishlistApi } from './wishlist.api';
 export { navigationApi } from './navigation.api';
+export { paymentApi } from './payment.api';
 export { default as apiClient } from './apiClient';

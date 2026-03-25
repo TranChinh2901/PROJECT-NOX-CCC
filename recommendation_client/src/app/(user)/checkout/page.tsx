@@ -6,7 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
-import { orderApi } from '@/lib/api';
+import { orderApi, paymentApi } from '@/lib/api';
 import { PaymentMethod } from '@/types/product.types';
 import type { Address } from '@/types';
 import { formatPrice } from '@/lib/utils';
@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionLabel, setSubmissionLabel] = useState('Place Order');
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -117,6 +118,10 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
+      setSubmissionLabel(
+        paymentMethod === PaymentMethod.E_WALLET ? 'Redirecting to MoMo...' : 'Processing...'
+      );
+
       const orderData = {
         cart_id: cart.id,
         shipping_address: shippingAddress,
@@ -125,10 +130,30 @@ export default function CheckoutPage() {
       };
 
       const order = await orderApi.createOrder(orderData);
-      
+
+      if (paymentMethod === PaymentMethod.E_WALLET) {
+        const momoPayment = await paymentApi.createMomoPayment(order.id);
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            'technova_momo_last_session',
+            JSON.stringify({
+              order_id: momoPayment.order_id,
+              order_number: momoPayment.order_number,
+              request_id: momoPayment.request_id,
+              pay_url: momoPayment.pay_url,
+              created_at: new Date().toISOString(),
+            })
+          );
+          await clearCart();
+          window.location.href = momoPayment.pay_url;
+          return;
+        }
+      }
+
       setOrderNumber(order.order_number);
       setOrderSuccess(true);
-      
+
       await clearCart();
     } catch (error) {
       console.error('Order creation failed:', error);
@@ -138,6 +163,7 @@ export default function CheckoutPage() {
           : 'Failed to create order. Please try again.'
       );
     } finally {
+      setSubmissionLabel('Place Order');
       setIsSubmitting(false);
     }
   };
@@ -321,7 +347,25 @@ export default function CheckoutPage() {
                   />
                   <div className="ml-3">
                     <p className="font-medium text-gray-900">Credit Card</p>
-                    <p className="text-sm text-gray-600">Pay securely with your credit card</p>
+                    <p className="text-sm text-gray-600">Reserved for future gateway integration</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-[#CA8A04] transition-colors">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={PaymentMethod.E_WALLET}
+                    checked={paymentMethod === PaymentMethod.E_WALLET}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value as PaymentMethod);
+                      setErrors((prev) => ({ ...prev, paymentMethod: undefined }));
+                    }}
+                    className="w-4 h-4 text-[#CA8A04] focus:ring-[#CA8A04]"
+                  />
+                  <div className="ml-3">
+                    <p className="font-medium text-gray-900">MoMo Sandbox</p>
+                    <p className="text-sm text-gray-600">Create order first, then redirect to MoMo test payment page</p>
                   </div>
                 </label>
               </div>
@@ -382,7 +426,7 @@ export default function CheckoutPage() {
                 disabled={isSubmitting}
                 className="mt-6"
               >
-                {isSubmitting ? 'Processing...' : 'Place Order'}
+                {isSubmitting ? submissionLabel : paymentMethod === PaymentMethod.E_WALLET ? 'Pay with MoMo Sandbox' : 'Place Order'}
               </Button>
 
               <p className="text-xs text-gray-500 text-center mt-4">

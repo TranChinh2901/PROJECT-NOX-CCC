@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/common/Button';
-import { orderApi } from '@/lib/api';
+import { orderApi, paymentApi } from '@/lib/api';
 import { PaymentStatus } from '@/types';
 
 const MOMO_LAST_SESSION_KEY = 'technova_momo_last_session';
@@ -30,6 +30,7 @@ export default function MomoReturnClient() {
   const [transId, setTransId] = useState<string>('');
   const [trace, setTrace] = useState<MomoSessionTrace | null>(null);
   const [copyStatus, setCopyStatus] = useState<string>('');
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     const callbackOrderId = Number(searchParams.get('orderId'));
@@ -113,6 +114,46 @@ export default function MomoReturnClient() {
     }
   };
 
+  const handleRetryPayment = async () => {
+    const targetOrderId = orderId ?? trace?.order_id;
+
+    if (!targetOrderId) {
+      setError('Missing order id for payment retry.');
+      return;
+    }
+
+    try {
+      setIsRetrying(true);
+      setError(null);
+
+      const momoPayment = await paymentApi.createMomoPayment(targetOrderId);
+
+      localStorage.setItem(
+        MOMO_LAST_SESSION_KEY,
+        JSON.stringify({
+          order_id: momoPayment.order_id,
+          order_number: momoPayment.order_number,
+          request_id: momoPayment.request_id,
+          pay_url: momoPayment.pay_url,
+          created_at: new Date().toISOString(),
+        })
+      );
+
+      window.location.href = momoPayment.pay_url;
+    } catch (retryError) {
+      console.error('Failed to retry MoMo payment:', retryError);
+      setError(retryError instanceof Error ? retryError.message : 'Unable to create a new MoMo payment session.');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const canRetryPayment =
+    !isLoading &&
+    !error &&
+    !!(orderId ?? trace?.order_id) &&
+    paymentStatus !== PaymentStatus.PAID;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 pt-32">
       <div className="mx-auto max-w-2xl px-4">
@@ -149,6 +190,11 @@ export default function MomoReturnClient() {
             <Button variant="outline" onClick={() => router.push('/account/orders')}>
               All Orders
             </Button>
+            {canRetryPayment && (
+              <Button type="button" onClick={handleRetryPayment} loading={isRetrying}>
+                Retry with New Session
+              </Button>
+            )}
             {orderId && (
               <Button onClick={() => router.push(`/account/orders/${orderId}`)}>
                 View Order
