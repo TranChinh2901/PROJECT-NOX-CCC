@@ -10,6 +10,12 @@
   import { useWishlist } from '@/contexts/WishlistContext';
   import { RoleType } from '@/types/auth.types';
   import { navigationApi, type NavigationItem } from '@/lib/api/navigation.api';
+  import {
+    DELIVERY_STORAGE_KEY,
+    DELIVERY_SYNC_EVENT,
+    readDeliveryAddressesFromStorage,
+    type DeliveryAddress,
+  } from '@/lib/delivery-address-sync';
 
   function HeaderSearchParamsSync({
     onQueryChange,
@@ -25,16 +31,6 @@
     return null;
   }
 
-  type DeliveryAddress = {
-    id: string;
-    fullName: string;
-    phoneNumber: string;
-    city: string;
-    houseNumber: string;
-    note: string;
-  };
-
-  const DELIVERY_STORAGE_KEY = 'technova.delivery-addresses';
   const DEFAULT_DELIVERY_ADDRESSES: DeliveryAddress[] = [
     {
       id: 'dn-q1',
@@ -84,6 +80,7 @@
     const [navLinks, setNavLinks] = useState<NavigationItem[]>([]);
     const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>(DEFAULT_DELIVERY_ADDRESSES);
     const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>(DEFAULT_DELIVERY_ADDRESSES[0].id);
+    const [isDeliveryStorageHydrated, setIsDeliveryStorageHydrated] = useState(false);
     const [deliveryFullNameInput, setDeliveryFullNameInput] = useState('');
     const [deliveryPhoneNumberInput, setDeliveryPhoneNumberInput] = useState('');
     const [deliveryCityInput, setDeliveryCityInput] = useState('');
@@ -151,43 +148,42 @@
     }, []);
 
     useEffect(() => {
-      const rawStoredAddresses = window.localStorage.getItem(DELIVERY_STORAGE_KEY);
-      if (!rawStoredAddresses) {
-        return;
-      }
-
-      try {
-        const parsedAddresses = JSON.parse(rawStoredAddresses);
-        if (!Array.isArray(parsedAddresses)) {
+      const syncFromStorage = () => {
+        const storedAddresses = readDeliveryAddressesFromStorage();
+        if (storedAddresses.length === 0) {
+          setIsDeliveryStorageHydrated(true);
           return;
         }
 
-        const normalizedAddresses = parsedAddresses
-          .filter(
-            (address: unknown): address is { id: string; city: string; houseNumber: string; fullName?: string; phoneNumber?: string; note?: string } =>
-              typeof (address as { id?: unknown })?.id === 'string' &&
-              typeof (address as { city?: unknown })?.city === 'string' &&
-              typeof (address as { houseNumber?: unknown })?.houseNumber === 'string',
-          )
-          .map((address) => ({
-            id: address.id,
-            fullName: typeof address.fullName === 'string' ? address.fullName : '',
-            phoneNumber: typeof address.phoneNumber === 'string' ? address.phoneNumber : '',
-            city: address.city,
-            houseNumber: address.houseNumber,
-            note: typeof address.note === 'string' ? address.note : '',
-          }));
+        setDeliveryAddresses(storedAddresses);
+        setSelectedDeliveryAddressId((currentSelectedId) => {
+          const stillExists = storedAddresses.some((address) => address.id === currentSelectedId);
+          return stillExists ? currentSelectedId : storedAddresses[0].id;
+        });
+        setIsDeliveryStorageHydrated(true);
+      };
 
-        if (normalizedAddresses.length > 0) {
-          setDeliveryAddresses(normalizedAddresses);
-          setSelectedDeliveryAddressId(normalizedAddresses[0].id);
+      const handleStorage = (event: StorageEvent) => {
+        if (event.key === DELIVERY_STORAGE_KEY) {
+          syncFromStorage();
         }
-      } catch {
-        // Ignore invalid localStorage payloads and continue with defaults.
-      }
+      };
+
+      syncFromStorage();
+      window.addEventListener('storage', handleStorage);
+      window.addEventListener(DELIVERY_SYNC_EVENT, syncFromStorage as EventListener);
+
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+        window.removeEventListener(DELIVERY_SYNC_EVENT, syncFromStorage as EventListener);
+      };
     }, []);
 
     useEffect(() => {
+      if (!isDeliveryStorageHydrated) {
+        return;
+      }
+
       if (deliveryAddresses.length === 0) {
         return;
       }
@@ -197,7 +193,7 @@
       if (!selectedStillExists) {
         setSelectedDeliveryAddressId(deliveryAddresses[0].id);
       }
-    }, [deliveryAddresses, selectedDeliveryAddressId]);
+    }, [deliveryAddresses, isDeliveryStorageHydrated, selectedDeliveryAddressId]);
 
     useEffect(() => {
       const handlePointerDown = (event: PointerEvent) => {

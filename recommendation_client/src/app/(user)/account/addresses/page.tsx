@@ -2,16 +2,88 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
 import { Address } from '@/types';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import {
+  DELIVERY_STORAGE_KEY,
+  DELIVERY_SYNC_EVENT,
+  readDeliveryAddressesFromStorage,
+  syncDeliveryAddressesFromAccount,
+  type DeliveryAddress,
+} from '@/lib/delivery-address-sync';
 
 interface SavedAddress extends Address {
   id: string;
+  note?: string;
   isDefault: boolean;
 }
+
+const VIETNAM_CITY_OPTIONS = [
+  'Hà Nội',
+  'TP. Hồ Chí Minh',
+  'Đà Nẵng',
+  'Hải Phòng',
+  'Cần Thơ',
+  'Huế',
+  'Nha Trang',
+  'Đà Lạt',
+  'Vũng Tàu',
+  'Quy Nhơn',
+  'Buôn Ma Thuột',
+  'Biên Hòa',
+  'Thủ Dầu Một',
+  'Long Xuyên',
+  'Rạch Giá',
+  'Vinh',
+  'Thanh Hóa',
+  'Hạ Long',
+  'Bắc Ninh',
+  'Phan Thiết',
+];
+
+const mapDeliveryAddressToSavedAddress = (
+  address: DeliveryAddress,
+  index: number,
+): SavedAddress => ({
+  id: address.id,
+  fullname: address.fullName,
+  phone: address.phoneNumber,
+  address: address.houseNumber,
+  city: address.city,
+  district: '',
+  ward: '',
+  postal_code: '',
+  note: address.note,
+  isDefault: index === 0,
+});
+
+const mergeSavedAddresses = (
+  currentAddresses: SavedAddress[],
+  deliveryAddresses: SavedAddress[],
+): SavedAddress[] => {
+  const deliveryIdSet = new Set(deliveryAddresses.map((address) => address.id));
+  const merged = [...deliveryAddresses, ...currentAddresses.filter((address) => !deliveryIdSet.has(address.id))];
+
+  if (merged.length === 0) {
+    return merged;
+  }
+
+  const hasDefault = merged.some((address) => address.isDefault);
+  if (hasDefault) {
+    return merged;
+  }
+
+  return merged.map((address, index) => ({
+    ...address,
+    isDefault: index === 0,
+  }));
+};
+
+const buildMapQuery = (address: SavedAddress): string => {
+  return [address.address, address.city].filter(Boolean).join(', ');
+};
 
 export default function AddressesPage() {
   const { user, updateProfile } = useAuth();
@@ -20,6 +92,7 @@ export default function AddressesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddressHydrated, setIsAddressHydrated] = useState(false);
   const [formData, setFormData] = useState<SavedAddress>({
     id: '',
     fullname: '',
@@ -29,40 +102,85 @@ export default function AddressesPage() {
     district: '',
     ward: '',
     postal_code: '',
+    note: '',
     isDefault: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Load addresses from user profile
   useEffect(() => {
+    const profileAddresses: SavedAddress[] = [];
+
     if (user?.address) {
       try {
         const parsed = JSON.parse(user.address);
         if (Array.isArray(parsed)) {
-          setAddresses(parsed);
+          profileAddresses.push(...(parsed as SavedAddress[]));
         }
       } catch (error) {
         console.error('Failed to parse addresses:', error);
       }
     }
+
+    const deliveryAddresses = readDeliveryAddressesFromStorage().map(mapDeliveryAddressToSavedAddress);
+    const merged = mergeSavedAddresses(profileAddresses, deliveryAddresses);
+
+    setAddresses(merged);
+    setIsAddressHydrated(true);
   }, [user?.address]);
+
+  useEffect(() => {
+    const syncFromDelivery = () => {
+      const deliveryAddresses = readDeliveryAddressesFromStorage().map(mapDeliveryAddressToSavedAddress);
+      if (deliveryAddresses.length === 0) {
+        return;
+      }
+
+      setAddresses((currentAddresses) => {
+        const merged = mergeSavedAddresses(currentAddresses, deliveryAddresses);
+        return JSON.stringify(currentAddresses) === JSON.stringify(merged) ? currentAddresses : merged;
+      });
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === DELIVERY_STORAGE_KEY) {
+        syncFromDelivery();
+      }
+    };
+
+    window.addEventListener(DELIVERY_SYNC_EVENT, syncFromDelivery as EventListener);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(DELIVERY_SYNC_EVENT, syncFromDelivery as EventListener);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAddressHydrated) {
+      return;
+    }
+
+    syncDeliveryAddressesFromAccount(addresses);
+  }, [addresses, isAddressHydrated]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.fullname.trim()) {
-      newErrors.fullname = 'Full name is required';
+      newErrors.fullname = 'Họ tên là bắt buộc';
     }
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = 'Số điện thoại là bắt buộc';
     } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/[\s-]/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number';
+      newErrors.phone = 'Vui lòng nhập số điện thoại hợp lệ';
     }
     if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
+      newErrors.address = 'Số nhà/đường là bắt buộc';
     }
     if (!formData.city.trim()) {
-      newErrors.city = 'City is required';
+      newErrors.city = 'Thành phố là bắt buộc';
     }
 
     setErrors(newErrors);
@@ -185,6 +303,7 @@ export default function AddressesPage() {
       district: '',
       ward: '',
       postal_code: '',
+      note: '',
       isDefault: false,
     });
     setEditingId(null);
@@ -198,8 +317,8 @@ export default function AddressesPage() {
       <div className="min-h-screen bg-gray-50 py-8 pt-32">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Manage Addresses</h1>
-            <p className="mt-2 text-gray-600">Add and manage your delivery addresses</p>
+            <h1 className="text-3xl font-bold text-gray-900">Quản lý địa chỉ</h1>
+            <p className="mt-2 text-gray-600">Thêm và quản lý địa chỉ giao hàng giống phần Giao đến</p>
           </div>
 
           {!isFormOpen && (
@@ -213,7 +332,7 @@ export default function AddressesPage() {
                   </svg>
                 }
               >
-                Add New Address
+                Thêm địa chỉ mới
               </Button>
             </div>
           )}
@@ -222,7 +341,7 @@ export default function AddressesPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {editingId ? 'Edit Address' : 'Add New Address'}
+                  {editingId ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}
                 </h2>
                 <button
                   onClick={resetForm}
@@ -236,75 +355,69 @@ export default function AddressesPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Full Name"
-                    type="text"
-                    value={formData.fullname}
-                    onChange={(e) => handleInputChange('fullname', e.target.value)}
-                    error={errors.fullname}
-                    placeholder="Enter full name"
-                    required
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                    <input
+                      type="text"
+                      value={formData.fullname}
+                      onChange={(e) => handleInputChange('fullname', e.target.value)}
+                      placeholder="Nhập họ và tên"
+                      className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                    />
+                    {errors.fullname && <p className="text-xs text-red-600 mt-1">{errors.fullname}</p>}
+                  </div>
 
-                  <FormInput
-                    label="Phone Number"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    error={errors.phone}
-                    placeholder="0123456789"
-                    required
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="098xxxxxxx"
+                      className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                    />
+                    {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+                  </div>
                 </div>
 
-                <FormInput
-                  label="Address"
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  error={errors.address}
-                  placeholder="Street address, building, apartment"
-                  required
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Số nhà / đường</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Ví dụ: 24 Trần Kim Bảng"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                  />
+                  {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address}</p>}
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="City"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thành phố</label>
+                  <input
                     type="text"
                     value={formData.city}
                     onChange={(e) => handleInputChange('city', e.target.value)}
-                    error={errors.city}
-                    placeholder="Enter city"
-                    required
+                    list="manage-address-city-options"
+                    placeholder="Chọn hoặc nhập thành phố"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
                   />
-
-                  <FormInput
-                    label="District"
-                    type="text"
-                    value={formData.district || ''}
-                    onChange={(e) => handleInputChange('district', e.target.value)}
-                    error={errors.district}
-                    placeholder="Enter district (optional)"
-                  />
+                  <datalist id="manage-address-city-options">
+                    {VIETNAM_CITY_OPTIONS.map((cityOption) => (
+                      <option key={cityOption} value={cityOption} />
+                    ))}
+                  </datalist>
+                  {errors.city && <p className="text-xs text-red-600 mt-1">{errors.city}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Ward"
-                    type="text"
-                    value={formData.ward || ''}
-                    onChange={(e) => handleInputChange('ward', e.target.value)}
-                    error={errors.ward}
-                    placeholder="Enter ward (optional)"
-                  />
-
-                  <FormInput
-                    label="Postal Code"
-                    type="text"
-                    value={formData.postal_code || ''}
-                    onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                    error={errors.postal_code}
-                    placeholder="Enter postal code (optional)"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú (tuỳ chọn)</label>
+                  <textarea
+                    value={formData.note || ''}
+                    onChange={(e) => handleInputChange('note', e.target.value)}
+                    rows={2}
+                    placeholder="Ví dụ: giao giờ hành chính"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 resize-none"
                   />
                 </div>
 
@@ -317,7 +430,7 @@ export default function AddressesPage() {
                     className="w-4 h-4 text-[#CA8A04] border-gray-300 rounded focus:ring-[#CA8A04]"
                   />
                   <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700">
-                    Set as default address
+                    Đặt làm địa chỉ mặc định
                   </label>
                 </div>
 
@@ -328,7 +441,7 @@ export default function AddressesPage() {
                     loading={isLoading}
                     disabled={isLoading}
                   >
-                    {editingId ? 'Update Address' : 'Save Address'}
+                    {editingId ? 'Cập nhật địa chỉ' : 'Lưu địa chỉ'}
                   </Button>
                   <Button
                     type="button"
@@ -336,7 +449,7 @@ export default function AddressesPage() {
                     onClick={resetForm}
                     disabled={isLoading}
                   >
-                    Cancel
+                    Huỷ
                   </Button>
                 </div>
               </form>
@@ -366,7 +479,7 @@ export default function AddressesPage() {
                   />
                 </svg>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No addresses yet</h3>
-                <p className="mt-2 text-gray-600">Add your first delivery address to get started</p>
+                <p className="mt-2 text-gray-600">Hãy thêm địa chỉ giao hàng đầu tiên để bắt đầu</p>
               </div>
             )}
 
@@ -390,12 +503,29 @@ export default function AddressesPage() {
                   <div className="space-y-1 text-gray-600">
                     <p>{address.phone}</p>
                     <p>{address.address}</p>
-                    <p>
-                      {[address.ward, address.district, address.city, address.postal_code]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </p>
+                    <p>{address.city}</p>
+                    {address.note && <p className="italic text-gray-500">{address.note}</p>}
                   </div>
+
+                  {buildMapQuery(address) && (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-500 mb-1">Vị trí giao hàng</p>
+                      <iframe
+                        src={`https://maps.google.com/maps?q=${encodeURIComponent(buildMapQuery(address))}&z=15&output=embed`}
+                        title={`Bản đồ ${address.fullname}`}
+                        loading="lazy"
+                        className="w-full max-w-md h-36 rounded-lg border border-gray-200"
+                      />
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(buildMapQuery(address))}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block mt-2 text-xs text-[#B47B04] hover:text-[#8F5B00]"
+                      >
+                        Mở trên Google Maps
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
@@ -405,7 +535,7 @@ export default function AddressesPage() {
                     onClick={() => handleEdit(address)}
                     disabled={isLoading}
                   >
-                    Edit
+                    Sửa
                   </Button>
 
                   {!address.isDefault && (
@@ -415,7 +545,7 @@ export default function AddressesPage() {
                       onClick={() => handleSetDefault(address.id)}
                       disabled={isLoading}
                     >
-                      Set as Default
+                      Đặt mặc định
                     </Button>
                   )}
 
@@ -427,7 +557,7 @@ export default function AddressesPage() {
                         onClick={() => handleDelete(address.id)}
                         disabled={isLoading}
                       >
-                        Confirm Delete
+                        Xác nhận xoá
                       </Button>
                       <Button
                         variant="ghost"
@@ -435,7 +565,7 @@ export default function AddressesPage() {
                         onClick={() => setDeleteConfirmId(null)}
                         disabled={isLoading}
                       >
-                        Cancel
+                        Huỷ
                       </Button>
                     </div>
                   ) : (
@@ -446,7 +576,7 @@ export default function AddressesPage() {
                       disabled={isLoading}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
-                      Delete
+                      Xoá
                     </Button>
                   )}
                 </div>
