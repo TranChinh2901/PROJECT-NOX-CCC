@@ -711,6 +711,13 @@
                 <Menu className="w-4 h-4" />
                 Tất cả
               </button>
+
+              <Link
+                href="/service"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+              >
+                Ý kiến khách hàng
+              </Link>
               
               {navLinks.map((link) => (
                 <Link
