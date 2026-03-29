@@ -184,10 +184,9 @@ function HomePageContent() {
       try {
         const categoriesData = await categoryApi.getAllCategories();
         setCategories(categoriesData || []);
-        setError(null);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        setCategories([]);
         toast.error('Không thể tải danh mục');
       }
     };
@@ -263,7 +262,6 @@ function HomePageContent() {
       } catch (err) {
         if (isActive) {
           console.error('Error searching products:', err);
-          setError('Không thể tìm kiếm sản phẩm. Vui lòng thử lại sau.');
           toast.error('Không thể tìm kiếm sản phẩm');
         }
       } finally {
