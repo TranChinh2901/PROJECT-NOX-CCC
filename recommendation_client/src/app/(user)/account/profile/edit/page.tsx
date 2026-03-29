@@ -23,6 +23,19 @@ interface FormErrors {
   address?: string;
 }
 
+type ValidationDetail = {
+  field?: string;
+  message?: string;
+};
+
+type ProfileUpdateError = Error & {
+  response?: {
+    data?: {
+      details?: ValidationDetail[];
+    };
+  };
+};
+
 const EditProfilePage: React.FC = () => {
   const { user, isLoading, updateProfile } = useAuth();
   const router = useRouter();
@@ -147,13 +160,14 @@ const EditProfilePage: React.FC = () => {
 
       toast.success('Profile updated successfully!');
       router.push('/account/profile');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Profile update error:', error);
-      
-      const details = error.response?.data?.details;
+
+      const profileUpdateError = error as ProfileUpdateError;
+      const details = profileUpdateError.response?.data?.details;
       if (Array.isArray(details) && details.length > 0) {
         const fieldErrors: FormErrors = {};
-        details.forEach((detail: { field: string; message: string }) => {
+        details.forEach((detail) => {
           if (detail.field && detail.message) {
             fieldErrors[detail.field as keyof FormErrors] = detail.message;
           }
@@ -161,7 +175,7 @@ const EditProfilePage: React.FC = () => {
         setErrors(fieldErrors);
         toast.error('Please fix the validation errors');
       } else {
-        toast.error(error?.message || 'Failed to update profile. Please try again.');
+        toast.error(profileUpdateError.message || 'Failed to update profile. Please try again.');
       }
     } finally {
       setIsSubmitting(false);

@@ -7,11 +7,10 @@ describe("WishlistService", () => {
   let service: WishlistService;
   let mockRepo: jest.Mocked<IWishlistRepository>;
 
-  const mockUser = { id: 1 } as any;
   const mockWishlist = {
       id: 1,
       user_id: 1,
-      name: "My Wishlist",
+      name: "Danh sách yêu thích",
       is_default: true,
       items: []
   } as any;
@@ -72,7 +71,7 @@ describe("WishlistService", () => {
 
       await service.add(1, 100);
 
-      expect(mockRepo.create).toHaveBeenCalledWith(1, "My Wishlist");
+      expect(mockRepo.create).toHaveBeenCalledWith(1, "Danh sách yêu thích");
       expect(mockRepo.update).toHaveBeenCalled(); // setting is_default
     });
 

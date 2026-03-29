@@ -4,8 +4,8 @@
  */
 
 export class MockWebSocketServer {
-  private connections: Map<string, any> = new Map();
-  private messageHandlers: Map<string, Function> = new Map();
+  private connections: Map<string, MockConnection> = new Map();
+  private messageHandlers: Map<string, MockMessageHandler> = new Map();
 
   connect(userId: string, token: string): void {
     if (!this.validateToken(token)) {
@@ -24,7 +24,7 @@ export class MockWebSocketServer {
     this.connections.delete(userId);
   }
 
-  emit(userId: string, event: string, data: any): void {
+  emit(userId: string, event: string, data: unknown): void {
     const connection = this.connections.get(userId);
 
     if (!connection) {
@@ -37,12 +37,12 @@ export class MockWebSocketServer {
     }
   }
 
-  on(event: string, handler: Function): void {
+  on(event: string, handler: MockMessageHandler): void {
     this.messageHandlers.set(event, handler);
   }
 
-  broadcast(event: string, data: any): void {
-    this.connections.forEach((connection, userId) => {
+  broadcast(event: string, data: unknown): void {
+    this.connections.forEach((_connection, userId) => {
       this.emit(userId, event, data);
     });
   }
@@ -62,3 +62,12 @@ export class MockWebSocketServer {
 }
 
 export const createMockWebSocketServer = () => new MockWebSocketServer();
+
+interface MockConnection {
+  userId: string;
+  token: string;
+  connected: boolean;
+  rooms: string[];
+}
+
+type MockMessageHandler = (data: unknown) => void;

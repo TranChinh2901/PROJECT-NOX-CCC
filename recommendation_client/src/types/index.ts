@@ -47,6 +47,8 @@ export type {
   ProductVariant,
   Product,
   Review,
+  ProductReviewsSummary,
+  ProductReviewsResponse,
   CreateReviewDto,
   ProductFilterOptions,
 } from './product.types';

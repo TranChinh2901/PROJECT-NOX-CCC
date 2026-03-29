@@ -7,7 +7,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { NotificationItem } from './NotificationItem';
 import { action } from '@storybook/addon-actions';
-import { text, select } from '@storybook/addon-controls';
 import { NotificationType, NotificationPriority, NotificationStatus } from '@/types/notification.types';
 
 const meta: Meta<typeof NotificationItem> = {
@@ -105,9 +104,6 @@ const paymentNotification = {
   href: '/account/orders/12345',
   createdAt: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
 };
-
-// Template for stories
-const Template = (args: any) => <NotificationItem {...args} />;
 
 /**
  * Order Notification - Unread

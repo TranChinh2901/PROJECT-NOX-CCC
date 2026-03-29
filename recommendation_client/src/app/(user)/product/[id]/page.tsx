@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
+import { ProductImage } from '../../../../components/common/ProductImage';
 import { productApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { Product, Review } from '@/types';
+import { Product, ProductReviewsSummary, Review } from '@/types';
 import toast from 'react-hot-toast';
 import {
   Star,
@@ -24,6 +25,12 @@ import {
   Plus,
   User
 } from 'lucide-react';
+
+type ProductPageError = Error & {
+  response?: {
+    status?: number;
+  };
+};
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -116,9 +123,10 @@ export default function ProductPage() {
   const productId = Number(params.id);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
-  const [cart, setCart] = useState<{id: number, quantity: number}[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsSummary, setReviewsSummary] = useState<ProductReviewsSummary | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
@@ -128,16 +136,34 @@ export default function ProductPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [productData, reviewsData] = await Promise.all([
+        const [productData, reviewsData, relatedProductsData] = await Promise.all([
           productApi.getProductById(productId),
-          reviewApi.getProductReviews(productId).catch(() => [])
+          reviewApi.getProductReviews(productId).catch(() => ({
+            data: [],
+            summary: {
+              total_reviews: 0,
+              average_rating: '0.0',
+              rating_distribution: []
+            },
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              total_pages: 0
+            }
+          })),
+          productApi.getRelatedProducts(productId, 4).catch(() => [])
         ]);
         setProduct(productData);
-        setReviews(reviewsData);
+        setReviews(reviewsData.data || []);
+        setReviewsSummary(reviewsData.summary || null);
+        setRelatedProducts(relatedProductsData || []);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching product:', err);
-        if (err.response?.status === 404) {
+        const productError = err as ProductPageError;
+
+        if (productError.response?.status === 404) {
           setError('Không tìm thấy sản phẩm');
         } else {
           setError('Không thể tải thông tin sản phẩm');
@@ -190,19 +216,11 @@ export default function ProductPage() {
       );
 
       toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
-
-      setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
-        if (existing) {
-          return prev.map(item =>
-            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
-          );
-        }
-        return [...prev, { id: product.id, quantity }];
-      });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding to cart:', err);
-      if (err.response?.status === 401) {
+      const productError = err as ProductPageError;
+
+      if (productError.response?.status === 401) {
         toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
       } else {
         toast.error('Không thể thêm vào giỏ hàng');
@@ -227,9 +245,14 @@ export default function ProductPage() {
     ? Math.round(((product.compare_at_price - product.base_price) / product.compare_at_price) * 100)
     : null;
 
-  const averageRating = reviews.length > 0 
+  const averageRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : '0';
+    : '0.0';
+  const displayedAverageRating = reviewsSummary?.average_rating || averageRating;
+  const totalReviews = reviewsSummary?.total_reviews ?? reviews.length;
+  const ratingDistribution = new Map(
+    (reviewsSummary?.rating_distribution || []).map((item) => [Number(item.rating), Number(item.count)])
+  );
 
   const primaryImage = product?.images?.find(img => img.is_primary)?.image_url 
     || product?.images?.[0]?.image_url 
@@ -327,14 +350,14 @@ export default function ProductPage() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`w-5 h-5 ${i < Math.floor(Number(averageRating)) ? 'fill-[#CA8A04] text-[#CA8A04]' : 'text-gray-300'}`} 
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${i < Math.floor(Number(displayedAverageRating)) ? 'fill-[#CA8A04] text-[#CA8A04]' : 'text-gray-300'}`}
                     />
                   ))}
                 </div>
-                <span className="text-gray-900 font-medium">{averageRating}</span>
-                <span className="text-gray-500">({reviews.length} đánh giá)</span>
+                <span className="text-gray-900 font-medium">{displayedAverageRating}</span>
+                <span className="text-gray-500">({totalReviews} đánh giá)</span>
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-4">
@@ -461,7 +484,7 @@ export default function ProductPage() {
                   activeTab === 'reviews' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
-                Đánh Giá ({reviews.length})
+                Đánh Giá ({totalReviews})
                 {activeTab === 'reviews' && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#CA8A04]" />
                 )}
@@ -483,21 +506,21 @@ export default function ProductPage() {
               {reviews.length > 0 && (
                 <div className="flex items-center gap-8 p-6 rounded-xl bg-gray-50 border border-gray-200 mb-8">
                   <div className="text-center">
-                    <div className="text-5xl font-bold text-gray-900 mb-1">{averageRating}</div>
+                    <div className="text-5xl font-bold text-gray-900 mb-1">{displayedAverageRating}</div>
                     <div className="flex items-center gap-1 justify-center mb-2">
                       {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-4 h-4 ${i < Math.floor(Number(averageRating)) ? 'fill-[#CA8A04] text-[#CA8A04]' : 'text-gray-300'}`} 
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${i < Math.floor(Number(displayedAverageRating)) ? 'fill-[#CA8A04] text-[#CA8A04]' : 'text-gray-300'}`}
                         />
                       ))}
                     </div>
-                    <div className="text-sm text-gray-500">{reviews.length} đánh giá</div>
+                    <div className="text-sm text-gray-500">{totalReviews} đánh giá</div>
                   </div>
                   <div className="flex-1 space-y-2">
                     {[5, 4, 3, 2, 1].map((stars) => {
-                      const count = reviews.filter(r => r.rating === stars).length;
-                      const percentage = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+                      const count = ratingDistribution.get(stars) || 0;
+                      const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
                       return (
                         <div key={stars} className="flex items-center gap-3">
                           <span className="text-sm text-gray-500 w-16">{stars} sao</span>
@@ -564,6 +587,84 @@ export default function ProductPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {relatedProducts.length > 0 && (
+            <section className="mt-16 border-t border-gray-200 pt-10">
+              <div className="mb-6">
+                <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#8a5a00]">
+                  Gợi ý cùng nhóm
+                </p>
+                <h2 className="mt-2 text-2xl font-heading font-bold text-gray-900">
+                  Sản phẩm liên quan
+                </h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Các lựa chọn cùng danh mục để bạn so sánh nhanh hơn trước khi quyết định.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                {relatedProducts.map((relatedProduct) => {
+                  const relatedImage = relatedProduct.images?.find((image) => image.is_primary)?.image_url
+                    || relatedProduct.images?.[0]?.image_url;
+                  const relatedDiscount = relatedProduct.compare_at_price && relatedProduct.base_price
+                    ? Math.round(((relatedProduct.compare_at_price - relatedProduct.base_price) / relatedProduct.compare_at_price) * 100)
+                    : null;
+
+                  return (
+                    <a key={relatedProduct.id} href={`/product/${relatedProduct.id}`} className="group block">
+                      <GlassCard className="h-full overflow-hidden border-gray-200 bg-white transition-transform duration-200 group-hover:-translate-y-1">
+                        <div className="relative overflow-hidden border-b border-gray-100 bg-gray-50 p-4">
+                          {relatedDiscount ? (
+                            <div className="absolute left-4 top-4 z-10 rounded-full bg-[#111827] px-2.5 py-1 text-xs font-semibold text-white">
+                              -{relatedDiscount}%
+                            </div>
+                          ) : null}
+                          <ProductImage
+                            src={relatedImage}
+                            category={relatedProduct.category?.slug || 'products'}
+                            alt={relatedProduct.name}
+                            size="full"
+                            className="aspect-square transition-transform duration-300 group-hover:scale-[1.03]"
+                          />
+                        </div>
+
+                        <div className="space-y-3 p-5">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                              {relatedProduct.category?.name || 'Danh mục công nghệ'}
+                            </p>
+                            <h3 className="mt-2 line-clamp-2 text-lg font-heading font-bold text-gray-900">
+                              {relatedProduct.name}
+                            </h3>
+                          </div>
+
+                          <p className="line-clamp-2 text-sm leading-6 text-gray-600">
+                            {relatedProduct.short_description || relatedProduct.description}
+                          </p>
+
+                          <div className="flex items-end justify-between gap-3">
+                            <div>
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatPrice(relatedProduct.base_price)}
+                              </p>
+                              {relatedProduct.compare_at_price ? (
+                                <p className="text-sm text-gray-400 line-through">
+                                  {formatPrice(relatedProduct.compare_at_price)}
+                                </p>
+                              ) : null}
+                            </div>
+                            <span className="text-sm font-semibold text-[#8a5a00] transition-transform group-hover:translate-x-1">
+                              Xem chi tiết
+                            </span>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
           )}
         </div>
       </main>
