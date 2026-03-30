@@ -4,20 +4,57 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/common/Button';
 import { orderApi, paymentApi } from '@/lib/api';
 import { PaymentMethod } from '@/types/product.types';
 import type { Address } from '@/types';
 import { formatPrice } from '@/lib/utils';
+import {
+  DELIVERY_STORAGE_KEY,
+  DELIVERY_SYNC_EVENT,
+  readDeliveryAddressesFromStorage,
+} from '@/lib/delivery-address-sync';
 
 interface FormErrors {
   fullname?: string;
   phone?: string;
   address?: string;
   city?: string;
+  selectedAddress?: string;
   paymentMethod?: string;
 }
+
+type SavedAddressOption = {
+  id: string;
+  fullname: string;
+  phone: string;
+  address: string;
+  city: string;
+  note?: string;
+  isDefault?: boolean;
+};
+
+const mapUserAddressItem = (item: unknown): SavedAddressOption | null => {
+  const id = typeof (item as { id?: unknown })?.id === 'string' ? (item as { id: string }).id : '';
+  const fullname = typeof (item as { fullname?: unknown })?.fullname === 'string' ? (item as { fullname: string }).fullname : '';
+  const phone = typeof (item as { phone?: unknown })?.phone === 'string' ? (item as { phone: string }).phone : '';
+  const address = typeof (item as { address?: unknown })?.address === 'string' ? (item as { address: string }).address : '';
+  const city = typeof (item as { city?: unknown })?.city === 'string' ? (item as { city: string }).city : '';
+
+  if (!id || !fullname || !phone || !address || !city) {
+    return null;
+  }
+
+  return {
+    id,
+    fullname,
+    phone,
+    address,
+    city,
+    note: typeof (item as { note?: unknown })?.note === 'string' ? (item as { note: string }).note : '',
+    isDefault: Boolean((item as { isDefault?: unknown })?.isDefault),
+  };
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -30,6 +67,9 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string>('');
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddressOption[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
 
   const [shippingAddress, setShippingAddress] = useState<Address>({
     fullname: user?.fullname || '',
@@ -46,34 +86,91 @@ export default function CheckoutPage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (user) {
-      setShippingAddress((prev) => ({
-        ...prev,
-        fullname: user.fullname || prev.fullname,
-        phone: user.phone_number || prev.phone,
+    const syncAddresses = () => {
+      const fromDeliveryStorage = readDeliveryAddressesFromStorage().map((address) => ({
+        id: address.id,
+        fullname: address.fullName,
+        phone: address.phoneNumber,
+        address: address.houseNumber,
+        city: address.city,
+        note: address.note,
+        isDefault: false,
       }));
-    }
+
+      const fromProfile = (() => {
+        if (!user?.address) {
+          return [] as SavedAddressOption[];
+        }
+
+        try {
+          const parsed = JSON.parse(user.address);
+          if (!Array.isArray(parsed)) {
+            return [] as SavedAddressOption[];
+          }
+
+          return parsed
+            .map(mapUserAddressItem)
+            .filter((item): item is SavedAddressOption => Boolean(item));
+        } catch {
+          return [] as SavedAddressOption[];
+        }
+      })();
+
+      const source = fromProfile.length > 0 ? fromProfile : fromDeliveryStorage;
+      setSavedAddresses(source);
+      setSelectedAddressId((current) => {
+        const exists = source.some((address) => address.id === current);
+        if (exists) {
+          return current;
+        }
+
+        const defaultAddress = source.find((address) => address.isDefault) || source[0];
+        return defaultAddress?.id || '';
+      });
+    };
+
+    syncAddresses();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === DELIVERY_STORAGE_KEY) {
+        syncAddresses();
+      }
+    };
+
+    window.addEventListener(DELIVERY_SYNC_EVENT, syncAddresses as EventListener);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(DELIVERY_SYNC_EVENT, syncAddresses as EventListener);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [user]);
+
+  useEffect(() => {
+    const selected = savedAddresses.find((address) => address.id === selectedAddressId);
+    if (!selected) {
+      return;
+    }
+
+    setShippingAddress({
+      fullname: selected.fullname,
+      phone: selected.phone,
+      address: selected.address,
+      city: selected.city,
+    });
+  }, [savedAddresses, selectedAddressId]);
+
+  useEffect(() => {
+    if (!selectedAddressId) {
+      setShowAddressPicker(true);
+    }
+  }, [selectedAddressId]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!shippingAddress.fullname.trim()) {
-      newErrors.fullname = 'Full name is required';
-    }
-
-    if (!shippingAddress.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^[0-9]{10,11}$/.test(shippingAddress.phone.replace(/[\s-]/g, ''))) {
-      newErrors.phone = 'Invalid phone number format';
-    }
-
-    if (!shippingAddress.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!shippingAddress.city.trim()) {
-      newErrors.city = 'City is required';
+    if (!selectedAddressId) {
+      newErrors.selectedAddress = 'Please choose a saved delivery address';
     }
 
     if (!paymentMethod) {
@@ -82,19 +179,6 @@ export default function CheckoutPage() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (field: keyof Address, value: string) => {
-    setShippingAddress((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    if (errors[field as keyof FormErrors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: undefined,
-      }));
-    }
   };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -255,6 +339,7 @@ export default function CheckoutPage() {
   const subtotal = cart.total_amount || 0;
   const shippingFee = 30000;
   const total = subtotal + shippingFee;
+  const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) || null;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -267,47 +352,85 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Shipping Address
               </h2>
-              <form onSubmit={handleSubmitOrder} className="space-y-4">
-                <FormInput
-                  label="Full Name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={shippingAddress.fullname}
-                  onChange={(e) => handleInputChange('fullname', e.target.value)}
-                  error={errors.fullname}
-                  required
-                />
+              {savedAddresses.length === 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm text-amber-800">Bạn chưa có địa chỉ nào trong Quản lý địa chỉ.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => router.push('/account/addresses')}
+                  >
+                    Thêm địa chỉ ngay
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedAddress && (
+                    <div className="w-full text-left rounded-lg border border-[#CA8A04] bg-amber-50 p-4">
+                      <p className="font-semibold text-gray-900">{selectedAddress.fullname}</p>
+                      <p className="text-sm text-gray-700 mt-1">{selectedAddress.phone}</p>
+                      <p className="text-sm text-gray-700">{selectedAddress.address}</p>
+                      <p className="text-sm text-gray-700">{selectedAddress.city}</p>
+                      {selectedAddress.note && (
+                        <p className="text-xs text-gray-500 italic mt-1">{selectedAddress.note}</p>
+                      )}
+                    </div>
+                  )}
 
-                <FormInput
-                  label="Phone Number"
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  value={shippingAddress.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  error={errors.phone}
-                  required
-                />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowAddressPicker((current) => !current)}
+                    >
+                      {showAddressPicker ? 'Ẩn danh sách địa chỉ' : 'Đổi địa chỉ khác'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => router.push('/account/addresses')}
+                    >
+                      Quản lý địa chỉ / thêm mới
+                    </Button>
+                  </div>
 
-                <FormInput
-                  label="Address"
-                  type="text"
-                  placeholder="Street address, P.O. box"
-                  value={shippingAddress.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  error={errors.address}
-                  required
-                />
+                  {showAddressPicker && (
+                    <div className="space-y-2">
+                      {savedAddresses.map((address) => {
+                        const isSelected = address.id === selectedAddressId;
 
-                <FormInput
-                  label="City"
-                  type="text"
-                  placeholder="Enter your city"
-                  value={shippingAddress.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  error={errors.city}
-                  required
-                />
-              </form>
+                        return (
+                          <button
+                            key={address.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedAddressId(address.id);
+                              setShowAddressPicker(false);
+                              setErrors((prev) => ({ ...prev, selectedAddress: undefined }));
+                            }}
+                            className={`w-full text-left rounded-lg border p-4 transition-colors ${
+                              isSelected
+                                ? 'border-[#CA8A04] bg-amber-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <p className="font-semibold text-gray-900">{address.fullname}</p>
+                            <p className="text-sm text-gray-700 mt-1">{address.phone}</p>
+                            <p className="text-sm text-gray-700">{address.address}</p>
+                            <p className="text-sm text-gray-700">{address.city}</p>
+                            {address.note && <p className="text-xs text-gray-500 italic mt-1">{address.note}</p>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {errors.selectedAddress && (
+                <p className="mt-3 text-sm text-red-600">{errors.selectedAddress}</p>
+              )}
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">

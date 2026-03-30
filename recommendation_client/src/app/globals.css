@@ -178,6 +178,33 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@keyframes banner-pan {
+  0%, 100% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+@keyframes drift-slow {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(16px, -18px, 0);
+  }
+}
+
+@keyframes drift-reverse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-18px, 14px, 0);
+  }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
@@ -195,6 +222,26 @@ h1, h2, h3, h4, h5, h6 {
   );
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
+}
+
+.animate-banner-pan {
+  animation: banner-pan 16s ease-in-out infinite;
+}
+
+.animate-drift-slow {
+  animation: drift-slow 12s ease-in-out infinite;
+}
+
+.animate-drift-reverse {
+  animation: drift-reverse 14s ease-in-out infinite;
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 82%);
 }
 
 ::-webkit-scrollbar {

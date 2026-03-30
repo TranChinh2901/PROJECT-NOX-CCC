@@ -31,7 +31,7 @@ import { RecommendationType } from "../modules/ai/enum/recommendation.enum";
 import { DeviceType } from "../modules/users/enum/user-session.enum";
 import { RoleType } from "../modules/auth/enum/auth.enum";
 import { CartStatus } from "../modules/cart/enum/cart.enum";
-import { faker } from "@faker-js/faker";
+import { faker } from "@faker-js/faker/locale/vi";
 import bcrypt from "bcryptjs";
 
 const CONFIG = {
@@ -51,6 +51,213 @@ const CONFIG = {
   productFeatures: 500,
   recommendationCaches: 300,
 };
+
+const WISHLIST_DEFAULT_NAME = "Danh sách yêu thích";
+
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  "Thoi Trang Nam": "Danh muc thoi trang nam voi cac mau mac de phoi, phu hop di lam va di choi.",
+  "Thoi Trang Nam - Ao Thun": "Ao thun nam uu tien chat lieu thoang mat, de mac hang ngay va linh hoat khi van dong.",
+  "Thoi Trang Nam - Ao So Mi": "Ao so mi nam lich su, phu hop moi truong cong so va cac dip gap go quan trong.",
+  "Thoi Trang Nam - Quan Dai": "Quan dai nam co phom dang gon gang, de ket hop voi ao thun hoac ao so mi.",
+  "Thoi Trang Nam - Ao Khoac": "Ao khoac nam giu am vua du, giup hoan thien set do theo phong cach hien dai.",
+  "Thoi Trang Nu": "Danh muc thoi trang nu tap trung vao su mem mai, tinh te va de ung dung moi ngay.",
+  "Thoi Trang Nu - Vay Dam": "Vay dam nu ton dang, phu hop di lam, di choi va nhung dip can hinh anh thanh lich.",
+  "Thoi Trang Nu - Ao Kieu": "Ao kieu nu nhe nhang, de phoi cung quan tay, chan vay hoac jeans.",
+  "Thoi Trang Nu - Quan Nu": "Quan nu co phom dang de mac, huong toi su thoai mai va gon gang trong sinh hoat hang ngay.",
+  "Thoi Trang Nu - Chan Vay": "Chan vay nu da dang kieu dang, phu hop ca phong cach nu tinh lan nang dong.",
+  "Thoi Trang Tre Em": "Trang phuc cho tre em duoc uu tien su an toan, mem mai va de van dong.",
+  "Thoi Trang Tre Em - Be Trai": "Do cho be trai voi mau sac tuoi sang, chat lieu mem va de chuyen dong.",
+  "Thoi Trang Tre Em - Be Gai": "Do cho be gai voi thiet ke dang yeu, gon gang va de cham soc.",
+  "Thoi Trang Tre Em - So Sinh": "San pham so sinh uu tien vai mem, em diu voi lan da va de thay mac.",
+  "Phu Kien": "Phu kien giup hoan thien trang phuc va tang su tien loi trong qua trinh su dung.",
+  "Phu Kien - Tui Xach": "Tui xach co thiet ke de ung dung hang ngay, de sap xep do dung can thiet.",
+  "Phu Kien - Mu Non": "Mu non giup che nang va tao diem nhan cho tong the trang phuc.",
+  "Phu Kien - That Lung": "That lung duoc chon loc theo huong ben dep, de phoi voi nhieu phong cach.",
+  "Phu Kien - Trang Suc": "Trang suc tao diem nhan tinh te, phu hop su dung hang ngay va dip dac biet.",
+  "Giay Dep": "Danh muc giay dep uu tien su em chan, ben bi va de di chuyen linh hoat.",
+  "Giay Dep - Giay The Thao": "Giay the thao co de em va trong luong vua phai, phu hop van dong moi ngay.",
+  "Giay Dep - Giay Bot": "Giay bot mang phong cach ca tinh, de ket hop voi nhieu loai trang phuc.",
+  "Giay Dep - Dep Sandal": "Dep sandal thoang chan, phu hop di hoc, di choi va du lich ngan ngay.",
+  "Giay Dep - Giay Tay": "Giay tay huong toi hinh anh lich su, gon gang cho moi truong cong so.",
+};
+
+const BRAND_SEEDS = [
+  { name: "YODY", description: "Thuong hieu thoi trang ung dung huong toi su thoai mai va de mac moi ngay." },
+  { name: "Canifa", description: "Thuong hieu quen thuoc voi cac dong san pham co ban, de phoi va ben dep." },
+  { name: "Routine", description: "Phong cach tre trung, nang dong, tap trung vao nhu cau mac dep hang ngay." },
+  { name: "NEM", description: "Thuong hieu thoi trang nu voi ngon ngu thiet ke thanh lich va hien dai." },
+  { name: "IVY moda", description: "Dinh huong thoi trang thanh thi, nhan manh vao su gon gang va tinh te." },
+  { name: "An Phuoc", description: "Thuong hieu noi bat voi dong san pham cong so va chat lieu duoc chon loc ky." },
+  { name: "Owen", description: "Thoi trang nam co tinh ung dung cao, de chon cho nhieu hoan canh su dung." },
+  { name: "Biti's Hunter", description: "Dong giay tre trung, linh hoat, phu hop di chuyen va hoat dong hang ngay." },
+  { name: "Juno", description: "Phu kien va giay dep nu huong toi su tien dung va tham my can bang." },
+  { name: "Marc", description: "Thuong hieu thoi trang nu tre trung voi cac bo suu tap de tiep can va de mac." },
+];
+
+const WAREHOUSE_DATA = [
+  { name: "Kho trung tâm miền Nam", city: "TP Hồ Chí Minh", is_default: true },
+  { name: "Kho khu vực miền Bắc", city: "Hà Nội", is_default: false },
+  { name: "Kho khu vực miền Trung", city: "Đà Nẵng", is_default: false },
+  { name: "Kho điều phối Tây Nam Bộ", city: "Cần Thơ", is_default: false },
+];
+
+const COLOR_OPTIONS = [
+  { name: "Đen", code: "#000000" },
+  { name: "Trắng", code: "#FFFFFF" },
+  { name: "Đỏ", code: "#D62828" },
+  { name: "Xanh dương", code: "#2563EB" },
+  { name: "Xanh lá", code: "#2E7D32" },
+  { name: "Xanh navy", code: "#1E3A8A" },
+  { name: "Be", code: "#D6C4A5" },
+  { name: "Hồng", code: "#EC4899" },
+];
+
+const MATERIALS = ["Cotton", "Polyester", "Linen", "Len mềm", "Lụa", "Denim", "Da tổng hợp"];
+
+const PRODUCT_COLLECTIONS = ["Essential", "Hằng ngày", "Thanh lịch", "Năng động", "Cao cấp", "Trẻ trung"];
+const PRODUCT_HIGHLIGHTS = [
+  "chất liệu mềm mại, thoáng khí",
+  "đường may gọn gàng, dễ bảo quản",
+  "phom dáng dễ mặc và dễ phối đồ",
+  "màu sắc dễ ứng dụng trong nhiều tình huống",
+  "thiết kế gọn nhẹ, tạo cảm giác thoải mái",
+];
+const PRODUCT_BENEFITS = [
+  "phù hợp đi làm, đi học hoặc đi chơi",
+  "giữ được sự gọn gàng trong suốt ngày dài",
+  "dễ kết hợp với nhiều phụ kiện sẵn có",
+  "mang lại cảm giác tự tin khi sử dụng",
+  "thuận tiện cho nhu cầu mặc đẹp hằng ngày",
+];
+const PRODUCT_STYLES = ["phong cách tối giản", "vẻ ngoài thanh lịch", "tinh thần trẻ trung", "đường nét hiện đại", "sự cân bằng giữa tiện dụng và thẩm mỹ"];
+
+const PRODUCT_BASE_NAMES: Record<string, string[]> = {
+  "Ao Thun": ["Áo thun cổ tròn", "Áo thun oversize", "Áo thun tay lỡ", "Áo thun polo", "Áo thun phối viền"],
+  "Ao So Mi": ["Áo sơ mi dài tay", "Áo sơ mi ngắn tay", "Áo sơ mi slim fit", "Áo sơ mi kẻ sọc", "Áo sơ mi vải mềm"],
+  "Quan Dai": ["Quần tây ống đứng", "Quần kaki cơ bản", "Quần jeans suông", "Quần jogger thể thao", "Quần dài co giãn"],
+  "Ao Khoac": ["Áo khoác gió nhẹ", "Áo khoác bomber", "Áo khoác denim", "Áo khoác nỉ khóa kéo", "Áo khoác cardigan"],
+  "Vay Dam": ["Váy đầm xòe", "Váy đầm suông", "Váy đầm cổ vuông", "Váy đầm ôm nhẹ", "Váy đầm hoa nhí"],
+  "Ao Kieu": ["Áo kiểu tay phồng", "Áo kiểu cổ nơ", "Áo kiểu peplum", "Áo kiểu nhún eo", "Áo kiểu cổ vuông"],
+  "Quan Nu": ["Quần ống rộng", "Quần culottes", "Quần tây nữ", "Quần jeans lưng cao", "Quần suông mềm"],
+  "Chan Vay": ["Chân váy chữ A", "Chân váy xếp ly", "Chân váy jeans", "Chân váy dài midi", "Chân váy bút chì"],
+  "Be Trai": ["Bộ thun bé trai", "Áo polo bé trai", "Quần short bé trai", "Áo khoác bé trai", "Bộ mặc nhà bé trai"],
+  "Be Gai": ["Đầm bé gái", "Áo kiểu bé gái", "Chân váy bé gái", "Bộ mặc nhà bé gái", "Áo khoác bé gái"],
+  "So Sinh": ["Áo liền quần sơ sinh", "Bộ body sơ sinh", "Áo giữ ấm sơ sinh", "Quần sơ sinh mềm", "Khăn quàng cổ sơ sinh"],
+  "Tui Xach": ["Túi đeo chéo", "Túi tote", "Túi xách tay", "Túi mini", "Balo thời trang"],
+  "Mu Non": ["Mũ lưỡi trai", "Mũ bucket", "Mũ cói", "Mũ len", "Mũ nửa đầu"],
+  "That Lung": ["Thắt lưng da", "Thắt lưng khóa kim", "Thắt lưng bản nhỏ", "Thắt lưng casual", "Thắt lưng công sở"],
+  "Trang Suc": ["Dây chuyền nhỏ", "Lắc tay thanh mảnh", "Bông tai tròn", "Nhẫn đơn giản", "Set trang sức tối giản"],
+  "Giay The Thao": ["Giày thể thao êm chân", "Sneaker cơ bản", "Giày chạy bộ", "Giày tập luyện", "Giày đế mềm"],
+  "Giay Bot": ["Giày bốt cổ ngắn", "Giày bốt da mềm", "Bốt đế bằng", "Bốt cổ trung", "Bốt khóa kéo"],
+  "Dep Sandal": ["Dép sandal quai ngang", "Dép sandal đế êm", "Dép sandal du lịch", "Dép quai hậu", "Dép sandal tối giản"],
+  "Giay Tay": ["Giày tây công sở", "Giày lười da mềm", "Giày oxford", "Giày derby", "Giày tây đế nhẹ"],
+  default: ["Sản phẩm thời trang ứng dụng", "Sản phẩm mặc hằng ngày", "Sản phẩm phong cách hiện đại"],
+};
+
+const REVIEW_TITLES = [
+  "Sản phẩm đúng như mô tả",
+  "Mặc lên rất thoải mái",
+  "Đáng mua trong tầm giá",
+  "Chất liệu ổn, dễ phối đồ",
+  "Sẽ mua lại nếu có màu mới",
+  "Giao nhanh và đóng gói gọn gàng",
+];
+
+const REVIEW_CONTENTS = [
+  "Mình đã sử dụng sản phẩm này trong vài ngày và cảm thấy chất vải mềm, mặc dễ chịu, đường may cũng khá chắc chắn.",
+  "Màu sắc đúng như hình, kích thước vừa vặn. Mặc đi làm hay đi chơi đều phù hợp và dễ kết hợp phụ kiện.",
+  "Giá cả hợp lý so với chất lượng. Sản phẩm lên phom đẹp, không bị gò bó khi mặc cả ngày.",
+  "Đóng gói cẩn thận, giao hàng đúng hẹn. Mình đánh giá cao độ hoàn thiện và sự tiện dụng khi sử dụng.",
+  "Sản phẩm dễ bảo quản, sau khi giặt vẫn giữ dáng khá tốt. Nếu có thêm nhiều màu nữa sẽ rất hay.",
+];
+
+const FEATURE_VALUES: Record<ProductFeatureType, string[]> = {
+  [ProductFeatureType.CATEGORY]: ["cơ bản", "ứng dụng", "dễ phối", "đa năng"],
+  [ProductFeatureType.STYLE]: ["tối giản", "thanh lịch", "năng động", "trẻ trung", "hiện đại"],
+  [ProductFeatureType.OCCASION]: ["đi làm", "đi học", "đi chơi", "du lịch", "sự kiện nhẹ"],
+  [ProductFeatureType.SEASON]: ["mùa hè", "mùa thu", "mùa đông", "quanh năm"],
+  [ProductFeatureType.PATTERN]: ["trơn màu", "kẻ sọc", "hoa nhỏ", "phối màu"],
+  [ProductFeatureType.FABRIC_TYPE]: ["cotton", "linen", "denim", "lụa", "len mềm"],
+  [ProductFeatureType.ATTRIBUTE]: ["thoáng khí", "co giãn nhẹ", "dễ giặt", "giữ phom", "êm chân"],
+};
+
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  [OrderStatus.PENDING]: "Chờ xác nhận",
+  [OrderStatus.CONFIRMED]: "Đã xác nhận",
+  [OrderStatus.PROCESSING]: "Đang xử lý",
+  [OrderStatus.SHIPPED]: "Đang giao",
+  [OrderStatus.DELIVERED]: "Đã giao",
+  [OrderStatus.CANCELLED]: "Đã hủy",
+  [OrderStatus.REFUNDED]: "Đã hoàn tiền",
+};
+
+function toSlug(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function toAsciiText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
+function getCategoryDescription(name: string): string {
+  return CATEGORY_DESCRIPTIONS[toAsciiText(name)] ?? `Danh mục ${name.toLowerCase()} được chọn lọc theo nhu cầu mặc đẹp và tiện dụng hằng ngày.`;
+}
+
+function getLeafCategoryName(categoryName: string): string {
+  const parts = categoryName.split(" - ");
+  return parts[parts.length - 1] ?? categoryName;
+}
+
+function buildProductCopy(categoryName: string) {
+  const leafCategoryName = getLeafCategoryName(categoryName);
+  const baseNames = PRODUCT_BASE_NAMES[leafCategoryName] ?? PRODUCT_BASE_NAMES.default;
+  const baseName = faker.helpers.arrayElement(baseNames);
+  const collection = faker.helpers.arrayElement(PRODUCT_COLLECTIONS);
+  const highlight = faker.helpers.arrayElement(PRODUCT_HIGHLIGHTS);
+  const benefit = faker.helpers.arrayElement(PRODUCT_BENEFITS);
+  const style = faker.helpers.arrayElement(PRODUCT_STYLES);
+  const name = `${baseName} ${collection}`;
+  const shortDescription = `${highlight}, ${benefit}.`;
+  const description = `${name} được thiết kế theo ${style}, ưu tiên ${highlight} và ${benefit}. Sản phẩm phù hợp cho nhu cầu mặc đẹp hằng ngày, dễ phối cùng nhiều kiểu trang phục khác nhau.`;
+
+  return {
+    name,
+    shortDescription,
+    description,
+    metaTitle: `${name} | Thời trang cho người dùng Việt`,
+    metaDescription: shortDescription,
+  };
+}
+
+function buildPromotionDescription(type: PromotionType, appliesTo: PromotionAppliesTo): string {
+  const appliesLabel = appliesTo === PromotionAppliesTo.ALL
+    ? "toàn bộ sản phẩm"
+    : appliesTo === PromotionAppliesTo.CATEGORIES
+      ? "một số danh mục được chọn"
+      : "một số sản phẩm cụ thể";
+
+  if (type === PromotionType.FREE_SHIPPING) {
+    return `Ưu đãi miễn phí vận chuyển áp dụng cho ${appliesLabel}, giúp tiết kiệm chi phí khi đặt hàng.`;
+  }
+
+  if (type === PromotionType.PERCENTAGE) {
+    return `Chương trình giảm giá theo phần trăm áp dụng cho ${appliesLabel}, để mua sắm tiết kiệm hơn.`;
+  }
+
+  return `Chương trình giảm trực tiếp bằng tiền áp dụng cho ${appliesLabel}, dễ sử dụng ngay tại bước thanh toán.`;
+}
 
 async function seedDatabase() {
   console.log("Starting database seeding...");
@@ -92,8 +299,8 @@ async function seedDatabase() {
     for (const cat of categoryData) {
       const parent = new Category();
       parent.name = cat.name;
-      parent.slug = cat.name.toLowerCase().replace(/\s+/g, "-");
-      parent.description = faker.lorem.sentence();
+      parent.slug = toSlug(cat.name);
+      parent.description = getCategoryDescription(cat.name);
       parent.image_url = faker.image.url();
       parent.is_active = true;
       parent.sort_order = faker.number.int({ min: 0, max: 100 });
@@ -103,8 +310,8 @@ async function seedDatabase() {
       for (const subName of cat.subs) {
         const sub = new Category();
         sub.name = `${cat.name} - ${subName}`;
-        sub.slug = `${parent.slug}-${subName.toLowerCase()}`;
-        sub.description = faker.lorem.sentence();
+        sub.slug = `${parent.slug}-${toSlug(subName)}`;
+        sub.description = getCategoryDescription(sub.name);
         sub.parent = parent;
         sub.parent_id = parent.id;
         sub.image_url = faker.image.url();
@@ -118,13 +325,12 @@ async function seedDatabase() {
 
     console.log("Seeding brands...");
     const brands: Brand[] = [];
-    const brandNames = ["Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Gucci", "Levi's", "Calvin Klein", "Tommy Hilfiger", "Puma"];
     
-    for (const brandName of brandNames) {
+    for (const brandSeed of BRAND_SEEDS) {
       const brand = new Brand();
-      brand.name = brandName;
-      brand.slug = brandName.toLowerCase().replace(/\s+/g, "-").replace(/'/g, "");
-      brand.description = faker.company.buzzPhrase();
+      brand.name = brandSeed.name;
+      brand.slug = toSlug(brandSeed.name);
+      brand.description = brandSeed.description;
       brand.logo_url = faker.image.url();
       brand.website_url = `https://www.${brand.slug}.com`;
       brand.is_active = true;
@@ -135,23 +341,17 @@ async function seedDatabase() {
 
     console.log("Seeding warehouses...");
     const warehouses: Warehouse[] = [];
-    const warehouseData = [
-      { name: "Main Warehouse", city: "Ho Chi Minh City", is_default: true },
-      { name: "North Warehouse", city: "Hanoi", is_default: false },
-      { name: "Central Warehouse", city: "Da Nang", is_default: false },
-      { name: "South Warehouse", city: "Can Tho", is_default: false },
-    ];
 
-    for (const wh of warehouseData) {
+    for (const wh of WAREHOUSE_DATA) {
       const warehouse = new Warehouse();
       warehouse.name = wh.name;
       warehouse.code = faker.string.alphanumeric(6).toUpperCase();
       warehouse.address = faker.location.streetAddress();
       warehouse.city = wh.city;
-      warehouse.country = "Vietnam";
+      warehouse.country = "Việt Nam";
       warehouse.contact_name = faker.person.fullName();
       warehouse.contact_phone = `0${faker.string.numeric(9)}`;
-      warehouse.contact_email = faker.internet.email();
+      warehouse.contact_email = `${toSlug(wh.name)}@nox.vn`;
       warehouse.is_active = true;
       warehouse.is_default = wh.is_default;
       await queryRunner.manager.save(warehouse);
@@ -166,27 +366,19 @@ async function seedDatabase() {
     const inventoryByVariantId = new Map<number, Inventory[]>();
 
     const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
-    const colors = [
-      { name: "Black", code: "#000000" },
-      { name: "White", code: "#FFFFFF" },
-      { name: "Red", code: "#FF0000" },
-      { name: "Blue", code: "#0000FF" },
-      { name: "Green", code: "#008000" },
-      { name: "Navy", code: "#000080" },
-    ];
-    const materials = ["Cotton", "Polyester", "Wool", "Silk", "Denim"];
 
     for (let i = 0; i < CONFIG.categories * CONFIG.productsPerCategory; i++) {
       const category = faker.helpers.arrayElement(categories.filter(c => c.parent_id !== undefined));
       const brand = faker.helpers.arrayElement(brands);
+      const productCopy = buildProductCopy(category.name);
       
       const product = new Product();
-      product.name = faker.commerce.productName();
-      product.slug = `${faker.helpers.slugify(product.name).toLowerCase()}-${faker.string.alphanumeric(6).toLowerCase()}`;
+      product.name = productCopy.name;
+      product.slug = `${toSlug(product.name)}-${faker.string.alphanumeric(6).toLowerCase()}`;
       product.sku = `SKU-${faker.string.alphanumeric(8).toUpperCase()}`;
-      product.description = faker.commerce.productDescription();
-      product.short_description = faker.lorem.sentence(10);
-      product.base_price = parseFloat(faker.commerce.price({ min: 100000, max: 2000000 }));
+      product.description = productCopy.description;
+      product.short_description = productCopy.shortDescription;
+      product.base_price = faker.number.int({ min: 100000, max: 2000000 });
       product.compare_at_price = product.base_price * 1.2;
       product.cost_price = product.base_price * 0.6;
       product.weight_kg = faker.number.float({ min: 0.1, max: 2.0 });
@@ -196,8 +388,8 @@ async function seedDatabase() {
       product.category_id = category.id;
       product.brand = brand;
       product.brand_id = brand.id;
-      product.meta_title = product.name;
-      product.meta_description = product.short_description;
+      product.meta_title = productCopy.metaTitle;
+      product.meta_description = productCopy.metaDescription;
       await queryRunner.manager.save(product);
       products.push(product);
 
@@ -208,10 +400,10 @@ async function seedDatabase() {
         variant.product_id = product.id;
         variant.sku = `${product.sku}-${faker.string.alphanumeric(4).toUpperCase()}`;
         variant.size = faker.helpers.arrayElement(sizes);
-        const color = faker.helpers.arrayElement(colors);
+        const color = faker.helpers.arrayElement(COLOR_OPTIONS);
         variant.color = color.name;
         variant.color_code = color.code;
-        variant.material = faker.helpers.arrayElement(materials);
+        variant.material = faker.helpers.arrayElement(MATERIALS);
         variant.price_adjustment = faker.number.float({ min: -50000, max: 100000 });
         variant.final_price = product.base_price + variant.price_adjustment;
         variant.weight_kg = product.weight_kg;
@@ -259,8 +451,8 @@ async function seedDatabase() {
     const users: User[] = [];
     
     const admin = new User();
-    admin.fullname = "Admin User";
-    admin.email = "admin@fashion.com";
+    admin.fullname = "Quản trị viên NOX";
+    admin.email = "admin@nox.vn";
     admin.phone_number = "0901234567";
     admin.password = await bcrypt.hash("admin123", 10);
     admin.is_verified = true;
@@ -271,7 +463,7 @@ async function seedDatabase() {
     for (let i = 0; i < CONFIG.users; i++) {
       const user = new User();
       user.fullname = faker.person.fullName();
-      user.email = faker.internet.email();
+      user.email = `khachhang${String(i + 1).padStart(3, "0")}@nox.vn`;
       user.phone_number = `09${faker.string.numeric(8)}`;
       user.password = await bcrypt.hash("password123", 10);
       user.address = faker.location.streetAddress();
@@ -368,7 +560,7 @@ async function seedDatabase() {
       order.status = faker.helpers.arrayElement(Object.values(OrderStatus));
       order.payment_status = faker.helpers.arrayElement(Object.values(PaymentStatus));
       order.payment_method = faker.helpers.arrayElement(Object.values(PaymentMethod));
-      order.shipping_address = { street: faker.location.streetAddress(), city: faker.location.city(), country: "Vietnam" };
+      order.shipping_address = { street: faker.location.streetAddress(), city: faker.location.city(), country: "Việt Nam" };
       order.billing_address = order.shipping_address;
       order.subtotal = 0;
       order.discount_amount = faker.number.float({ min: 0, max: 100000 });
@@ -409,8 +601,8 @@ async function seedDatabase() {
       history.order = order;
       history.order_id = order.id;
       history.status = order.status;
-      history.changed_by = faker.helpers.arrayElement(["system", "admin", user.email]);
-      history.notes = `Order ${order.status}`;
+      history.changed_by = faker.helpers.arrayElement(["hệ thống", "quản trị viên", user.email]);
+      history.notes = `Đơn hàng ở trạng thái ${ORDER_STATUS_LABELS[order.status]}`;
       await queryRunner.manager.save(history);
       orderHistories.push(history);
     }
@@ -432,8 +624,8 @@ async function seedDatabase() {
       review.order_item = orderItem;
       review.order_item_id = orderItem.id;
       review.rating = faker.number.int({ min: 1, max: 5 });
-      review.title = faker.lorem.sentence(5);
-      review.content = faker.lorem.paragraphs(2);
+      review.title = faker.helpers.arrayElement(REVIEW_TITLES);
+      review.content = faker.helpers.arrayElement(REVIEW_CONTENTS);
       review.is_verified_purchase = true;
       review.is_approved = faker.datatype.boolean(0.8);
       await queryRunner.manager.save(review);
@@ -473,7 +665,7 @@ async function seedDatabase() {
       const wishlist = new Wishlist();
       wishlist.user = user;
       wishlist.user_id = user.id;
-      wishlist.name = "My Wishlist";
+      wishlist.name = WISHLIST_DEFAULT_NAME;
       wishlist.is_default = true;
       wishlist.is_public = faker.datatype.boolean(0.2);
       wishlist.share_token = wishlist.is_public ? faker.string.alphanumeric(24) : undefined;
@@ -520,9 +712,8 @@ async function seedDatabase() {
     for (const code of promoCodes) {
       const promotion = new Promotion();
       promotion.code = code;
-      promotion.name = `${code} Promotion`;
-      promotion.description = faker.lorem.sentence();
       promotion.type = faker.helpers.arrayElement(Object.values(PromotionType));
+      promotion.name = `Ưu đãi ${code}`;
       promotion.value = promotion.type === PromotionType.PERCENTAGE ? faker.number.int({ min: 5, max: 50 }) : faker.number.int({ min: 10000, max: 100000 });
       promotion.min_order_amount = faker.number.int({ min: 100000, max: 500000 });
       promotion.max_discount_amount = promotion.type === PromotionType.PERCENTAGE ? faker.number.int({ min: 50000, max: 200000 }) : undefined;
@@ -532,6 +723,7 @@ async function seedDatabase() {
       promotion.ends_at = faker.date.future({ years: 1 });
       promotion.is_active = true;
       promotion.applies_to = faker.helpers.arrayElement(Object.values(PromotionAppliesTo));
+      promotion.description = buildPromotionDescription(promotion.type, promotion.applies_to);
       await queryRunner.manager.save(promotion);
       promotions.push(promotion);
     }
@@ -579,7 +771,7 @@ async function seedDatabase() {
         log.variant_id = variant.id;
       }
       
-      log.search_query = log.action_type === UserActionType.SEARCH ? faker.commerce.productName() : undefined;
+      log.search_query = log.action_type === UserActionType.SEARCH ? faker.helpers.arrayElement(products).name : undefined;
       log.metadata = { referrer: faker.internet.url() };
       log.device_type = session.device_type;
       log.referrer_url = faker.internet.url();
@@ -597,8 +789,8 @@ async function seedDatabase() {
 
     for (let i = 0; i < CONFIG.productFeatures; i++) {
       const product = faker.helpers.arrayElement(products);
-      const featureType = faker.helpers.arrayElement(Object.values(ProductFeatureType));
-      const featureValue = faker.helpers.arrayElement(["casual", "formal", "sport", "elegant", "summer", "winter", "cotton", "denim"]);
+      const featureType = faker.helpers.arrayElement(Object.values(ProductFeatureType)) as ProductFeatureType;
+      const featureValue = faker.helpers.arrayElement(FEATURE_VALUES[featureType]);
       const key = `${product.id}-${featureType}-${featureValue}`;
       
       if (featureKeys.has(key)) continue;

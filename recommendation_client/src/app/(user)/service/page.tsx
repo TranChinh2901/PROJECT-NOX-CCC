@@ -1,6 +1,7 @@
 import { Headset, ShieldCheck, Truck } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
+import { CustomerFeedbackForm } from '@/components/user/feedback/CustomerFeedbackForm';
 import { NavigationLandingPage } from '@/components/user/navigation/NavigationLandingPage';
 
 export default function ServicePage() {
@@ -42,6 +43,7 @@ export default function ServicePage() {
           },
         ]}
       />
+      <CustomerFeedbackForm />
       <Footer />
     </div>
   );

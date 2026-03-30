@@ -47,4 +47,8 @@ export const loadedEnv = {
     redirectUrl: process.env.MOMO_REDIRECT_URL,
     ipnUrl: process.env.MOMO_IPN_URL,
   },
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    chatId: process.env.TELEGRAM_CHAT_ID,
+  },
 };

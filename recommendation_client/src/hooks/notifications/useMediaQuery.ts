@@ -6,24 +6,24 @@
  * Provides responsive breakpoint detection for component adaptations.
  */
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined') {
+        return () => undefined;
+      }
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+      const media = window.matchMedia(query);
+      const listener = () => onStoreChange();
 
-    const media = window.matchMedia(query);
-    setMatches(media.matches);
-
-    const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
-    media.addEventListener('change', listener);
-
-    return () => media.removeEventListener('change', listener);
-  }, [query]);
-
-  return matches;
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    },
+    () => (typeof window !== 'undefined' ? window.matchMedia(query).matches : false),
+    () => false
+  );
 }
 
 // Convenience hooks for common breakpoints

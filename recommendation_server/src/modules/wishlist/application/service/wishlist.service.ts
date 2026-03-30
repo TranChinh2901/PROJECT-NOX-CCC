@@ -4,6 +4,8 @@ import { WishlistItem } from "../../entity/wishlist-item";
 import { WishlistPriority } from "../../enum/wishlist.enum";
 import { AppError } from "@/common/error.response";
 
+const DEFAULT_WISHLIST_NAME = "Danh sách yêu thích";
+
 export class WishlistService {
   constructor(private wishlistRepo: IWishlistRepository) {}
 
@@ -61,7 +63,7 @@ export class WishlistService {
         targetWishlist = await this.wishlistRepo.findDefaultByUserId(userId);
         if (!targetWishlist) {
             // Create default wishlist if none exists
-            targetWishlist = await this.create(userId, "My Wishlist");
+            targetWishlist = await this.create(userId, DEFAULT_WISHLIST_NAME);
         }
     }
 

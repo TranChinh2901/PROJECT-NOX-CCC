@@ -135,6 +135,28 @@ export interface Review {
   deleted_at?: Date;
 }
 
+export interface ProductReviewDistributionItem {
+  rating: number;
+  count: number;
+}
+
+export interface ProductReviewsSummary {
+  total_reviews: number;
+  average_rating: string;
+  rating_distribution: ProductReviewDistributionItem[];
+}
+
+export interface ProductReviewsResponse {
+  data: Review[];
+  summary: ProductReviewsSummary;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+}
+
 export interface CreateReviewDto {
   order_item_id: number;
   rating: number;

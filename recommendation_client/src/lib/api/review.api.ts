@@ -1,12 +1,13 @@
 import apiClient from './apiClient';
 import { 
   Review,
+  ProductReviewsResponse,
   CreateReviewDto 
 } from '@/types';
 
 export const reviewApi = {
-  async getProductReviews(productId: number): Promise<Review[]> {
-    return await apiClient.get<Review[]>(`/reviews/product/${productId}`);
+  async getProductReviews(productId: number): Promise<ProductReviewsResponse> {
+    return await apiClient.get<ProductReviewsResponse>(`/reviews/product/${productId}`);
   },
 
   async createReview(data: CreateReviewDto): Promise<Review> {

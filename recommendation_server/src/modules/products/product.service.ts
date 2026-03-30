@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import { AppDataSource } from "@/config/database.config";
 import { Product } from "@/modules/products/entity/product";
 import { ProductVariant } from "@/modules/products/entity/product-variant";
@@ -234,11 +234,15 @@ export class ProductService {
     const relatedProducts = await this.productRepository.find({
       where: {
         category_id: product.category_id,
-        id: productId,
+        id: Not(productId),
         is_active: true
       },
       relations: ['category', 'brand', 'variants', 'images'],
-      take: limit
+      take: limit,
+      order: {
+        is_featured: 'DESC',
+        created_at: 'DESC'
+      }
     });
 
     return relatedProducts.map(p => this.formatProductResponse(p));

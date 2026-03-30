@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { DollarSign, Users, ShoppingCart, Package, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { DollarSign, Users, ShoppingCart, Package } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StatCard } from '@/components/admin/StatCard';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, type PieLabelRenderProps, type TooltipContentProps } from 'recharts';
 import { adminApi, type DashboardStats, type AnalyticsData, type AdminOrder } from '@/lib/api/admin.api';
 
 const COLORS = [
@@ -32,11 +32,7 @@ export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -59,7 +55,11 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const generateMockStats = (): DashboardStats => ({
     totalRevenue: 25450000,
@@ -242,12 +242,16 @@ export default function AdminDashboard() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: TooltipContentProps<number | string | ReadonlyArray<number | string>, string | number>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white border border-[rgb(var(--admin-border))] rounded-lg p-3 shadow-lg">
           <p className="text-sm font-semibold text-[rgb(var(--admin-text))] mb-1">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} className="text-sm text-[rgb(var(--admin-text-muted))]">
               {entry.name}: <span className="font-bold" style={{ color: entry.color }}>{entry.value}</span>
             </p>
@@ -256,6 +260,10 @@ export default function AdminDashboard() {
       );
     }
     return null;
+  };
+
+  const renderOrderStatusLabel = ({ status, percentage }: PieLabelRenderProps) => {
+    return `${status}: ${percentage}%`;
   };
 
   return (
@@ -382,7 +390,7 @@ export default function AdminDashboard() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry: any) => `${entry.status}: ${entry.percentage}%`}
+                    label={renderOrderStatusLabel}
                     outerRadius={90}
                     fill="#8884d8"
                     dataKey="count"

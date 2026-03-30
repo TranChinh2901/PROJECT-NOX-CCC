@@ -12,25 +12,45 @@ import { Product, Category } from '@/types';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { 
+  ArrowRight,
+  BadgeCheck,
   Search, 
+  ShieldCheck,
   ShoppingCart, 
-  // Star, 
   Filter,
-  // ChevronRight,
-  // Laptop,
-  // Smartphone,
-  // Monitor,
-  // Headphones,
-  // Watch,
-  // Camera,
-  // Gamepad,
-  // Speaker
+  Sparkles,
+  Truck,
+  Zap,
 } from 'lucide-react';
 
 const featuredDeals = [
   { title: 'Giảm đến 30% Laptop', subtitle: 'Tiết kiệm cho thiết bị cao cấp', color: '#CA8A04', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&h=400&fit=crop' },
   { title: 'Bộ Sưu Tập Âm Thanh Mới', subtitle: 'Trải nghiệm âm thanh sống động', color: '#3B82F6', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=400&fit=crop' },
   { title: 'Phụ Kiện Gaming', subtitle: 'Nâng cấp thiết bị của bạn', color: '#8B5CF6', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=400&fit=crop' },
+];
+
+const expertiseSignals = [
+  {
+    icon: ShieldCheck,
+    title: 'Tư vấn cấu hình thực chiến',
+    description: 'Chọn đúng thiết bị cho học tập, sáng tạo và gaming thay vì mua theo quảng cáo.',
+  },
+  {
+    icon: Zap,
+    title: 'Danh mục chọn lọc',
+    description: 'Ưu tiên model hiệu năng ổn định, thông số rõ ràng và mức giá dễ so sánh.',
+  },
+  {
+    icon: Truck,
+    title: 'Giao nhanh, đóng gói kỹ',
+    description: 'Quy trình kiểm tra thiết bị trước khi bàn giao, giảm rủi ro khi nhận hàng.',
+  },
+];
+
+const bannerMetrics = [
+  { value: '48h', label: 'vòng quay deal mới' },
+  { value: 'Top 5%', label: 'thiết bị được chọn lọc' },
+  { value: '1:1', label: 'hỗ trợ chọn cấu hình' },
 ];
 
 const formatPrice = (price: number) => {
@@ -147,18 +167,26 @@ function HomePageContent() {
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [activeDealIndex, setActiveDealIndex] = useState(0);
   
   const productImageRefs = useRef<Map<number, HTMLImageElement>>(new Map());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setActiveDealIndex((current) => (current + 1) % featuredDeals.length);
+    }, 4800);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const categoriesData = await categoryApi.getAllCategories();
         setCategories(categoriesData || []);
-        setError(null);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        setCategories([]);
         toast.error('Không thể tải danh mục');
       }
     };
@@ -234,7 +262,6 @@ function HomePageContent() {
       } catch (err) {
         if (isActive) {
           console.error('Error searching products:', err);
-          setError('Không thể tìm kiếm sản phẩm. Vui lòng thử lại sau.');
           toast.error('Không thể tìm kiếm sản phẩm');
         }
       } finally {
@@ -369,57 +396,147 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative bg-gradient-to-br from-white via-gray-50 to-white pt-28 pb-12">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pt-28 pb-12">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#CA8A04]/5 rounded-full blur-[150px]" />
+          <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
+          <div className="hero-grid absolute inset-0 opacity-50" />
+          <div className="animate-drift-slow absolute -top-16 right-10 h-48 w-48 rounded-full bg-[#0f172a]/[0.05] blur-3xl" />
+          <div className="animate-drift-reverse absolute bottom-0 left-10 h-56 w-56 rounded-full bg-[#CA8A04]/[0.08] blur-3xl" />
         </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-gray-900 mb-4">
-              TechNova Store
-            </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Công nghệ cao cấp, giao đến tận nhà. Miễn phí vận chuyển đơn hàng từ 500.000đ.
-            </p>
-          </div>
 
-          <div className="max-w-2xl mx-auto mb-12">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="max-w-2xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#CA8A04]/20 bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#8a5a00] shadow-sm backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5" />
+                Curated Tech Experience
+              </div>
+
+              <h1 className="max-w-xl text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
+                Chọn đúng thiết bị dễ hơn.
+                <span className="block text-[#8a5a00]">
+                  Mọi thứ cần xem đã được sắp sẵn cho bạn.
+                </span>
+              </h1>
+
+              <p className="mt-5 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">
+                Từ laptop, audio đến phụ kiện gaming, TechNova gom sẵn những mẫu đáng mua,
+                trình bày rõ thông số và ưu đãi để bạn đi nhanh tới lựa chọn phù hợp.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a
+                  href="#catalog"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#111827] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-transform hover:-translate-y-0.5"
+                >
+                  Khám phá sản phẩm
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+                <a
+                  href="/service"
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/85 px-5 py-3 text-sm font-semibold text-gray-800 backdrop-blur transition-colors hover:border-[#CA8A04] hover:text-[#8a5a00]"
+                >
+                  Xem dịch vụ tư vấn
+                </a>
+              </div>
+
+              <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+                {bannerMetrics.map((metric) => (
+                  <GlassCard
+                    key={metric.label}
+                    className="border-white/60 bg-white/80 p-4 shadow-[0_10px_30px_rgba(17,24,39,0.05)] backdrop-blur"
+                  >
+                    <div className="text-3xl font-heading font-bold text-slate-900">{metric.value}</div>
+                    <p className="mt-1 text-sm text-slate-500">{metric.label}</p>
+                  </GlassCard>
+                ))}
+              </div>
+
+              <div className="mt-6 max-w-2xl">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm, thông số kỹ thuật..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-2xl border border-white/70 bg-white/85 py-4 pr-4 pl-12 text-gray-900 placeholder-gray-400 shadow-[0_12px_40px_rgba(17,24,39,0.06)] backdrop-blur transition-all focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm sản phẩm, thông số kỹ thuật..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 transition-all shadow-sm"
-              />
+              <div className="relative mx-auto max-w-xl">
+                <div className="absolute -inset-4 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.14),_transparent_55%)]" />
+                <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[#0f172a] p-4 shadow-[0_36px_90px_rgba(15,23,42,0.22)]">
+                  <div className="animate-banner-pan relative aspect-[1.1/0.86] overflow-hidden rounded-[1.5rem]">
+                    <img
+                      src={featuredDeals[activeDealIndex].image}
+                      alt={featuredDeals[activeDealIndex].title}
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/28 via-transparent to-black/72" />
+                  </div>
+
+                  <div className="absolute left-8 top-8 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
+                    <BadgeCheck className="h-3.5 w-3.5 text-[#fbbf24]" />
+                    Chọn lọc bởi đội ngũ tư vấn
+                  </div>
+
+                  <div className="absolute right-8 top-8 text-xs font-medium uppercase tracking-[0.2em] text-white/65">
+                    0{activeDealIndex + 1} / 0{featuredDeals.length}
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
+                      Animated Banner
+                    </p>
+                    <h2 className="max-w-sm text-3xl font-heading font-bold leading-tight">
+                      {featuredDeals[activeDealIndex].title}
+                    </h2>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-white/78">
+                      {featuredDeals[activeDealIndex].subtitle}. Thay vì banner tĩnh, mỗi khung hình nhấn
+                      vào một ngữ cảnh mua hàng khác nhau để trang chủ có nhịp và có chủ đích.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                  {featuredDeals.map((deal, index) => (
+                    <button
+                      key={deal.title}
+                      type="button"
+                      onClick={() => setActiveDealIndex(index)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === activeDealIndex ? 'w-12 bg-[#fbbf24]' : 'w-6 bg-slate-300 hover:bg-slate-400'
+                      }`}
+                      aria-label={`Xem ưu đãi ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {featuredDeals.map((deal, index) => (
-              <GlassCard 
-                key={index} 
-                className="p-0 overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform"
-                style={{ borderColor: `${deal.color}30` }}
-              >
-                <div className="relative h-40">
-                  <img 
-                    src={deal.image} 
-                    alt={deal.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <h3 className="text-lg font-heading font-bold text-white mb-1">
-                      {deal.title}
-                    </h3>
-                    <p className="text-sm text-white/80">{deal.subtitle}</p>
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {expertiseSignals.map((signal, index) => {
+              const Icon = signal.icon;
+
+              return (
+                <GlassCard
+                  key={signal.title}
+                  className="group border-white/70 bg-white/80 p-5 shadow-[0_14px_44px_rgba(17,24,39,0.06)] backdrop-blur transition-transform hover:-translate-y-1"
+                  style={{ animationDelay: `${index * 120}ms` }}
+                >
+                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#CA8A04]/10 text-[#8a5a00]">
+                    <Icon className="h-5 w-5" />
                   </div>
-                </div>
-              </GlassCard>
-            ))}
+                  <h3 className="text-lg font-heading font-bold text-gray-900">{signal.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">{signal.description}</p>
+                </GlassCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -454,7 +571,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="py-12 px-4 sm:px-6 lg:px-8">
+      <section id="catalog" className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>

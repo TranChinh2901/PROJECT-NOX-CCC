@@ -4,12 +4,18 @@
   import Link from 'next/link';
   import Image from 'next/image';
   import { useRouter, useSearchParams } from 'next/navigation';
-  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart, ShieldCheck } from 'lucide-react';
+  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart, ShieldCheck, Trash2 } from 'lucide-react';
   import { useCart } from '@/contexts/CartContext';
   import { useAuth } from '@/contexts/AuthContext';
   import { useWishlist } from '@/contexts/WishlistContext';
   import { RoleType } from '@/types/auth.types';
   import { navigationApi, type NavigationItem } from '@/lib/api/navigation.api';
+  import {
+    DELIVERY_STORAGE_KEY,
+    DELIVERY_SYNC_EVENT,
+    readDeliveryAddressesFromStorage,
+    type DeliveryAddress,
+  } from '@/lib/delivery-address-sync';
 
   function HeaderSearchParamsSync({
     onQueryChange,
@@ -25,6 +31,40 @@
     return null;
   }
 
+  const DEFAULT_DELIVERY_ADDRESSES: DeliveryAddress[] = [
+    {
+      id: 'dn-q1',
+      fullName: 'Hoàng Văn Chuẩn',
+      phoneNumber: '0985981024',
+      city: 'Đà Nẵng',
+      houseNumber: '24 Trần Kim Bảng',
+      note: 'Giao giờ hành chính',
+    },
+   
+  ];
+  const VIETNAM_CITY_OPTIONS = [
+    'Hà Nội',
+    'TP. Hồ Chí Minh',
+    'Đà Nẵng',
+    'Hải Phòng',
+    'Cần Thơ',
+    'Huế',
+    'Nha Trang',
+    'Đà Lạt',
+    'Vũng Tàu',
+    'Quy Nhơn',
+    'Buôn Ma Thuột',
+    'Biên Hòa',
+    'Thủ Dầu Một',
+    'Long Xuyên',
+    'Rạch Giá',
+    'Vinh',
+    'Thanh Hóa',
+    'Hạ Long',
+    'Bắc Ninh',
+    'Phan Thiết',
+  ];
+
   export const Header: React.FC = () => {
     const { itemCount } = useCart();
     const { wishlistCount } = useWishlist();
@@ -35,10 +75,46 @@
     const [isScrolled, setIsScrolled] = useState(false);
     const [showCartPreview, setShowCartPreview] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [showDeliveryPanel, setShowDeliveryPanel] = useState(false);
     const [searchValue, setSearchValue] = useState('');
     const [navLinks, setNavLinks] = useState<NavigationItem[]>([]);
+    const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>(DEFAULT_DELIVERY_ADDRESSES);
+    const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>(DEFAULT_DELIVERY_ADDRESSES[0].id);
+    const [isDeliveryStorageHydrated, setIsDeliveryStorageHydrated] = useState(false);
+    const [deliveryFullNameInput, setDeliveryFullNameInput] = useState('');
+    const [deliveryPhoneNumberInput, setDeliveryPhoneNumberInput] = useState('');
+    const [deliveryCityInput, setDeliveryCityInput] = useState('');
+    const [deliveryHouseNumberInput, setDeliveryHouseNumberInput] = useState('');
+    const [deliveryNoteInput, setDeliveryNoteInput] = useState('');
+    const selectedDeliveryAddress =
+      deliveryAddresses.find((address) => address.id === selectedDeliveryAddressId) || deliveryAddresses[0];
+    const selectedDeliveryText = selectedDeliveryAddress
+      ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
+      : user?.address || 'your address';
+    const selectedDeliveryMapQuery = selectedDeliveryAddress
+      ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
+      : user?.address || '';
     const userMenuRef = useRef<HTMLDivElement>(null);
     const cartPreviewRef = useRef<HTMLDivElement>(null);
+    const deliveryPanelRef = useRef<HTMLDivElement>(null);
+    const cartPreviewCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const openCartPreview = () => {
+      if (cartPreviewCloseTimerRef.current) {
+        clearTimeout(cartPreviewCloseTimerRef.current);
+        cartPreviewCloseTimerRef.current = null;
+      }
+      setShowCartPreview(true);
+    };
+
+    const scheduleCloseCartPreview = () => {
+      if (cartPreviewCloseTimerRef.current) {
+        clearTimeout(cartPreviewCloseTimerRef.current);
+      }
+      cartPreviewCloseTimerRef.current = setTimeout(() => {
+        setShowCartPreview(false);
+      }, 180);
+    };
 
     React.useEffect(() => {
       const handleScroll = () => {
@@ -72,6 +148,54 @@
     }, []);
 
     useEffect(() => {
+      const syncFromStorage = () => {
+        const storedAddresses = readDeliveryAddressesFromStorage();
+        if (storedAddresses.length === 0) {
+          setIsDeliveryStorageHydrated(true);
+          return;
+        }
+
+        setDeliveryAddresses(storedAddresses);
+        setSelectedDeliveryAddressId((currentSelectedId) => {
+          const stillExists = storedAddresses.some((address) => address.id === currentSelectedId);
+          return stillExists ? currentSelectedId : storedAddresses[0].id;
+        });
+        setIsDeliveryStorageHydrated(true);
+      };
+
+      const handleStorage = (event: StorageEvent) => {
+        if (event.key === DELIVERY_STORAGE_KEY) {
+          syncFromStorage();
+        }
+      };
+
+      syncFromStorage();
+      window.addEventListener('storage', handleStorage);
+      window.addEventListener(DELIVERY_SYNC_EVENT, syncFromStorage as EventListener);
+
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+        window.removeEventListener(DELIVERY_SYNC_EVENT, syncFromStorage as EventListener);
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!isDeliveryStorageHydrated) {
+        return;
+      }
+
+      if (deliveryAddresses.length === 0) {
+        return;
+      }
+
+      window.localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(deliveryAddresses));
+      const selectedStillExists = deliveryAddresses.some((address) => address.id === selectedDeliveryAddressId);
+      if (!selectedStillExists) {
+        setSelectedDeliveryAddressId(deliveryAddresses[0].id);
+      }
+    }, [deliveryAddresses, isDeliveryStorageHydrated, selectedDeliveryAddressId]);
+
+    useEffect(() => {
       const handlePointerDown = (event: PointerEvent) => {
         const target = event.target as Node;
 
@@ -82,12 +206,17 @@
         if (cartPreviewRef.current && !cartPreviewRef.current.contains(target)) {
           setShowCartPreview(false);
         }
+
+        if (deliveryPanelRef.current && !deliveryPanelRef.current.contains(target)) {
+          setShowDeliveryPanel(false);
+        }
       };
 
       const handleEscape = (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
           setShowUserDropdown(false);
           setShowCartPreview(false);
+          setShowDeliveryPanel(false);
           setIsMenuOpen(false);
         }
       };
@@ -98,6 +227,10 @@
       return () => {
         document.removeEventListener('pointerdown', handlePointerDown);
         document.removeEventListener('keydown', handleEscape);
+        if (cartPreviewCloseTimerRef.current) {
+          clearTimeout(cartPreviewCloseTimerRef.current);
+          cartPreviewCloseTimerRef.current = null;
+        }
       };
     }, []);
 
@@ -115,6 +248,53 @@
       const trimmedQuery = searchValue.trim();
       const targetUrl = trimmedQuery.length >= 2 ? `/?q=${encodeURIComponent(trimmedQuery)}` : '/';
       router.push(targetUrl);
+    };
+
+    const handleSaveDeliveryAddress = (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const city = deliveryCityInput.trim();
+      const houseNumber = deliveryHouseNumberInput.trim();
+      const fullName = deliveryFullNameInput.trim();
+      const phoneNumber = deliveryPhoneNumberInput.trim();
+      const note = deliveryNoteInput.trim();
+
+      if (!city || !houseNumber || !fullName || !phoneNumber) {
+        return;
+      }
+
+      const newAddress: DeliveryAddress = {
+        id: `${Date.now()}`,
+        fullName,
+        phoneNumber,
+        city,
+        houseNumber,
+        note,
+      };
+
+      setDeliveryAddresses((currentAddresses) => [newAddress, ...currentAddresses]);
+      setSelectedDeliveryAddressId(newAddress.id);
+      setDeliveryFullNameInput('');
+      setDeliveryPhoneNumberInput('');
+      setDeliveryCityInput('');
+      setDeliveryHouseNumberInput('');
+      setDeliveryNoteInput('');
+    };
+
+    const handleRemoveDeliveryAddress = (addressId: string) => {
+      setDeliveryAddresses((currentAddresses) => {
+        const nextAddresses = currentAddresses.filter((address) => address.id !== addressId);
+
+        if (nextAddresses.length === 0) {
+          return currentAddresses;
+        }
+
+        if (selectedDeliveryAddressId === addressId) {
+          setSelectedDeliveryAddressId(nextAddresses[0].id);
+        }
+
+        return nextAddresses;
+      });
     };
 
     return (
@@ -135,14 +315,154 @@
                 </span>
               </Link>
 
-              <div className="hidden md:flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 cursor-pointer transition-colors ml-4 max-w-[150px]">
-                <MapPin className="w-4 h-4 flex-shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs">Giao đến</span>
-                  <span className="font-medium text-gray-900 truncate">
-                    {user?.address || 'your address'}
-                  </span>
-                </div>
+              <div
+                ref={deliveryPanelRef}
+                className="hidden md:flex relative ml-4"
+                onBlur={handleBlurWithin(setShowDeliveryPanel)}
+              >
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={showDeliveryPanel}
+                  aria-controls="delivery-address-panel"
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 cursor-pointer transition-colors max-w-[220px]"
+                  onClick={() => setShowDeliveryPanel((current) => !current)}
+                >
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span className="text-xs">Giao đến</span>
+                    <span className="font-medium text-gray-900 truncate">{selectedDeliveryText}</span>
+                  </div>
+                </button>
+
+                {showDeliveryPanel && (
+                  <div
+                    id="delivery-address-panel"
+                    role="dialog"
+                    aria-label="Chọn địa chỉ giao hàng"
+                    className="absolute top-full left-0 mt-2 w-[340px] bg-white rounded-xl border border-gray-200 shadow-2xl p-4 z-50"
+                  >
+                    <p className="text-sm font-semibold text-gray-900">Địa chỉ giao hàng</p>
+                    <p className="text-xs text-gray-500 mt-1 mb-3">Chọn địa chỉ có sẵn hoặc thêm địa chỉ mới.</p>
+
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                      {deliveryAddresses.map((address) => {
+                        const isSelected = address.id === selectedDeliveryAddressId;
+
+                        return (
+                          <div
+                            key={address.id}
+                            className={`w-full rounded-lg px-3 py-2 border transition-colors ${
+                              isSelected
+                                ? 'border-[#CA8A04] bg-amber-50 text-gray-900'
+                                : 'border-gray-200 text-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <button
+                                type="button"
+                                className="text-left flex-1"
+                                onClick={() => setSelectedDeliveryAddressId(address.id)}
+                              >
+                                <p className="text-sm font-medium">{address.houseNumber}</p>
+                                <p className="text-xs">{address.city}</p>
+                                {address.fullName && (
+                                  <p className="text-xs text-gray-600 mt-1">{address.fullName}</p>
+                                )}
+                                {address.phoneNumber && (
+                                  <p className="text-xs text-gray-600">{address.phoneNumber}</p>
+                                )}
+                                {address.note && (
+                                  <p className="text-xs text-gray-500 italic">{address.note}</p>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Xoá địa chỉ"
+                                className="text-red-500 hover:text-red-600 transition-colors mt-0.5"
+                                onClick={() => handleRemoveDeliveryAddress(address.id)}
+                                disabled={deliveryAddresses.length === 1}
+                                title={deliveryAddresses.length === 1 ? 'Cần tối thiểu 1 địa chỉ' : 'Xoá địa chỉ'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <form className="mt-3 space-y-2" onSubmit={handleSaveDeliveryAddress}>
+                      <input
+                        type="text"
+                        value={deliveryFullNameInput}
+                        onChange={(event) => setDeliveryFullNameInput(event.target.value)}
+                        placeholder="Họ và tên"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                      />
+                      <input
+                        type="tel"
+                        value={deliveryPhoneNumberInput}
+                        onChange={(event) => setDeliveryPhoneNumberInput(event.target.value)}
+                        placeholder="Số điện thoại"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                      />
+                      <input
+                        type="text"
+                        value={deliveryHouseNumberInput}
+                        onChange={(event) => setDeliveryHouseNumberInput(event.target.value)}
+                        placeholder="Số nhà / đường"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                      />
+                      <input
+                        type="text"
+                        value={deliveryCityInput}
+                        onChange={(event) => setDeliveryCityInput(event.target.value)}
+                        list="vn-city-options"
+                        placeholder="Thành phố"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
+                      />
+                      <textarea
+                        value={deliveryNoteInput}
+                        onChange={(event) => setDeliveryNoteInput(event.target.value)}
+                        placeholder="Ghi chú (tuỳ chọn)"
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 resize-none"
+                      />
+                      <datalist id="vn-city-options">
+                        {VIETNAM_CITY_OPTIONS.map((cityOption) => (
+                          <option key={cityOption} value={cityOption} />
+                        ))}
+                      </datalist>
+                      <button
+                        type="submit"
+                        className="w-full py-2 bg-[#CA8A04] text-white rounded-lg text-sm font-medium hover:bg-[#B47B04] transition-colors"
+                      >
+                        Lưu địa chỉ mới
+                      </button>
+                    </form>
+
+                    {selectedDeliveryMapQuery && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-500 mb-1">Vị trí giao đến trên bản đồ</p>
+                        <iframe
+                          src={`https://maps.google.com/maps?q=${encodeURIComponent(selectedDeliveryMapQuery)}&z=15&output=embed`}
+                          title="Bản đồ địa chỉ giao hàng"
+                          loading="lazy"
+                          className="w-full h-32 rounded-lg border border-gray-200"
+                        />
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedDeliveryMapQuery)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block mt-2 text-xs text-[#B47B04] hover:text-[#8F5B00]"
+                        >
+                          Mở trên Google Maps
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 max-w-2xl mx-4">
@@ -322,9 +642,9 @@
                 <div
                   ref={cartPreviewRef}
                   className="relative"
-                  onMouseEnter={() => setShowCartPreview(true)}
-                  onMouseLeave={() => setShowCartPreview(false)}
-                  onFocus={() => setShowCartPreview(true)}
+                  onMouseEnter={openCartPreview}
+                  onMouseLeave={scheduleCloseCartPreview}
+                  onFocus={openCartPreview}
                   onBlur={handleBlurWithin(setShowCartPreview)}
                 >
                   <Link
@@ -350,6 +670,8 @@
                       className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-2xl p-4 z-50"
                       role="dialog"
                       aria-label="Xem trước giỏ hàng"
+                      onMouseEnter={openCartPreview}
+                      onMouseLeave={scheduleCloseCartPreview}
                     >
                       <p className="text-sm text-gray-900 font-medium mb-2">
                         {itemCount > 0 ? `${itemCount} sản phẩm trong giỏ` : 'Giỏ hàng của bạn đang trống'}
@@ -385,6 +707,13 @@
                 <Menu className="w-4 h-4" />
                 Tất cả
               </button>
+
+              <Link
+                href="/service"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+              >
+                Ý kiến khách hàng
+              </Link>
               
               {navLinks.map((link) => (
                 <Link

@@ -50,6 +50,8 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
 
   // Mobile: drawer state
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileDrawerPath, setMobileDrawerPath] = useState(pathname);
+  const isMobileDrawerOpen = mobileOpen && mobileDrawerPath === pathname;
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -75,11 +77,6 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToggle]);
 
-  // Close mobile drawer when route changes
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
   const toggleDesktopSidebar = () => {
     setCollapsed(prev => {
       const newState = !prev;
@@ -89,7 +86,14 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
   };
 
   const toggleMobileDrawer = () => {
-    setMobileOpen(prev => !prev);
+    setMobileOpen((prev) => {
+      if (prev && mobileDrawerPath === pathname) {
+        return false;
+      }
+
+      setMobileDrawerPath(pathname);
+      return true;
+    });
   };
 
   const closeMobileDrawer = () => {
@@ -156,7 +160,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
       </div>
 
       {/* Mobile Overlay */}
-      {mobileOpen && (
+      {isMobileDrawerOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
           onClick={closeMobileDrawer}
@@ -169,7 +173,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
         className={cn(
           'lg:hidden fixed top-0 left-0 h-full w-72 bg-white border-r border-[rgb(var(--admin-border))] z-50 shadow-2xl',
           'transform transition-transform duration-300 ease-out',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
