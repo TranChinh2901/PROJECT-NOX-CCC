@@ -10,6 +10,14 @@ import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
 import { PaginationQueryDto } from "@/modules/admin/dto/pagination-query.dto";
 import { CreateProductDto, UpdateProductDto } from "@/modules/admin/dto/admin-product.dto";
+import supabaseStorageService from "@/services/supabase-storage.service";
+
+type UploadProductImagesOptions = {
+  variant_id?: number;
+  alt_text?: string;
+  is_primary?: boolean;
+  sort_order?: number;
+};
 
 export class AdminProductService {
   private productRepository: Repository<Product>;
@@ -277,6 +285,107 @@ export class AdminProductService {
     });
   }
 
+  async uploadProductImages(
+    productId: number,
+    files: Express.Multer.File[],
+    options: UploadProductImagesOptions,
+  ) {
+    if (!files.length) {
+      throw new AppError(
+        "No image files provided",
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR,
+      );
+    }
+
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ["images"],
+    });
+
+    if (!product) {
+      throw new AppError(
+        "Product not found",
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_NOT_FOUND,
+      );
+    }
+
+    let variantId: number | undefined;
+    if (options.variant_id !== undefined) {
+      const variant = await this.productVariantRepository.findOne({
+        where: {
+          id: options.variant_id,
+          product_id: productId,
+        },
+      });
+
+      if (!variant) {
+        throw new AppError(
+          "Product variant not found",
+          HttpStatusCode.NOT_FOUND,
+          ErrorCode.PRODUCT_NOT_FOUND,
+        );
+      }
+
+      variantId = variant.id;
+    }
+
+    const existingMaxSortOrder = product.images?.reduce(
+      (max, image) => Math.max(max, image.sort_order),
+      -1,
+    ) ?? -1;
+
+    if (options.is_primary) {
+      await this.productImageRepository.update(
+        { product_id: productId },
+        { is_primary: false },
+      );
+    }
+
+    const uploadedImages: ProductImage[] = [];
+
+    for (const [index, file] of files.entries()) {
+      const uploadResult = await supabaseStorageService.uploadProductImage(productId, file);
+      const image = this.productImageRepository.create({
+        product_id: productId,
+        variant_id: variantId,
+        image_url: uploadResult.publicUrl,
+        thumbnail_url: uploadResult.publicUrl,
+        alt_text: options.alt_text || file.originalname,
+        sort_order: options.sort_order !== undefined
+          ? options.sort_order + index
+          : existingMaxSortOrder + index + 1,
+        is_primary: options.is_primary ? index === 0 : false,
+      });
+
+      const savedImage = await this.productImageRepository.save(image);
+      uploadedImages.push(savedImage);
+    }
+
+    return uploadedImages.map((image) => this.formatProductImageResponse(image));
+  }
+
+  async deleteProductImage(productId: number, imageId: number): Promise<void> {
+    const image = await this.productImageRepository.findOne({
+      where: {
+        id: imageId,
+        product_id: productId,
+      },
+    });
+
+    if (!image) {
+      throw new AppError(
+        "Product image not found",
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_GALLERY_NOT_FOUND,
+      );
+    }
+
+    await supabaseStorageService.deleteProductImageByPublicUrl(image.image_url);
+    await this.productImageRepository.delete({ id: imageId });
+  }
+
   private formatProductResponse(product: Product) {
     const primaryImage = product.images?.find(img => img.is_primary)?.image_url ||
                          product.images?.[0]?.image_url || null;
@@ -328,6 +437,21 @@ export class AdminProductService {
       deleted_at: product.deleted_at,
       created_at: product.created_at,
       updated_at: product.updated_at
+    };
+  }
+
+  private formatProductImageResponse(image: ProductImage) {
+    return {
+      id: image.id,
+      product_id: image.product_id,
+      variant_id: image.variant_id ?? null,
+      image_url: image.image_url,
+      thumbnail_url: image.thumbnail_url ?? null,
+      alt_text: image.alt_text ?? null,
+      sort_order: image.sort_order,
+      is_primary: image.is_primary,
+      created_at: image.created_at,
+      updated_at: image.updated_at,
     };
   }
 }

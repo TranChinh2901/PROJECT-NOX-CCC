@@ -43,4 +43,12 @@ export const uploadAvatar = multer({
   }
 });
 
+export const uploadProductImages = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: {
+    fileSize: 8 * 1024 * 1024,
+    files: 10,
+  },
+});
 

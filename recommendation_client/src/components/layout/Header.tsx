@@ -484,9 +484,9 @@
                   <button
                     type="submit"
                     aria-label="Tìm kiếm"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-md bg-[#CA8A04] flex items-center justify-center hover:bg-[#B47B04] transition-colors"
+                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md bg-[#CA8A04] hover:bg-[#B47B04] transition-colors"
                   >
-                    <Search className="w-4 h-4 text-white" />
+                    <Search className="h-3.5 w-3.5 text-white" />
                   </button>
                 </form>
               </div>

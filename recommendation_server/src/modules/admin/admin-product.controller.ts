@@ -5,6 +5,8 @@ import adminProductService from './admin-product.service';
 import { CreateProductDto, UpdateProductDto } from './dto/admin-product.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { BulkOperationDto } from './dto/bulk-operation.dto';
+import { AppError } from '@/common/error.response';
+import { ErrorCode } from '@/constants/error-code';
 
 class AdminProductController {
   async listProducts(req: Request, res: Response) {
@@ -83,6 +85,45 @@ class AdminProductController {
       message: `${result.deleted} products deleted successfully`,
       statusCode: HttpStatusCode.OK,
       data: result
+    }).sendResponse(res);
+  }
+
+  async uploadProductImages(req: Request, res: Response) {
+    const id = parseInt(req.params.id);
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+
+    if (!files.length) {
+      throw new AppError(
+        'Please upload at least one image file',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const uploadedImages = await adminProductService.uploadProductImages(id, files, {
+      variant_id: req.body.variant_id ? parseInt(req.body.variant_id) : undefined,
+      alt_text: req.body.alt_text,
+      is_primary: ['true', '1', true].includes(req.body.is_primary),
+      sort_order: req.body.sort_order !== undefined ? parseInt(req.body.sort_order) : undefined,
+    });
+
+    return new AppResponse({
+      message: 'Product images uploaded successfully',
+      statusCode: HttpStatusCode.CREATED,
+      data: uploadedImages
+    }).sendResponse(res);
+  }
+
+  async deleteProductImage(req: Request, res: Response) {
+    const productId = parseInt(req.params.id);
+    const imageId = parseInt(req.params.imageId);
+
+    await adminProductService.deleteProductImage(productId, imageId);
+
+    return new AppResponse({
+      message: 'Product image deleted successfully',
+      statusCode: HttpStatusCode.OK,
+      data: null
     }).sendResponse(res);
   }
 }

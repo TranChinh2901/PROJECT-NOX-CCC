@@ -1,0 +1,2 @@
+-- Intentionally empty for now.
+-- Keep this file so `supabase db reset` does not fail on a missing default seed path.

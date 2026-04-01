@@ -39,6 +39,11 @@ export const loadedEnv = {
     key: process.env.CLOUD_KEY,
     secret: process.env.CLOUD_SECRET,
   },
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    productImagesBucket: firstDefinedOr("product-images", process.env.SUPABASE_STORAGE_BUCKET_PRODUCTS),
+  },
   momo: {
     partnerCode: process.env.MOMO_PARTNER_CODE,
     accessKey: process.env.MOMO_ACCESS_KEY,

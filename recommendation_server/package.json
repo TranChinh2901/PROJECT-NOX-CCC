@@ -5,6 +5,7 @@
   "scripts": {
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-users-roles.ts",
     "seed:ecommerce": "ts-node -r tsconfig-paths/register src/scripts/seed-ecommerce.ts",
+    "sync:product-images": "ts-node -r tsconfig-paths/register src/scripts/sync-product-images-to-supabase.ts",
     "test:api": "ts-node -r tsconfig-paths/register src/scripts/test-api.ts",
     "test": "jest",
     "seed:blog": "ts-node -r tsconfig-paths/register src/scripts/seed-blog.ts",
@@ -21,6 +22,7 @@
   "license": "ISC",
   "description": "Backend API cho website bán quần áo.",
   "dependencies": {
+    "@supabase/supabase-js": "^2.101.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",

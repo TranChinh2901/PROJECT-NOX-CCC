@@ -133,7 +133,20 @@ REFRESH_EXPIRES_IN=5d
 CLOUD_NAME=your_cloud_name
 CLOUD_KEY=your_cloud_key
 CLOUD_SECRET=your_cloud_secret
+
+# Supabase Storage (for product images)
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_STORAGE_BUCKET_PRODUCTS=product-images
 ```
+
+Supabase notes:
+
+- Create a public Storage bucket named `product-images` or set `SUPABASE_STORAGE_BUCKET_PRODUCTS`.
+- The backend uses the service role key for server-side uploads, so do not expose it to the client.
+- Product image upload endpoints:
+  - `POST /api/v1/admin/products/:id/images` with multipart field `images`
+  - `DELETE /api/v1/admin/products/:id/images/:imageId`
 
 ### 4. Run Database Migrations
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAdmin } from '@/middlewares/auth.middleware';
 import { validateBody, validateQuery, validateParams } from '@/middlewares/validate.middleware';
+import { uploadProductImages } from '@/middlewares/upload.middleware';
 import { asyncHandle } from '@/utils/handle-error';
 import adminProductController from '@/modules/admin/admin-product.controller';
 import adminCategoryController from '@/modules/admin/admin-category.controller';
@@ -46,11 +47,23 @@ router.post(
   asyncHandle(adminProductController.createProduct)
 );
 
+router.post(
+  '/products/:id/images',
+  validateParams(idParamSchema),
+  uploadProductImages.array('images', 10),
+  asyncHandle(adminProductController.uploadProductImages)
+);
+
 router.patch(
   '/products/:id',
   validateParams(idParamSchema),
   validateBody(updateProductSchema),
   asyncHandle(adminProductController.updateProduct)
+);
+
+router.delete(
+  '/products/:id/images/:imageId',
+  asyncHandle(adminProductController.deleteProductImage)
 );
 
 router.delete(
