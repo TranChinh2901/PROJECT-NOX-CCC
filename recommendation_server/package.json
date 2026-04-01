@@ -15,7 +15,8 @@
     "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/config/database.config.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/database.config.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/database.config.ts",
-    "schema:drift": "ts-node -r tsconfig-paths/register src/database/schema-drift-report.ts"
+    "schema:drift": "ts-node -r tsconfig-paths/register src/database/schema-drift-report.ts",
+    "telegram:chatids": "ts-node -r tsconfig-paths/register src/scripts/telegram-chat-ids.ts"
   },
   "author": "",
   "license": "ISC",

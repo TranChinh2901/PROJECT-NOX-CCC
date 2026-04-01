@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import axios from 'axios';
 import { AppResponse } from '@/common/success.response';
-import { loadedEnv } from '@/config/load-env';
 import { HttpStatusCode } from '@/constants/status-code';
+import { getVNTime } from '@/helpers/format-datetime';
 import { asyncHandle } from '@/utils/handle-error';
+import { sendTelegramMessage, truncateTelegramText } from '@/utils/telegram';
 
 const router = Router();
 
@@ -30,29 +30,31 @@ router.post(
       }).sendResponse(res);
     }
 
-    const botToken = loadedEnv.telegram.botToken?.trim();
-    const chatId = loadedEnv.telegram.chatId?.trim();
+    const normalizedMessage = truncateTelegramText(message);
 
-    if (!botToken || !chatId) {
+    const telegramMessage = [
+      '🔔 THÔNG BÁO TECHNOVA',
+      'Bạn vừa nhận được một góp ý mới từ khách hàng.',
+      '',
+      `🕒 Thời gian: ${getVNTime()}`,
+      `👤 Họ tên: ${fullName}`,
+      `📞 Số điện thoại: ${phoneNumber}`,
+      '',
+      '📝 Nội dung:',
+      normalizedMessage,
+      '',
+      '— TechNova • Feedback Bot',
+    ].join('\n');
+
+    try {
+      await sendTelegramMessage(telegramMessage);
+    } catch (error) {
       return new AppResponse({
         message: 'Telegram chưa được cấu hình trên server',
         statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR,
         data: null,
       }).sendResponse(res);
     }
-
-    const telegramMessage = [
-      '📩 Y KIEN KHACH HANG',
-      `Ho ten: ${fullName}`,
-      `So dien thoai: ${phoneNumber}`,
-      `Noi dung: ${message}`,
-    ].join('\n');
-
-    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      chat_id: chatId,
-      text: telegramMessage,
-      disable_web_page_preview: true,
-    });
 
     return new AppResponse({
       message: 'Đã gửi ý kiến tới Telegram',

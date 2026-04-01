@@ -133,6 +133,15 @@ REFRESH_EXPIRES_IN=5d
 CLOUD_NAME=your_cloud_name
 CLOUD_KEY=your_cloud_key
 CLOUD_SECRET=your_cloud_secret
+
+# Telegram Bot (optional - receive customer feedback notifications)
+TELEGRAM_BOT_TOKEN=your_bot_token
+# Recommended: send to a group only
+TELEGRAM_GROUP_CHAT_ID=-5215486213
+# Fallback (if TELEGRAM_GROUP_CHAT_ID is not set): user chat id or group chat id
+# TELEGRAM_CHAT_ID=
+# Optional: comma-separated list of chat ids (if set, it overrides TELEGRAM_CHAT_ID)
+# TELEGRAM_CHAT_IDS=
 ```
 
 ### 4. Run Database Migrations

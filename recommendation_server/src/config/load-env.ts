@@ -49,6 +49,7 @@ export const loadedEnv = {
   },
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
-    chatId: process.env.TELEGRAM_CHAT_ID,
+    groupChatId: process.env.TELEGRAM_GROUP_CHAT_ID,
+    chatId: firstDefined(process.env.TELEGRAM_CHAT_IDS, process.env.TELEGRAM_CHAT_ID),
   },
 };

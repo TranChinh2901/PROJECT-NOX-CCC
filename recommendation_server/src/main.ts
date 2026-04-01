@@ -13,17 +13,19 @@ const PORT = loadedEnv.port;
 const allowedOrigins = (process.env.CORS_ORIGIN || [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001',
+  
 ].join(','))
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const localLanDevOriginPattern = /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:30\d{2}$/;
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const isLanDevOrigin = typeof origin === 'string' && localLanDevOriginPattern.test(origin);
+      if (!origin || allowedOrigins.includes(origin) || isLanDevOrigin) {
         callback(null, true);
         return;
       }
