@@ -107,7 +107,7 @@ function NotificationsPageContent() {
   });
 
   return (
-    <div className="min-h-screen bg-[#1C1917] pt-24 pb-12 px-4 md:px-8 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#1C1917] pt-32 pb-12 px-4 md:px-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

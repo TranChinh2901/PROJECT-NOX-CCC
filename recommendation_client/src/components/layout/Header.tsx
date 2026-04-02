@@ -189,11 +189,7 @@
       }
 
       window.localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(deliveryAddresses));
-      const selectedStillExists = deliveryAddresses.some((address) => address.id === selectedDeliveryAddressId);
-      if (!selectedStillExists) {
-        setSelectedDeliveryAddressId(deliveryAddresses[0].id);
-      }
-    }, [deliveryAddresses, isDeliveryStorageHydrated, selectedDeliveryAddressId]);
+    }, [deliveryAddresses, isDeliveryStorageHydrated]);
 
     useEffect(() => {
       const handlePointerDown = (event: PointerEvent) => {
@@ -303,24 +299,24 @@
           <HeaderSearchParamsSync onQueryChange={setSearchValue} />
         </Suspense>
         <header className="fixed top-0 left-0 right-0 z-50">
-        <div className={`bg-white border-b border-gray-200 shadow-sm transition-all ${isScrolled ? 'py-2' : 'py-3'}`}>
+        <div className={`bg-white border-b border-gray-200 shadow-sm transition-all ${isScrolled ? 'py-1.5' : 'py-2'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Link href="/" className="flex items-center flex-shrink-0" aria-label="TechNova home">
                 <Image
                   src="/technova-mark.svg"
                   alt="TechNova logo"
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 sm:hidden"
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 sm:hidden"
                   priority
                 />
                 <Image
                   src="/technova-logo.svg"
                   alt="TechNova logo"
-                  width={340}
-                  height={94}
-                  className="hidden h-20 w-auto sm:block"
+                  width={288}
+                  height={80}
+                  className="hidden h-16 w-auto sm:block"
                   priority
                 />
               </Link>

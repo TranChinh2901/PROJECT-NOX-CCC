@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
@@ -98,7 +99,7 @@ function FlyToCartAnimation({
 
   return (
     <div
-      className="fixed z-50 pointer-events-none"
+      className="fixed z-50 pointer-events-none relative"
       style={{
         left: startRect.left + startRect.width / 2,
         top: startRect.top + startRect.height / 2,
@@ -109,10 +110,13 @@ function FlyToCartAnimation({
         transition: 'none',
       }}
     >
-      <img
+      <Image
         src={imageUrl}
         alt="Flying product"
-        className="w-full h-full object-cover rounded-lg shadow-2xl"
+        fill
+        unoptimized
+        sizes={`${Math.ceil(startRect.width)}px`}
+        className="object-cover rounded-lg shadow-2xl"
       />
     </div>
   );
@@ -265,7 +269,7 @@ export default function ProductPage() {
     return (
       <div className="min-h-screen bg-white mt-10">
         <Header />
-        <main className="pt-24 pb-16">
+        <main className="pt-32 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
@@ -284,7 +288,7 @@ export default function ProductPage() {
     return (
       <div className="min-h-screen bg-white mt-10">
         <Header />
-        <main className="pt-24 pb-16">
+        <main className="pt-32 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
@@ -317,7 +321,7 @@ export default function ProductPage() {
         />
       ))}
 
-      <main className="pt-24 pb-16">
+      <main className="pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
             <span className="hover:text-gray-900 cursor-pointer">Trang Chủ</span>
@@ -331,11 +335,15 @@ export default function ProductPage() {
             <div className="relative">
               <GlassCard className="aspect-square overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/5 to-transparent z-10" />
-                <img
-                  ref={productImageRef}
+                <Image
                   src={primaryImage}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                  onLoad={(event) => {
+                    productImageRef.current = event.currentTarget as HTMLImageElement;
+                  }}
                 />
               </GlassCard>
               

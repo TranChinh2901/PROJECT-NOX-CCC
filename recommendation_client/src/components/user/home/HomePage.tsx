@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
@@ -119,7 +120,7 @@ function FlyToCartAnimation({
   
   return (
     <div
-      className="fixed z-50 pointer-events-none"
+      className="fixed z-50 pointer-events-none relative"
       style={{
         left: startRect.left + startRect.width / 2,
         top: startRect.top + startRect.height / 2,
@@ -130,10 +131,13 @@ function FlyToCartAnimation({
         transition: 'none',
       }}
     >
-      <img 
-        src={imageUrl} 
+      <Image
+        src={imageUrl}
         alt="Flying product"
-        className="w-full h-full object-cover rounded-lg shadow-2xl"
+        fill
+        unoptimized
+        sizes={`${Math.ceil(startRect.width)}px`}
+        className="object-cover rounded-lg shadow-2xl"
       />
     </div>
   );
@@ -155,7 +159,7 @@ function HomeSearchParamsSync({
 
 function HomePageContent() {
   const INITIAL_VISIBLE_PRODUCTS = 10;
-  const { addToCart: addToCartContext, itemCount } = useCart();
+  const { addToCart: addToCartContext } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
@@ -166,7 +170,6 @@ function HomePageContent() {
   const [error, setError] = useState<string | null>(null);
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
   const [activeDealIndex, setActiveDealIndex] = useState(0);
   
   const productImageRefs = useRef<Map<number, HTMLImageElement>>(new Map());
@@ -253,7 +256,6 @@ function HomePageContent() {
 
     const runSearch = async () => {
       try {
-        setIsSearching(true);
         const response = await productApi.searchProducts(trimmedQuery, 50);
         if (isActive) {
           setProducts(response.data || []);
@@ -265,8 +267,8 @@ function HomePageContent() {
           toast.error('Không thể tìm kiếm sản phẩm');
         }
       } finally {
-        if (isActive) {
-          setIsSearching(false);
+        if (!isActive) {
+          return;
         }
       }
     };
@@ -276,7 +278,7 @@ function HomePageContent() {
     return () => {
       isActive = false;
     };
-  }, [searchQuery]);
+  }, [searchQuery, selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -381,7 +383,7 @@ function HomePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 mt-7">
+    <div className="min-h-screen bg-gray-50 mt-10 sm:mt-10">
       <Suspense fallback={null}>
         <HomeSearchParamsSync onQueryChange={setSearchQuery} />
       </Suspense>
@@ -396,7 +398,7 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pt-28 pb-12">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pt-32 sm:pt-36 pb-12">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
           <div className="hero-grid absolute inset-0 opacity-50" />
@@ -471,10 +473,12 @@ function HomePageContent() {
                 <div className="absolute -inset-4 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.14),_transparent_55%)]" />
                 <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[#0f172a] p-4 shadow-[0_36px_90px_rgba(15,23,42,0.22)]">
                   <div className="animate-banner-pan relative aspect-[1.1/0.86] overflow-hidden rounded-[1.5rem]">
-                    <img
+                    <Image
                       src={featuredDeals[activeDealIndex].image}
                       alt={featuredDeals[activeDealIndex].title}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                      className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/28 via-transparent to-black/72" />
                   </div>
@@ -716,16 +720,18 @@ function ProductCard({
           </div>
         )}
 
-        <Link href={destinationHref} className="block aspect-[4/4.35] overflow-hidden">
-          <img 
-            ref={(el) => {
-              localImageRef.current = el;
-              imageRef?.(el);
-            }}
-            src={primaryImage} 
+        <Link href={destinationHref} className="relative block aspect-[4/4.35] overflow-hidden">
+          <Image
+            src={primaryImage}
             alt={product.name}
-            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.045]"
-            loading="lazy"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+            className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.045]"
+            onLoad={(event) => {
+              const target = event.currentTarget as HTMLImageElement;
+              localImageRef.current = target;
+              imageRef?.(target);
+            }}
           />
         </Link>
 
