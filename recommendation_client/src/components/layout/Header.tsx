@@ -306,13 +306,23 @@
         <div className={`bg-white border-b border-gray-200 shadow-sm transition-all ${isScrolled ? 'py-2' : 'py-3'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CA8A04] to-[#B47B04] flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">T</span>
-                </div>
-                <span className="text-gray-900 font-heading font-bold text-xl hidden sm:block">
-                  TechNova
-                </span>
+              <Link href="/" className="flex items-center flex-shrink-0" aria-label="TechNova home">
+                <Image
+                  src="/technova-mark.svg"
+                  alt="TechNova logo"
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 sm:hidden"
+                  priority
+                />
+                <Image
+                  src="/technova-logo.svg"
+                  alt="TechNova logo"
+                  width={340}
+                  height={94}
+                  className="hidden h-20 w-auto sm:block"
+                  priority
+                />
               </Link>
 
               <div

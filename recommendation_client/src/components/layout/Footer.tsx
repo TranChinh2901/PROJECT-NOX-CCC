@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Instagram, Twitter, Linkedin, Youtube, Mail, MapPin, Phone } from 'lucide-react';
 
@@ -43,13 +44,21 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12">
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CA8A04] to-[#B47B04] flex items-center justify-center">
-                <span className="text-white font-bold text-lg">T</span>
-              </div>
-              <span className="text-gray-900 font-heading font-bold text-xl">
-                TechNova
-              </span>
+            <Link href="/" className="flex items-center mb-6" aria-label="TechNova home">
+              <Image
+                src="/technova-mark.svg"
+                alt="TechNova logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 sm:hidden"
+              />
+              <Image
+                src="/technova-logo.svg"
+                alt="TechNova logo"
+                width={216}
+                height={60}
+                className="hidden h-12 w-auto sm:block"
+              />
             </Link>
             <p className="text-gray-600 text-sm mb-6 max-w-xs">
               Công nghệ tinh xảo cho những người đòi hỏi sự xuất sắc. 

@@ -10,6 +10,11 @@ import { WishlistProvider } from "@/contexts/WishlistContext";
 export const metadata: Metadata = {
   title: "TechNova - Cửa Hàng Công Nghệ Cao Cấp",
   description: "Khám phá công nghệ tương lai. Laptop, điện thoại thông minh và máy tính để bàn cao cấp với chất lượng không thỏa hiệp.",
+  icons: {
+    icon: "/technova-mark.svg",
+    shortcut: "/technova-mark.svg",
+    apple: "/technova-mark.svg",
+  },
 };
 
 export default function RootLayout({

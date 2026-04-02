@@ -254,21 +254,20 @@ export default function CartPage() {
               {cart.items.map((item) => {
                 const variant = item.variant;
                 const product = variant?.product;
-                
+
                 const price = variant?.final_price ?? product?.base_price ?? item.unit_price ?? 0;
                 const itemTotal = price * item.quantity;
                 const productName = product?.name || variant?.sku || 'Sản phẩm';
-                const productImage = product?.images?.find(img => img.is_primary)?.image_url 
+                const productImage = product?.images?.find(img => img.is_primary)?.image_url
                   || product?.images?.[0]?.image_url;
 
                 return (
                   <div
                     key={item.id}
-                    className={`bg-white rounded-lg shadow-sm p-6 flex gap-4 hover:shadow-md transition-all ${
-                      selectedItems.has(item.id) 
-                        ? 'ring-2 ring-[#CA8A04] bg-amber-50/30' 
-                        : ''
-                    }`}
+                    className={`bg-white rounded-lg shadow-sm p-6 flex gap-4 hover:shadow-md transition-all ${selectedItems.has(item.id)
+                      ? 'ring-2 ring-[#CA8A04] bg-amber-50/30'
+                      : ''
+                      }`}
                   >
                     {/* Checkbox column */}
                     <div className="flex-shrink-0 flex items-start pt-1">
@@ -284,103 +283,103 @@ export default function CartPage() {
 
                     {/* Rest of the item content - wrap in flex container */}
                     <div className="flex-1 flex flex-col sm:flex-row gap-4">
-                    <div className="flex-shrink-0">
-                      <div className="relative w-full sm:w-24 h-48 sm:h-24 bg-gray-100 rounded-lg overflow-hidden">
-                        {productImage ? (
-                          <img
-                            src={productImage}
-                            alt={productName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-gray-400">
-                            <svg
-                              className="w-8 h-8"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
+                      <div className="flex-shrink-0">
+                        <div className="relative w-full sm:w-24 h-48 sm:h-24 bg-gray-100 rounded-lg overflow-hidden">
+                          {productImage ? (
+                            <img
+                              src={productImage}
+                              alt={productName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-gray-400">
+                              <svg
+                                className="w-8 h-8"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
+                          {productName}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 text-sm text-gray-600 mb-2">
+                          {variant?.size && <span>Kích cỡ: {variant.size}</span>}
+                          {variant?.color && (
+                            <span className="flex items-center gap-1">
+                              Màu: {variant.color}
+                              {variant.color_code && (
+                                <span
+                                  className="inline-block w-4 h-4 rounded-full border border-gray-300"
+                                  style={{ backgroundColor: variant.color_code }}
+                                ></span>
+                              )}
+                            </span>
+                          )}
+                          {variant?.sku && <span>SKU: {variant.sku}</span>}
+                        </div>
+                        <div className="text-lg font-bold text-gray-900">
+                          {formatPrice(price)}
+                        </div>
+                      </div>
+
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-4">
+                        <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
+                          <button
+                            onClick={() => handleDecreaseQuantity(item.id, item.quantity)}
+                            disabled={item.quantity <= 1}
+                            className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Giảm số lượng"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                            </svg>
+                          </button>
+                          <span className="px-4 py-1 text-gray-900 font-medium min-w-[3rem] text-center">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => handleIncreaseQuantity(item.id, item.quantity)}
+                            className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-r-lg transition-colors"
+                            aria-label="Tăng số lượng"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                d="M12 4v16m8-8H4"
                               />
                             </svg>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
-                        {productName}
-                      </h3>
-                      <div className="flex flex-wrap gap-2 text-sm text-gray-600 mb-2">
-                        {variant?.size && <span>Kích cỡ: {variant.size}</span>}
-                        {variant?.color && (
-                          <span className="flex items-center gap-1">
-                            Màu: {variant.color}
-                            {variant.color_code && (
-                              <span
-                                className="inline-block w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: variant.color_code }}
-                              ></span>
-                            )}
-                          </span>
-                        )}
-                        {variant?.sku && <span>SKU: {variant.sku}</span>}
-                      </div>
-                      <div className="text-lg font-bold text-gray-900">
-                        {formatPrice(price)}
-                      </div>
-                    </div>
-
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-4">
-                      <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
-                        <button
-                          onClick={() => handleDecreaseQuantity(item.id, item.quantity)}
-                          disabled={item.quantity <= 1}
-                          className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          aria-label="Giảm số lượng"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                          </svg>
-                        </button>
-                        <span className="px-4 py-1 text-gray-900 font-medium min-w-[3rem] text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => handleIncreaseQuantity(item.id, item.quantity)}
-                          className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-r-lg transition-colors"
-                          aria-label="Tăng số lượng"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-gray-900 mb-2">
-                          {formatPrice(itemTotal)}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-sm text-red-600 hover:text-red-700 hover:underline transition-colors"
-                        >
-                          Xóa
-                        </button>
+
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-gray-900 mb-2">
+                            {formatPrice(itemTotal)}
+                          </div>
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-sm text-red-600 hover:text-red-700 hover:underline transition-colors"
+                          >
+                            Xóa
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -485,7 +484,7 @@ export default function CartPage() {
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
@@ -493,12 +492,12 @@ export default function CartPage() {
           aria-describedby="dialog-description"
         >
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={cancelBulkDelete}
             aria-hidden="true"
           />
-          
+
           {/* Dialog */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
             <div className="p-6">
@@ -507,15 +506,15 @@ export default function CartPage() {
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                   <AlertTriangle className="w-8 h-8 text-red-600" />
                 </div>
-                
-                <h3 
+
+                <h3
                   id="dialog-title"
                   className="text-xl font-bold text-gray-900 mb-2"
                 >
                   Xác nhận xóa sản phẩm
                 </h3>
-                
-                <p 
+
+                <p
                   id="dialog-description"
                   className="text-gray-600 mb-6 leading-relaxed"
                 >
@@ -523,19 +522,19 @@ export default function CartPage() {
                   <br />
                   <span className="text-sm text-gray-500">Hành động này không thể hoàn tác.</span>
                 </p>
-                
+
                 <div className="flex gap-3 w-full">
-                  <Button 
-                    variant="outline" 
-                    fullWidth 
+                  <Button
+                    variant="outline"
+                    fullWidth
                     onClick={cancelBulkDelete}
                     disabled={isBulkDeleting}
                   >
                     Hủy
                   </Button>
-                  <Button 
-                    variant="danger" 
-                    fullWidth 
+                  <Button
+                    variant="danger"
+                    fullWidth
                     onClick={confirmBulkDelete}
                     loading={isBulkDeleting}
                     disabled={isBulkDeleting}

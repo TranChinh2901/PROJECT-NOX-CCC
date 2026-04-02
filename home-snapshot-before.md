@@ -1,0 +1,72 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e16]:
+      - generic [ref=e19]:
+        - link "TechNova home" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - button "Giao đến 24 Trần Kim Bảng, Đà Nẵng" [ref=e23] [cursor=pointer]
+        - generic [ref=e31]
+        - generic [ref=e37]
+      - generic [ref=e56]:
+        - button "Tất cả" [ref=e57]
+        - link "Ý kiến khách hàng" [ref=e59] [cursor=pointer]:
+          - /url: /service
+        - link "Khuyến Mãi Hôm Nay" [ref=e60] [cursor=pointer]:
+          - /url: /deals
+        - link "Dịch Vụ Khách Hàng" [ref=e61] [cursor=pointer]:
+          - /url: /service
+        - link "Thẻ Quà Tặng" [ref=e62] [cursor=pointer]:
+          - /url: /giftcards
+        - link "Bán Hàng" [ref=e63] [cursor=pointer]:
+          - /url: /sell
+    - generic [ref=e70]:
+      - generic [ref=e71]:
+        - generic [ref=e72]
+        - generic [ref=e102]
+      - generic [ref=e121]:
+        - generic [ref=e122]
+        - generic [ref=e129]
+        - generic [ref=e135]
+    - generic [ref=e146]:
+      - button "Tất Cả" [ref=e147]:
+        - generic [ref=e148]: Tất Cả
+      - button "Điện Thoại" [ref=e149]:
+        - generic [ref=e150]: Điện Thoại
+      - button "Laptop" [ref=e151]:
+        - generic [ref=e152]: Laptop
+      - button "PC - Màn Hình" [ref=e153]:
+        - generic [ref=e154]: PC - Màn Hình
+      - button "Máy Tính Bảng" [ref=e155]:
+        - generic [ref=e156]: Máy Tính Bảng
+      - button "Âm Thanh - Phụ Kiện" [ref=e157]:
+        - generic [ref=e158]: Âm Thanh - Phụ Kiện
+    - generic [ref=e160]:
+      - generic [ref=e161]:
+        - generic [ref=e162]
+        - generic [ref=e166]
+      - generic [ref=e170]:
+        - generic [ref=e171]
+        - generic [ref=e187]
+        - generic [ref=e203]
+        - generic [ref=e220]
+        - generic [ref=e236]
+        - generic [ref=e252]
+        - generic [ref=e268]
+        - generic [ref=e284]
+        - generic [ref=e300]
+        - generic [ref=e316]
+      - button "Xem thêm" [ref=e333]
+    - contentinfo [ref=e334]:
+      - generic [ref=e335]:
+        - generic [ref=e336]
+        - generic [ref=e408]
+  - generic [ref=e11] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e12]:
+      - img [ref=e13]
+    - generic [ref=e414]:
+      - button "Open issues overlay" [ref=e415]:
+        - generic [ref=e416]
+        - generic [ref=e419]: Issue
+      - button "Collapse issues badge" [ref=e420]:
+        - img [ref=e421]
+  - alert [ref=e423]

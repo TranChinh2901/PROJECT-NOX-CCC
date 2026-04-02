@@ -1,10 +1,10 @@
 'use client';
 
 import React, { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
-import { ProductImage } from '../../common/ProductImage';
 import { Skeleton } from '../../common/Skeleton';
 import { productApi, categoryApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
@@ -691,81 +691,111 @@ function ProductCard({
   const primaryImage = product.images?.find(img => img.is_primary)?.image_url || 
                        product.images?.[0]?.image_url ||
                        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
+  const destinationHref = `/product/${product.id}`;
+  const categoryLabel = product.category?.name ?? 'Thiết bị chọn lọc';
+  const brandLabel = product.brand?.name ?? 'TechNova Select';
+  const soldCount = product.sold_count ?? 0;
 
   const handleAddToCart = () => {
     onAddToCart(localImageRef.current);
   };
 
   return (
-    <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg">
-      {product.is_featured && (
-        <div className="absolute top-3 left-3 z-10 px-3 py-1 rounded-full bg-[#CA8A04] text-white text-xs font-semibold shadow-sm">
-          Nổi Bật
-        </div>
-      )}
-      
-      {discount && (
-        <div className="absolute top-3 right-3 z-10 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-semibold shadow-sm">
-          -{discount}%
-        </div>
-      )}
-
-      <a href={`/product/${product.id}`} className="block aspect-square bg-gray-50 overflow-hidden">
-        <img 
-          ref={(el) => {
-            localImageRef.current = el;
-            imageRef?.(el);
-          }}
-          src={primaryImage} 
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
-      </a>
-
-      <div className="p-4">
-        <a href={`/product/${product.id}`}>
-          <h3 className="font-heading font-bold text-gray-900 mb-2 line-clamp-1 hover:text-[#CA8A04] transition-colors">
-            {product.name}
-          </h3>
-        </a>
-
-        {product.short_description && (
-          <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-            {product.short_description}
-          </p>
+    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#ece4d7] bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-[#d8c6a3] hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
+      <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top,#fff7e6_0%,#f8f5ef_46%,#f3efe6_100%)]">
+        {product.is_featured && (
+          <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-[#171717] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg shadow-black/10">
+            <Sparkles className="h-3.5 w-3.5 text-[#f6c453]" />
+            Nổi bật
+          </div>
         )}
 
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-lg font-bold text-gray-900">
+        {discount && (
+          <div className="absolute right-4 top-4 z-10 rounded-full border border-red-100 bg-white/92 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-500 shadow-sm">
+            -{discount}%
+          </div>
+        )}
+
+        <Link href={destinationHref} className="block aspect-[4/4.35] overflow-hidden">
+          <img 
+            ref={(el) => {
+              localImageRef.current = el;
+              imageRef?.(el);
+            }}
+            src={primaryImage} 
+            alt={product.name}
+            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.045]"
+            loading="lazy"
+          />
+        </Link>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#171717]/16 to-transparent" />
+      </div>
+
+      <div className="flex flex-1 flex-col p-5">
+        <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9a6a12]">
+          <span className="truncate">{brandLabel}</span>
+          <span className="rounded-full bg-[#fbf6ed] px-2.5 py-1 text-[#7a6a4a] normal-case tracking-normal">
+            {categoryLabel}
+          </span>
+        </div>
+
+        <Link href={destinationHref} className="group/title">
+          <h3 className="font-heading text-[1.15rem] font-bold leading-tight text-[#111827] transition-colors group-hover/title:text-[#a16207] line-clamp-2 min-h-[3.4rem]">
+            {product.name}
+          </h3>
+        </Link>
+
+        <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#667085] min-h-[3rem]">
+          {product.short_description || product.description}
+        </p>
+
+        <div className="mt-4 flex items-end gap-2 border-t border-[#efe7da] pt-4">
+          <span className="text-[1.45rem] font-bold leading-none tracking-[-0.03em] text-[#111827]">
             {formatPrice(product.base_price)}
           </span>
           {product.compare_at_price && (
-            <span className="text-sm text-gray-400 line-through">
+            <span className="pb-0.5 text-sm text-[#98a2b3] line-through">
               {formatPrice(product.compare_at_price)}
             </span>
           )}
         </div>
 
-        <button
-          onClick={handleAddToCart}
-          disabled={!product.is_active}
-          className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-            product.is_active
-              ? 'bg-[#CA8A04] text-white hover:bg-[#B47B04] active:scale-95 shadow-sm'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          {product.is_active ? (
-            <>
-              <ShoppingCart className="w-4 h-4" />
-              Thêm Vào Giỏ
-            </>
-          ) : (
-            'Hết Hàng'
-          )}
-        </button>
+        <div className="mt-3 flex items-center gap-2 text-xs text-[#7a6a4a]">
+          <BadgeCheck className="h-3.5 w-3.5 text-[#c58a10]" />
+          <span>Đã bán {soldCount.toLocaleString('vi-VN')}</span>
+        </div>
+
+        <div className="mt-auto pt-5">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleAddToCart}
+              disabled={!product.is_active}
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                product.is_active
+                  ? 'bg-[#c58a10] text-white shadow-[0_16px_30px_rgba(197,138,16,0.22)] hover:bg-[#b27b08]'
+                  : 'cursor-not-allowed bg-[#f4efe7] text-[#b0a392]'
+              }`}
+            >
+              {product.is_active ? (
+                <>
+                  <ShoppingCart className="h-4 w-4" />
+                  Thêm vào giỏ
+                </>
+              ) : (
+                'Hết hàng'
+              )}
+            </button>
+            <Link
+              href={destinationHref}
+              className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8dcc6] bg-[#fffaf1] text-[#a16207] transition-colors hover:bg-[#f9f0df]"
+              aria-label={`Xem chi tiết ${product.name}`}
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }

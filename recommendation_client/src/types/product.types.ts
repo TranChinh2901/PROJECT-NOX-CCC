@@ -94,6 +94,7 @@ export interface Product {
   stock_quantity?: number;
   is_active: boolean;
   is_featured: boolean;
+  sold_count?: number;
   meta_title?: string;
   meta_description?: string;
   created_at: Date;

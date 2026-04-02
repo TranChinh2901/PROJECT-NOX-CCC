@@ -7,6 +7,9 @@ import { Category } from "@/modules/products/entity/category";
 import { Brand } from "@/modules/products/entity/brand";
 import { Review } from "@/modules/reviews/entity/review";
 import { Inventory } from "@/modules/inventory/entity/inventory";
+import { Order } from "@/modules/orders/entity/order";
+import { OrderItem } from "@/modules/orders/entity/order-item";
+import { OrderStatus } from "@/modules/orders/enum/order.enum";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
@@ -124,8 +127,9 @@ export class ProductService {
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
     const products = await queryBuilder.getMany();
+    const soldCountMap = await this.loadSoldCountMap(products.map((product) => product.id));
 
-    const formattedProducts = products.map(product => this.formatProductResponse(product));
+    const formattedProducts = products.map(product => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0));
 
     return {
       data: formattedProducts,
@@ -180,8 +184,10 @@ export class ProductService {
       }) || []
     );
 
+    const soldCountMap = await this.loadSoldCountMap([product.id]);
+
     return {
-      ...this.formatProductResponse(product),
+      ...this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0),
       variants: variantsWithInventory,
       reviews_summary: {
         total_reviews: reviews.length,
@@ -215,7 +221,8 @@ export class ProductService {
       order: { created_at: 'DESC' }
     });
 
-    return products.map(product => this.formatProductResponse(product));
+    const soldCountMap = await this.loadSoldCountMap(products.map((product) => product.id));
+    return products.map(product => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0));
   }
 
   async getRelatedProducts(productId: number, limit: number = 8) {
@@ -245,7 +252,8 @@ export class ProductService {
       }
     });
 
-    return relatedProducts.map(p => this.formatProductResponse(p));
+    const soldCountMap = await this.loadSoldCountMap(relatedProducts.map((relatedProduct) => relatedProduct.id));
+    return relatedProducts.map((relatedProduct) => this.formatProductResponse(relatedProduct, soldCountMap.get(relatedProduct.id) ?? 0));
   }
 
   async searchProducts(query: string, limit: number = 20) {
@@ -284,13 +292,48 @@ export class ProductService {
       new Set(searchResults.slice(0, 5).map((result: { item: Product }) => result.item.name))
     );
 
+    const soldCountMap = await this.loadSoldCountMap(matchedProducts.map((product) => product.id));
+
     return {
-      data: matchedProducts.map((product: Product) => this.formatProductResponse(product)),
+      data: matchedProducts.map((product: Product) => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0)),
       suggestions
     };
   }
 
-  private formatProductResponse(product: Product) {
+  private async loadSoldCountMap(productIds: number[]): Promise<Map<number, number>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const soldRows = await this.productVariantRepository
+      .createQueryBuilder('variant')
+      .select('variant.product_id', 'product_id')
+      .addSelect('COALESCE(SUM(orderItem.quantity), 0)', 'sold_count')
+      .innerJoin(OrderItem, 'orderItem', 'orderItem.variant_id = variant.id')
+      .innerJoin(
+        Order,
+        'order',
+        'order.id = orderItem.order_id AND order.deleted_at IS NULL AND order.status IN (:...eligibleStatuses)',
+        {
+          eligibleStatuses: [
+            OrderStatus.CONFIRMED,
+            OrderStatus.PROCESSING,
+            OrderStatus.SHIPPED,
+            OrderStatus.DELIVERED,
+          ],
+        },
+      )
+      .where('variant.product_id IN (:...productIds)', { productIds })
+      .andWhere('variant.deleted_at IS NULL')
+      .groupBy('variant.product_id')
+      .getRawMany<{ product_id: string; sold_count: string }>();
+
+    return new Map(
+      soldRows.map((row) => [Number(row.product_id), Number(row.sold_count) || 0]),
+    );
+  }
+
+  private formatProductResponse(product: Product, soldCount: number = 0) {
     const primaryImage = product.images?.find(img => img.is_primary)?.image_url ||
       product.images?.[0]?.image_url || null;
 
@@ -307,6 +350,7 @@ export class ProductService {
       weight_kg: product.weight_kg,
       is_active: product.is_active,
       is_featured: product.is_featured,
+      sold_count: soldCount,
       meta_title: product.meta_title,
       meta_description: product.meta_description,
       category: product.category ? {
