@@ -55,13 +55,25 @@ const toNumberOrUndefined = (value: unknown): number | undefined => {
 
 const summarizeProduct = (product: any) => {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
+  const explicitStockQuantity = toNumberOrUndefined(product?.stock_quantity);
 
-  const variantSummaries = variants.slice(0, 3).map((variant: any) => {
+  const variantAvailabilityById = new Map<number, number | undefined>();
+  for (const variant of variants) {
     const quantityAvailable = Array.isArray(variant?.inventory)
       ? variant.inventory.reduce(
           (sum: number, inventory: any) => sum + (toNumberOrUndefined(inventory?.quantity_available) ?? 0),
           0,
         )
+      : undefined;
+
+    if (typeof variant?.id === 'number') {
+      variantAvailabilityById.set(variant.id, quantityAvailable);
+    }
+  }
+
+  const variantSummaries = variants.slice(0, 3).map((variant: any) => {
+    const quantityAvailable = typeof variant?.id === 'number'
+      ? variantAvailabilityById.get(variant.id)
       : undefined;
 
     return {
@@ -75,10 +87,16 @@ const summarizeProduct = (product: any) => {
     };
   });
 
-  const totalAvailable = variantSummaries.reduce(
-    (sum: number, variant: { quantity_available?: number }) => sum + (variant.quantity_available ?? 0),
-    0,
-  );
+  const inventoryDerivedTotal = variants.some((variant: any) => Array.isArray(variant?.inventory))
+    ? variants.reduce((sum: number, variant: any) => {
+        const quantityAvailable = typeof variant?.id === 'number'
+          ? variantAvailabilityById.get(variant.id)
+          : undefined;
+
+        return sum + (quantityAvailable ?? 0);
+      }, 0)
+    : undefined;
+  const totalAvailable = explicitStockQuantity ?? inventoryDerivedTotal;
 
   return {
     id: product.id,
@@ -91,9 +109,9 @@ const summarizeProduct = (product: any) => {
     compare_at_price: product.compare_at_price ?? null,
     short_description: product.short_description ?? null,
     sold_count: toNumberOrUndefined(product.sold_count) ?? 0,
-    total_available: variantSummaries.length > 0 ? totalAvailable : undefined,
+    total_available: totalAvailable,
     stock_status:
-      variantSummaries.length === 0 ? 'unknown' : totalAvailable > 0 ? 'in_stock' : 'out_of_stock',
+      totalAvailable === undefined ? 'unknown' : totalAvailable > 0 ? 'in_stock' : 'out_of_stock',
     variants: variantSummaries,
   };
 };
@@ -446,5 +464,7 @@ export const buildChatbotSystemInstruction = (baseInstructions: string): string 
     baseInstructions,
     'Khi câu hỏi liên quan đến sản phẩm, tồn kho, khuyến mãi hoặc đơn hàng của khách, hãy ưu tiên dùng function phù hợp để lấy dữ liệu thật từ hệ thống trước khi trả lời.',
     'Không bịa ra giá, tồn kho, khuyến mãi, mã đơn, trạng thái giao hàng hoặc chính sách riêng của khách.',
+    'Chỉ được nói một sản phẩm "hết hàng" khi function trả về stock_status = out_of_stock hoặc total_available = 0.',
+    'Nếu stock_status = unknown hoặc không có total_available, phải nói chưa xác minh được tồn kho thay vì tự kết luận còn hàng hay hết hàng.',
     'Nếu function trả về requires_auth hoặc không có dữ liệu, hãy nói rõ điều đó và hướng dẫn ngắn gọn bước tiếp theo.',
   ].join('\n\n');

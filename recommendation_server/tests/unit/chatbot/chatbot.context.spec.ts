@@ -81,6 +81,7 @@ describe('chatbot function tools', () => {
           compare_at_price: 8990000,
           short_description: 'Man hinh van phong',
           sold_count: 20,
+          stock_quantity: 333,
           variants: [
             {
               id: 101,
@@ -116,6 +117,8 @@ describe('chatbot function tools', () => {
           expect.objectContaining({
             id: 10,
             name: 'Dell UltraSharp 27',
+            total_available: 333,
+            stock_status: 'in_stock',
           }),
         ],
       }),
@@ -332,5 +335,7 @@ describe('chatbot function tools', () => {
     expect(instructions).toContain('Base instructions');
     expect(instructions).toContain('ưu tiên dùng function');
     expect(instructions).toContain('Không bịa ra giá');
+    expect(instructions).toContain('Chỉ được nói một sản phẩm "hết hàng"');
+    expect(instructions).toContain('chưa xác minh được tồn kho');
   });
 });

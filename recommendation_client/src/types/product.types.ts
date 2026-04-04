@@ -71,6 +71,12 @@ export interface ProductVariant {
   barcode?: string;
   is_active: boolean;
   sort_order: number;
+  inventory?: Array<{
+    warehouse_id: number;
+    quantity_available: number;
+    quantity_reserved: number;
+    quantity_total: number;
+  }>;
   created_at: Date;
   updated_at: Date;
   deleted_at?: Date;

@@ -10,13 +10,15 @@ import { ProductImage } from '../../../../components/common/ProductImage';
 import { productApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { Product, ProductReviewsSummary, Review } from '@/types';
+import { Product, ProductReviewsSummary, ProductVariant, Review } from '@/types';
 import toast from 'react-hot-toast';
 import {
   Star,
   ShoppingCart,
   Heart,
   Share2,
+  Package,
+  AlertTriangle,
   Check,
   ChevronRight,
   Truck,
@@ -39,6 +41,26 @@ const formatPrice = (price: number) => {
     currency: 'VND',
     minimumFractionDigits: 0,
   }).format(price);
+};
+
+const getVariantStockQuantity = (variant?: ProductVariant) => {
+  if (!variant) {
+    return 0;
+  }
+
+  return variant.inventory?.reduce(
+    (variantTotal, inventory) => variantTotal + Number(inventory.quantity_available || 0),
+    0,
+  ) ?? 0;
+};
+
+const getVariantLabel = (variant?: ProductVariant) => {
+  if (!variant) {
+    return 'Phiên bản mặc định';
+  }
+
+  const parts = [variant.size, variant.color, variant.material].filter(Boolean);
+  return parts.length > 0 ? parts.join(' • ') : variant.sku;
 };
 
 function FlyToCartAnimation({
@@ -126,6 +148,7 @@ export default function ProductPage() {
   const params = useParams();
   const productId = Number(params.id);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -181,6 +204,23 @@ export default function ProductPage() {
     fetchData();
   }, [productId]);
 
+  useEffect(() => {
+    const variants = product?.variants ?? [];
+    if (variants.length === 0) {
+      setSelectedVariantId(null);
+      setQuantity(1);
+      return;
+    }
+
+    const defaultVariant =
+      variants.find((variant) => variant.is_active && getVariantStockQuantity(variant) > 0) ||
+      variants.find((variant) => variant.is_active) ||
+      variants[0];
+
+    setSelectedVariantId(defaultVariant?.id ?? null);
+    setQuantity(1);
+  }, [product]);
+
   const { addToCart: addToCartContext } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -192,8 +232,18 @@ export default function ProductPage() {
     if (!product) return;
 
     try {
+      if (isOutOfStock) {
+        toast.error('Sản phẩm hiện đang hết hàng');
+        return;
+      }
+
       if (!product.variants || product.variants.length === 0) {
         toast.error('Sản phẩm không có phiên bản nào khả dụng');
+        return;
+      }
+
+      if (!selectedVariant) {
+        toast.error('Vui lòng chọn phiên bản sản phẩm');
         return;
       }
 
@@ -209,17 +259,16 @@ export default function ProductPage() {
         }]);
       }
 
-      const defaultVariant = product.variants[0];
       await addToCartContext(
         {
-          variant_id: defaultVariant.id,
+          variant_id: selectedVariant.id,
           quantity
         },
         product,
-        defaultVariant
+        selectedVariant
       );
 
-      toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
+      toast.success(`Đã thêm ${quantity} ${product.name} (${getVariantLabel(selectedVariant)}) vào giỏ hàng`);
     } catch (err: unknown) {
       console.error('Error adding to cart:', err);
       const productError = err as ProductPageError;
@@ -235,18 +284,21 @@ export default function ProductPage() {
   const handleToggleWishlist = async () => {
     if (!product) return;
 
-    const defaultVariantId = product.variants?.[0]?.id;
-    if (!defaultVariantId) {
+    if (!selectedVariantId) {
       toast.error('Sản phẩm không có phiên bản nào khả dụng');
       return;
     }
 
-    await toggleWishlist(defaultVariantId);
+    await toggleWishlist(selectedVariantId);
   };
 
   // Calculate discount and rating from API data
-  const discount = product?.compare_at_price && product?.base_price
-    ? Math.round(((product.compare_at_price - product.base_price) / product.compare_at_price) * 100)
+  const selectedVariant = product?.variants?.find((variant) => variant.id === selectedVariantId)
+    ?? product?.variants?.[0]
+    ?? null;
+  const selectedVariantPrice = selectedVariant?.final_price ?? product?.base_price ?? 0;
+  const discount = product?.compare_at_price && selectedVariantPrice
+    ? Math.round(((product.compare_at_price - selectedVariantPrice) / product.compare_at_price) * 100)
     : null;
 
   const averageRating = reviews.length > 0
@@ -262,8 +314,23 @@ export default function ProductPage() {
     || product?.images?.[0]?.image_url 
     || '/placeholder.png';
 
-  const defaultVariantId = product?.variants?.[0]?.id;
-  const isWishlisted = defaultVariantId ? isInWishlist(defaultVariantId) : false;
+  const isWishlisted = selectedVariantId ? isInWishlist(selectedVariantId) : false;
+  const selectedVariantStock = selectedVariant
+    ? getVariantStockQuantity(selectedVariant)
+    : Math.max(0, Number(product?.stock_quantity ?? 0));
+  const stockQuantity = Math.max(0, selectedVariantStock);
+  const isOutOfStock = !product?.is_active || !selectedVariant?.is_active || stockQuantity <= 0;
+  const isLowStock = !isOutOfStock && stockQuantity <= 5;
+  const canIncreaseQuantity = !isOutOfStock && quantity < stockQuantity;
+
+  useEffect(() => {
+    if (isOutOfStock) {
+      setQuantity(1);
+      return;
+    }
+
+    setQuantity((currentQuantity) => Math.min(currentQuantity, stockQuantity));
+  }, [isOutOfStock, stockQuantity, selectedVariantId]);
 
   if (loading) {
     return (
@@ -378,7 +445,7 @@ export default function ProductPage() {
 
               <div className="flex items-baseline gap-3 mb-6">
                 <span className="text-4xl font-bold text-gray-900">
-                  {formatPrice(product.base_price)}
+                  {formatPrice(selectedVariantPrice)}
                 </span>
                 {product.compare_at_price && discount && (
                   <>
@@ -390,6 +457,101 @@ export default function ProductPage() {
                     </span>
                   </>
                 )}
+              </div>
+
+              {product.variants && product.variants.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.12em] text-gray-500">
+                      Phiên bản
+                    </p>
+                    {selectedVariant && (
+                      <p className="text-sm text-gray-500">
+                        SKU: <span className="font-medium text-gray-700">{selectedVariant.sku}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {product.variants.map((variant) => {
+                      const variantStock = getVariantStockQuantity(variant);
+                      const variantOutOfStock = !variant.is_active || variantStock <= 0;
+                      const isSelected = variant.id === selectedVariantId;
+
+                      return (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setSelectedVariantId(variant.id)}
+                          className={`rounded-2xl border px-4 py-3 text-left transition-all ${
+                            isSelected
+                              ? 'border-[#CA8A04] bg-[#fff7e6] shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-[#d8b15b]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                {getVariantLabel(variant)}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-500">
+                                {formatPrice(variant.final_price)}
+                              </p>
+                            </div>
+                            {variant.color_code && (
+                              <span
+                                className="mt-1 h-4 w-4 rounded-full border border-gray-200"
+                                style={{ backgroundColor: variant.color_code }}
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
+                          <p className={`mt-2 text-sm ${
+                            variantOutOfStock ? 'text-red-600' : variantStock <= 5 ? 'text-amber-600' : 'text-emerald-600'
+                          }`}>
+                            {variantOutOfStock
+                              ? 'Hết hàng'
+                              : variantStock <= 5
+                                ? `Còn ${variantStock} sản phẩm`
+                                : `Sẵn kho ${variantStock} sản phẩm`}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className={`mb-6 rounded-2xl border px-4 py-3 ${
+                isOutOfStock
+                  ? 'border-red-200 bg-red-50'
+                  : isLowStock
+                    ? 'border-amber-200 bg-amber-50'
+                    : 'border-emerald-200 bg-emerald-50'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isOutOfStock ? (
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  ) : (
+                    <Package className={`h-4 w-4 ${isLowStock ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  )}
+                  <span className={`text-sm font-semibold ${
+                    isOutOfStock
+                      ? 'text-red-700'
+                      : isLowStock
+                        ? 'text-amber-700'
+                        : 'text-emerald-700'
+                  }`}>
+                    {isOutOfStock
+                      ? `Phiên bản ${getVariantLabel(selectedVariant ?? undefined)} hiện đã hết hàng`
+                      : isLowStock
+                        ? `${getVariantLabel(selectedVariant ?? undefined)} sắp hết hàng, còn ${stockQuantity} sản phẩm`
+                        : `${getVariantLabel(selectedVariant ?? undefined)} còn hàng, hiện có ${stockQuantity} sản phẩm`}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-600">
+                  Tình trạng kho đang hiển thị cho đúng phiên bản bạn đã chọn.
+                </p>
               </div>
 
               {product.short_description && (
@@ -415,8 +577,13 @@ export default function ProductPage() {
                   </button>
                   <span className="w-12 text-center text-gray-900 font-semibold">{quantity}</span>
                   <button 
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="p-3 text-gray-500 hover:text-gray-900 transition-colors"
+                    onClick={() => {
+                      if (canIncreaseQuantity) {
+                        setQuantity(quantity + 1);
+                      }
+                    }}
+                    disabled={!canIncreaseQuantity}
+                    className="p-3 text-gray-500 hover:text-gray-900 transition-colors disabled:cursor-not-allowed disabled:text-gray-300"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -424,22 +591,28 @@ export default function ProductPage() {
 
                 <button
                   onClick={addToCart}
-                  disabled={!product.is_active}
+                  disabled={isOutOfStock}
                   className={`flex-1 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-3 ${
-                    product.is_active
+                    !isOutOfStock
                       ? 'bg-[#CA8A04] text-white hover:bg-[#B47B04] active:scale-95 shadow-md'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  {product.is_active ? 'Thêm Vào Giỏ' : 'Hết Hàng'}
+                  {!isOutOfStock ? 'Thêm Vào Giỏ' : 'Hết Hàng'}
                 </button>
               </div>
+
+              {!isOutOfStock && (
+                <p className="mb-8 text-sm text-gray-500">
+                  Bạn có thể thêm tối đa {stockQuantity} sản phẩm cho phiên bản đang chọn.
+                </p>
+              )}
 
               <div className="flex items-center gap-4 mb-8">
                 <button
                   onClick={handleToggleWishlist}
-                  disabled={!defaultVariantId}
+                  disabled={!selectedVariantId}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all bg-white shadow-sm ${
                     isWishlisted
                       ? 'border-[#CA8A04] text-[#CA8A04] bg-[#CA8A04]/10'

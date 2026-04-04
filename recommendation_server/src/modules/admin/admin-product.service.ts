@@ -5,6 +5,7 @@ import { ProductVariant } from "@/modules/products/entity/product-variant";
 import { ProductImage } from "@/modules/products/entity/product-image";
 import { Category } from "@/modules/products/entity/category";
 import { Brand } from "@/modules/products/entity/brand";
+import { Inventory } from "@/modules/inventory/entity/inventory";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
@@ -25,6 +26,7 @@ export class AdminProductService {
   private productImageRepository: Repository<ProductImage>;
   private categoryRepository: Repository<Category>;
   private brandRepository: Repository<Brand>;
+  private inventoryRepository: Repository<Inventory>;
   private dataSource: DataSource;
 
   constructor() {
@@ -33,6 +35,7 @@ export class AdminProductService {
     this.productImageRepository = AppDataSource.getRepository(ProductImage);
     this.categoryRepository = AppDataSource.getRepository(Category);
     this.brandRepository = AppDataSource.getRepository(Brand);
+    this.inventoryRepository = AppDataSource.getRepository(Inventory);
     this.dataSource = AppDataSource;
   }
 
@@ -74,9 +77,12 @@ export class AdminProductService {
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
     const products = await queryBuilder.getMany();
+    const stockQuantityMap = await this.loadStockQuantityMap(products.map((product) => product.id));
 
     return {
-      data: products.map(product => this.formatProductResponse(product)),
+      data: products.map((product) =>
+        this.formatProductResponse(product, stockQuantityMap.get(product.id) ?? 0),
+      ),
       pagination: {
         total,
         page,
@@ -101,7 +107,9 @@ export class AdminProductService {
       );
     }
 
-    return this.formatProductResponse(product);
+    const stockQuantityMap = await this.loadStockQuantityMap([product.id]);
+
+    return this.formatProductResponse(product, stockQuantityMap.get(product.id) ?? 0);
   }
 
   async createProduct(data: CreateProductDto) {
@@ -147,7 +155,7 @@ export class AdminProductService {
     const product = this.productRepository.create(data);
     const savedProduct = await this.productRepository.save(product);
 
-    return this.formatProductResponse(savedProduct);
+    return this.formatProductResponse(savedProduct, 0);
   }
 
   async updateProduct(id: number, data: UpdateProductDto) {
@@ -209,7 +217,7 @@ export class AdminProductService {
     Object.assign(product, data);
     const updatedProduct = await this.productRepository.save(product);
 
-    return this.formatProductResponse(updatedProduct);
+    return this.formatProductResponse(updatedProduct, 0);
   }
 
   async deleteProduct(id: number): Promise<void> {
@@ -386,7 +394,27 @@ export class AdminProductService {
     await this.productImageRepository.delete({ id: imageId });
   }
 
-  private formatProductResponse(product: Product) {
+  private async loadStockQuantityMap(productIds: number[]): Promise<Map<number, number>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const stockRows = await this.inventoryRepository
+      .createQueryBuilder('inventory')
+      .select('variant.product_id', 'product_id')
+      .addSelect('COALESCE(SUM(inventory.quantity_available), 0)', 'stock_quantity')
+      .innerJoin(ProductVariant, 'variant', 'variant.id = inventory.variant_id')
+      .where('variant.product_id IN (:...productIds)', { productIds })
+      .andWhere('variant.deleted_at IS NULL')
+      .groupBy('variant.product_id')
+      .getRawMany<{ product_id: string; stock_quantity: string }>();
+
+    return new Map(
+      stockRows.map((row) => [Number(row.product_id), Number(row.stock_quantity) || 0]),
+    );
+  }
+
+  private formatProductResponse(product: Product, stockQuantity: number = 0) {
     const primaryImage = product.images?.find(img => img.is_primary)?.image_url ||
                          product.images?.[0]?.image_url || null;
 
@@ -401,6 +429,7 @@ export class AdminProductService {
       compare_at_price: product.compare_at_price,
       cost_price: product.cost_price,
       weight_kg: product.weight_kg,
+      stock_quantity: stockQuantity,
       is_active: product.is_active,
       is_featured: product.is_featured,
       meta_title: product.meta_title,

@@ -127,9 +127,19 @@ export class ProductService {
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
     const products = await queryBuilder.getMany();
-    const soldCountMap = await this.loadSoldCountMap(products.map((product) => product.id));
+    const productIds = products.map((product) => product.id);
+    const [soldCountMap, stockQuantityMap] = await Promise.all([
+      this.loadSoldCountMap(productIds),
+      this.loadStockQuantityMap(productIds),
+    ]);
 
-    const formattedProducts = products.map(product => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0));
+    const formattedProducts = products.map((product) =>
+      this.formatProductResponse(
+        product,
+        soldCountMap.get(product.id) ?? 0,
+        stockQuantityMap.get(product.id) ?? 0,
+      ),
+    );
 
     return {
       data: formattedProducts,
@@ -184,10 +194,17 @@ export class ProductService {
       }) || []
     );
 
-    const soldCountMap = await this.loadSoldCountMap([product.id]);
+    const [soldCountMap, stockQuantityMap] = await Promise.all([
+      this.loadSoldCountMap([product.id]),
+      this.loadStockQuantityMap([product.id]),
+    ]);
 
     return {
-      ...this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0),
+      ...this.formatProductResponse(
+        product,
+        soldCountMap.get(product.id) ?? 0,
+        stockQuantityMap.get(product.id) ?? 0,
+      ),
       variants: variantsWithInventory,
       reviews_summary: {
         total_reviews: reviews.length,
@@ -221,8 +238,19 @@ export class ProductService {
       order: { created_at: 'DESC' }
     });
 
-    const soldCountMap = await this.loadSoldCountMap(products.map((product) => product.id));
-    return products.map(product => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0));
+    const productIds = products.map((product) => product.id);
+    const [soldCountMap, stockQuantityMap] = await Promise.all([
+      this.loadSoldCountMap(productIds),
+      this.loadStockQuantityMap(productIds),
+    ]);
+
+    return products.map((product) =>
+      this.formatProductResponse(
+        product,
+        soldCountMap.get(product.id) ?? 0,
+        stockQuantityMap.get(product.id) ?? 0,
+      ),
+    );
   }
 
   async getRelatedProducts(productId: number, limit: number = 8) {
@@ -252,8 +280,19 @@ export class ProductService {
       }
     });
 
-    const soldCountMap = await this.loadSoldCountMap(relatedProducts.map((relatedProduct) => relatedProduct.id));
-    return relatedProducts.map((relatedProduct) => this.formatProductResponse(relatedProduct, soldCountMap.get(relatedProduct.id) ?? 0));
+    const productIds = relatedProducts.map((relatedProduct) => relatedProduct.id);
+    const [soldCountMap, stockQuantityMap] = await Promise.all([
+      this.loadSoldCountMap(productIds),
+      this.loadStockQuantityMap(productIds),
+    ]);
+
+    return relatedProducts.map((relatedProduct) =>
+      this.formatProductResponse(
+        relatedProduct,
+        soldCountMap.get(relatedProduct.id) ?? 0,
+        stockQuantityMap.get(relatedProduct.id) ?? 0,
+      ),
+    );
   }
 
   async searchProducts(query: string, limit: number = 20) {
@@ -292,10 +331,20 @@ export class ProductService {
       new Set(searchResults.slice(0, 5).map((result: { item: Product }) => result.item.name))
     );
 
-    const soldCountMap = await this.loadSoldCountMap(matchedProducts.map((product) => product.id));
+    const productIds = matchedProducts.map((product) => product.id);
+    const [soldCountMap, stockQuantityMap] = await Promise.all([
+      this.loadSoldCountMap(productIds),
+      this.loadStockQuantityMap(productIds),
+    ]);
 
     return {
-      data: matchedProducts.map((product: Product) => this.formatProductResponse(product, soldCountMap.get(product.id) ?? 0)),
+      data: matchedProducts.map((product: Product) =>
+        this.formatProductResponse(
+          product,
+          soldCountMap.get(product.id) ?? 0,
+          stockQuantityMap.get(product.id) ?? 0,
+        ),
+      ),
       suggestions
     };
   }
@@ -333,7 +382,31 @@ export class ProductService {
     );
   }
 
-  private formatProductResponse(product: Product, soldCount: number = 0) {
+  private async loadStockQuantityMap(productIds: number[]): Promise<Map<number, number>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const stockRows = await this.inventoryRepository
+      .createQueryBuilder('inventory')
+      .select('variant.product_id', 'product_id')
+      .addSelect('COALESCE(SUM(inventory.quantity_available), 0)', 'stock_quantity')
+      .innerJoin(ProductVariant, 'variant', 'variant.id = inventory.variant_id')
+      .where('variant.product_id IN (:...productIds)', { productIds })
+      .andWhere('variant.deleted_at IS NULL')
+      .groupBy('variant.product_id')
+      .getRawMany<{ product_id: string; stock_quantity: string }>();
+
+    return new Map(
+      stockRows.map((row) => [Number(row.product_id), Number(row.stock_quantity) || 0]),
+    );
+  }
+
+  private formatProductResponse(
+    product: Product,
+    soldCount: number = 0,
+    stockQuantity: number = 0,
+  ) {
     const primaryImage = product.images?.find(img => img.is_primary)?.image_url ||
       product.images?.[0]?.image_url || null;
 
@@ -348,6 +421,7 @@ export class ProductService {
       compare_at_price: product.compare_at_price,
       cost_price: product.cost_price,
       weight_kg: product.weight_kg,
+      stock_quantity: stockQuantity,
       is_active: product.is_active,
       is_featured: product.is_featured,
       sold_count: soldCount,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Bot, Loader2, MessageCircle, Send, X } from 'lucide-react';
 import { chatbotApi, type ChatbotMessage } from '@/lib/api/chatbot.api';
@@ -149,6 +149,15 @@ export function FloatingChatbot() {
     setMessages((currentMessages) => [...currentMessages, buildWidgetMessage(role, content)]);
   }, []);
 
+  const handleComposerKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }, []);
+
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -246,6 +255,7 @@ export function FloatingChatbot() {
               <textarea
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
                 placeholder="Hỏi về sản phẩm, giao hàng, thanh toán..."
                 className="min-h-[2.75rem] max-h-28 flex-1 resize-none bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-400"
                 rows={1}
