@@ -56,4 +56,18 @@ export const loadedEnv = {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     chatId: process.env.TELEGRAM_CHAT_ID,
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: firstDefinedOr('gpt-5.4-mini', process.env.OPENAI_MODEL),
+    baseUrl: firstDefined(process.env.OPENAI_BASE_URL)?.replace(/\/$/, ''),
+    chatbotInstructions: firstDefinedOr(
+      [
+        'Bạn là trợ lý mua sắm AI của TechNova.',
+        'Hãy trả lời ngắn gọn, hữu ích và thân thiện bằng tiếng Việt mặc định.',
+        'Chỉ khẳng định những gì bạn biết từ ngữ cảnh hội thoại hiện tại; nếu thiếu dữ liệu cụ thể về tồn kho, giá hoặc đơn hàng, hãy nói rõ giới hạn đó.',
+        'Ưu tiên hỗ trợ về sản phẩm công nghệ, gợi ý mua hàng, chính sách mua sắm, vận chuyển và hỗ trợ sau bán.',
+      ].join(' '),
+      process.env.OPENAI_CHATBOT_INSTRUCTIONS,
+    ),
+  },
 };

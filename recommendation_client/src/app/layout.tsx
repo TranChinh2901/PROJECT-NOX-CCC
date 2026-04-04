@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
+import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
 
 export const metadata: Metadata = {
   title: "TechNova - Cửa Hàng Công Nghệ Cao Cấp",
@@ -45,6 +46,7 @@ export default function RootLayout({
             </WishlistProvider>
           </NotificationProvider>
         </AuthProvider>
+        <FloatingChatbot />
         <Toaster 
           position="top-right"
           toastOptions={{

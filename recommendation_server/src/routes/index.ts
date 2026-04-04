@@ -13,6 +13,7 @@ import wishlistRouter from "@/routes/wishlist";
 import navigationRouter from "@/routes/navigation";
 import paymentRouter from "@/routes/payment";
 import feedbackRouter from "@/routes/feedback";
+import chatbotRouter from "@/routes/chatbot";
 
 const router = express.Router();
 const API_V1 = "/api/v1";
@@ -30,5 +31,6 @@ router.use(`${API_V1}/wishlists`, wishlistRouter);
 router.use(`${API_V1}/navigation`, navigationRouter);
 router.use(`${API_V1}/payments`, paymentRouter);
 router.use(`${API_V1}/feedback`, feedbackRouter);
+router.use(`${API_V1}/chatbot`, chatbotRouter);
 
 export default router;

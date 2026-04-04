@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loadedEnv } from "@/config/load-env";
+import { DEFAULT_PRODUCT_IMAGE_ALIASES } from "@/scripts/support/product-image-aliases";
+import { normalizeProductImageKey } from "@/scripts/support/supabase-product-image-sync";
 
 type DeviceFamily =
   | "phone"
@@ -182,6 +184,7 @@ const FAMILY_DEFINITIONS: Record<DeviceFamily, FamilyDefinition> = {
 };
 
 let uploadedFamilyAssetsPromise: Promise<Map<DeviceFamily, string[]>> | null = null;
+let uploadedProductAssetsPromise: Promise<Map<string, string[]>> | null = null;
 
 function assertSupabaseStorageConfig(): { url: string; serviceRoleKey: string; bucket: string } {
   if (!loadedEnv.supabase.url || !loadedEnv.supabase.serviceRoleKey) {
@@ -524,6 +527,172 @@ async function loadUploadedFamilyAssets(): Promise<Map<DeviceFamily, string[]>> 
   return uploadedFamilyAssetsPromise;
 }
 
+function normalizeStorageObjectName(fileName: string): string {
+  return normalizeProductImageKey(fileName.replace(/\.[^.]+$/, ""));
+}
+
+function toNormalizedTokens(value: string): string[] {
+  return normalizeProductImageKey(value).split("_").filter(Boolean);
+}
+
+function calculateTokenOverlapScore(productName: string, candidateKey: string): number {
+  const productTokens = toNormalizedTokens(productName);
+  const candidateTokens = candidateKey.split("_").filter(Boolean);
+
+  if (productTokens.length === 0 || candidateTokens.length === 0) {
+    return 0;
+  }
+
+  const productTokenSet = new Set(productTokens);
+  const candidateTokenSet = new Set(candidateTokens);
+  let commonCount = 0;
+
+  for (const token of productTokenSet) {
+    if (candidateTokenSet.has(token)) {
+      commonCount += 1;
+    }
+  }
+
+  let orderedPrefixCount = 0;
+  while (
+    orderedPrefixCount < productTokens.length &&
+    orderedPrefixCount < candidateTokens.length &&
+    productTokens[orderedPrefixCount] === candidateTokens[orderedPrefixCount]
+  ) {
+    orderedPrefixCount += 1;
+  }
+
+  const overlapScore = commonCount / Math.max(productTokenSet.size, candidateTokenSet.size, 1);
+  const prefixScore = orderedPrefixCount / Math.max(Math.min(productTokens.length, candidateTokens.length), 1);
+  const sameLeadTokenBonus = productTokens[0] === candidateTokens[0] ? 0.1 : 0;
+
+  return overlapScore * 0.7 + prefixScore * 0.2 + sameLeadTokenBonus;
+}
+
+export function selectExactProductImageUrl(input: {
+  productName: string;
+  uploadedAssetsByNormalizedName: Map<string, string[]>;
+}): string | null {
+  const normalizedProductName = normalizeProductImageKey(input.productName);
+  const matchingAssets = input.uploadedAssetsByNormalizedName.get(normalizedProductName) ?? [];
+
+  return matchingAssets[0] ?? null;
+}
+
+export function selectAliasedProductImageUrl(input: {
+  productName: string;
+  uploadedAssetsByNormalizedName: Map<string, string[]>;
+}): string | null {
+  const normalizedProductName = normalizeProductImageKey(input.productName);
+
+  for (const [aliasKey, aliasTarget] of Object.entries(DEFAULT_PRODUCT_IMAGE_ALIASES)) {
+    const aliasTargets = Array.isArray(aliasTarget) ? aliasTarget : [aliasTarget];
+    const matchesTarget = aliasTargets.some(
+      (candidateTarget) => normalizeProductImageKey(candidateTarget) === normalizedProductName,
+    );
+
+    if (!matchesTarget) {
+      continue;
+    }
+
+    const matchingAssets = input.uploadedAssetsByNormalizedName.get(aliasKey) ?? [];
+    if (matchingAssets.length > 0) {
+      return matchingAssets[0] ?? null;
+    }
+  }
+
+  return null;
+}
+
+export function selectClosestProductImageUrl(input: {
+  productName: string;
+  uploadedAssetsByNormalizedName: Map<string, string[]>;
+}): string | null {
+  const candidates = Array.from(input.uploadedAssetsByNormalizedName.entries())
+    .map(([normalizedName, urls]) => ({
+      normalizedName,
+      url: urls[0] ?? null,
+      score: calculateTokenOverlapScore(input.productName, normalizedName),
+    }))
+    .filter((candidate) => candidate.url && candidate.score >= 0.5)
+    .sort((left, right) => right.score - left.score);
+
+  const bestCandidate = candidates[0];
+  const secondCandidate = candidates[1];
+
+  if (!bestCandidate?.url) {
+    return null;
+  }
+
+  if (secondCandidate && bestCandidate.score - secondCandidate.score < 0.03) {
+    return null;
+  }
+
+  return bestCandidate.url;
+}
+
+async function listUploadedProductAssets(client: SupabaseClient): Promise<string[]> {
+  const { bucket } = assertSupabaseStorageConfig();
+  const paths: string[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await client.storage.from(bucket).list(USER_IMAGE_ROOT, {
+      limit: STORAGE_LIST_PAGE_SIZE,
+      offset,
+      sortBy: { column: "name", order: "asc" },
+    });
+
+    if (error) {
+      throw new Error(`Failed to list uploaded product assets: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    for (const item of data) {
+      if (!item.id || !item.name) {
+        continue;
+      }
+
+      paths.push(`${USER_IMAGE_ROOT}/${item.name}`);
+    }
+
+    if (data.length < STORAGE_LIST_PAGE_SIZE) {
+      break;
+    }
+
+    offset += STORAGE_LIST_PAGE_SIZE;
+  }
+
+  return paths;
+}
+
+async function loadUploadedProductAssets(): Promise<Map<string, string[]>> {
+  if (!uploadedProductAssetsPromise) {
+    uploadedProductAssetsPromise = (async () => {
+      const client = createStorageClient();
+      const uploadedAssets = await listUploadedProductAssets(client);
+      const uploadedAssetsByNormalizedName = new Map<string, string[]>();
+
+      for (const assetPath of uploadedAssets) {
+        const fileName = assetPath.split("/").pop() ?? assetPath;
+        const normalizedName = normalizeStorageObjectName(fileName);
+        const existingAssets = uploadedAssetsByNormalizedName.get(normalizedName) ?? [];
+
+        existingAssets.push(buildPublicUrl(assetPath));
+        existingAssets.sort((left, right) => left.localeCompare(right));
+        uploadedAssetsByNormalizedName.set(normalizedName, existingAssets);
+      }
+
+      return uploadedAssetsByNormalizedName;
+    })();
+  }
+
+  return uploadedProductAssetsPromise;
+}
+
 async function uploadSeedAsset(client: SupabaseClient, family: DeviceFamily, view: number): Promise<void> {
   const { bucket } = assertSupabaseStorageConfig();
   const path = getAssetPath(family, view);
@@ -545,8 +714,33 @@ export async function ensureSeedProductAssets(): Promise<void> {
   const families = Object.keys(FAMILY_DEFINITIONS) as DeviceFamily[];
 
   for (const family of families) {
+    let existingAssets: string[] = [];
+
+    try {
+      existingAssets = await listUploadedAssetsForFamily(client, family);
+    } catch (error) {
+      console.warn(
+        `[seed-product-image-library] Failed to inspect fallback assets for ${family}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     for (let view = 0; view < VIEW_COUNT; view += 1) {
-      await uploadSeedAsset(client, family, view);
+      const expectedPath = getAssetPath(family, view);
+      if (existingAssets.includes(expectedPath)) {
+        continue;
+      }
+
+      try {
+        await uploadSeedAsset(client, family, view);
+      } catch (error) {
+        console.warn(
+          `[seed-product-image-library] Skipping fallback asset ${expectedPath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
   }
 }
@@ -556,7 +750,39 @@ export function getSeedProductImageUrl(categoryName: string, sortOrder: number):
   return buildPublicUrl(getAssetPath(family, sortOrder));
 }
 
-export async function getPreferredProductImageUrl(categoryName: string, sortOrder: number): Promise<string> {
+export async function getPreferredProductImageUrl(
+  categoryName: string,
+  productName: string,
+  sortOrder: number,
+): Promise<string> {
+  const uploadedProductAssets = await loadUploadedProductAssets();
+  const exactProductImageUrl = selectExactProductImageUrl({
+    productName,
+    uploadedAssetsByNormalizedName: uploadedProductAssets,
+  });
+
+  if (exactProductImageUrl) {
+    return exactProductImageUrl;
+  }
+
+  const aliasedProductImageUrl = selectAliasedProductImageUrl({
+    productName,
+    uploadedAssetsByNormalizedName: uploadedProductAssets,
+  });
+
+  if (aliasedProductImageUrl) {
+    return aliasedProductImageUrl;
+  }
+
+  const closestProductImageUrl = selectClosestProductImageUrl({
+    productName,
+    uploadedAssetsByNormalizedName: uploadedProductAssets,
+  });
+
+  if (closestProductImageUrl) {
+    return closestProductImageUrl;
+  }
+
   const family = resolveFamily(categoryName);
   const uploadedAssets = (await loadUploadedFamilyAssets()).get(family) ?? [];
 

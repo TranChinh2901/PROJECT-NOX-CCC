@@ -664,8 +664,8 @@ async function seedDatabase() {
           const image = new ProductImage();
           image.product = product;
           image.product_id = product.id;
-          image.image_url = await getPreferredProductImageUrl(category.name, img);
-          image.thumbnail_url = await getPreferredProductImageUrl(category.name, img);
+          image.image_url = await getPreferredProductImageUrl(category.name, product.name, img);
+          image.thumbnail_url = await getPreferredProductImageUrl(category.name, product.name, img);
           image.alt_text = product.name;
           image.sort_order = img;
           image.is_primary = img === 0;

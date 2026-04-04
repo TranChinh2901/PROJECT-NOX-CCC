@@ -9,4 +9,5 @@ export { wishlistApi } from './wishlist.api';
 export { navigationApi } from './navigation.api';
 export { paymentApi } from './payment.api';
 export { feedbackApi } from './feedback.api';
+export { chatbotApi } from './chatbot.api';
 export { default as apiClient } from './apiClient';

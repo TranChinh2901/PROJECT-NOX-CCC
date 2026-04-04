@@ -10,6 +10,7 @@ import {
   ProductImageAliasMap,
   ProductImageSyncPlan,
 } from "@/scripts/support/supabase-product-image-sync";
+import { DEFAULT_PRODUCT_IMAGE_ALIASES } from "@/scripts/support/product-image-aliases";
 import { SupabaseStorageService } from "@/services/supabase-storage.service";
 
 interface ScriptOptions {
@@ -59,7 +60,7 @@ function parseArgs(argv: string[]): ScriptOptions {
 
 async function readAliasFile(aliasFile?: string): Promise<ProductImageAliasMap> {
   if (!aliasFile) {
-    return {};
+    return DEFAULT_PRODUCT_IMAGE_ALIASES;
   }
 
   const fileContents = await fs.readFile(aliasFile, "utf8");
@@ -69,7 +70,10 @@ async function readAliasFile(aliasFile?: string): Promise<ProductImageAliasMap> 
     throw new Error("Alias file must be a JSON object mapping filenames to product names or ids.");
   }
 
-  return parsed as ProductImageAliasMap;
+  return {
+    ...DEFAULT_PRODUCT_IMAGE_ALIASES,
+    ...(parsed as ProductImageAliasMap),
+  };
 }
 
 async function loadProducts(productRepository: Repository<Product>): Promise<Product[]> {
