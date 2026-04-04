@@ -4,10 +4,19 @@ import {
   getChatbotFunctionDeclarations,
 } from '../../../src/utils/chatbot/chatbot-context';
 import { AppDataSource } from '../../../src/config/database.config';
+import categoryService from '../../../src/modules/products/category.service';
 import { Order } from '../../../src/modules/orders/entity/order';
 import productService from '../../../src/modules/products/product.service';
 import orderService from '../../../src/modules/orders/order.service';
 import { Promotion } from '../../../src/modules/promotions/entity/promotion';
+
+jest.mock('../../../src/modules/products/category.service', () => ({
+  __esModule: true,
+  default: {
+    getAllCategories: jest.fn(),
+    getRootCategories: jest.fn(),
+  },
+}));
 
 jest.mock('../../../src/modules/products/product.service', () => ({
   __esModule: true,
@@ -16,6 +25,7 @@ jest.mock('../../../src/modules/products/product.service', () => ({
     getProductById: jest.fn(),
     getProductBySlug: jest.fn(),
     getFeaturedProducts: jest.fn(),
+    getRelatedProducts: jest.fn(),
   },
 }));
 
@@ -35,6 +45,7 @@ jest.mock('../../../src/config/database.config', () => ({
 
 const mockedProductService = jest.mocked(productService);
 const mockedOrderService = jest.mocked(orderService);
+const mockedCategoryService = jest.mocked(categoryService);
 const mockedGetRepository = jest.mocked(AppDataSource.getRepository);
 
 describe('chatbot function tools', () => {
@@ -46,7 +57,10 @@ describe('chatbot function tools', () => {
     expect(getChatbotFunctionDeclarations().map((tool) => tool.name)).toEqual([
       'search_products',
       'get_product_details',
+      'get_categories',
+      'get_related_products',
       'get_featured_products',
+      'get_store_info',
       'get_active_promotions',
       'get_my_recent_orders',
       'get_my_order_by_number',
@@ -155,6 +169,94 @@ describe('chatbot function tools', () => {
           name: 'Giam 10%',
         }),
       ],
+    });
+  });
+
+  it('returns category data for browsing guidance', async () => {
+    mockedCategoryService.getRootCategories.mockResolvedValue([
+      {
+        id: 1,
+        name: 'Laptop',
+        slug: 'laptop',
+      },
+      {
+        id: 2,
+        name: 'Monitor',
+        slug: 'monitor',
+      },
+    ] as never);
+
+    const result = await executeChatbotFunctionCall(
+      {
+        name: 'get_categories',
+        args: {
+          rootOnly: true,
+        },
+      },
+      {},
+    );
+
+    expect(mockedCategoryService.getRootCategories).toHaveBeenCalled();
+    expect(result).toEqual({
+      categories: [
+        expect.objectContaining({ slug: 'laptop' }),
+        expect.objectContaining({ slug: 'monitor' }),
+      ],
+    });
+  });
+
+  it('returns related products for a selected product', async () => {
+    mockedProductService.getRelatedProducts.mockResolvedValue([
+      {
+        id: 11,
+        name: 'Dell UltraSharp 24',
+        slug: 'dell-ultrasharp-24',
+        sku: 'DELL-24',
+        brand: { name: 'Dell' },
+        category: { name: 'Monitor' },
+        base_price: 5990000,
+        compare_at_price: null,
+        short_description: 'Man hinh lien quan',
+        sold_count: 12,
+        variants: [],
+      },
+    ] as never);
+
+    const result = await executeChatbotFunctionCall(
+      {
+        name: 'get_related_products',
+        args: {
+          productId: 10,
+          limit: 2,
+        },
+      },
+      {},
+    );
+
+    expect(mockedProductService.getRelatedProducts).toHaveBeenCalledWith(10, 2);
+    expect(result).toEqual({
+      products: [
+        expect.objectContaining({
+          id: 11,
+          name: 'Dell UltraSharp 24',
+        }),
+      ],
+    });
+  });
+
+  it('returns store checkout info', async () => {
+    const result = await executeChatbotFunctionCall(
+      {
+        name: 'get_store_info',
+        args: {},
+      },
+      {},
+    );
+
+    expect(result).toEqual({
+      supported_payment_methods: ['cod', 'credit_card', 'bank_transfer', 'e_wallet'],
+      default_shipping_fee_vnd: 30000,
+      currency: 'VND',
     });
   });
 

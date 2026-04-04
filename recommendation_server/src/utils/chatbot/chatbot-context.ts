@@ -1,5 +1,7 @@
 import { AppDataSource } from '@/config/database.config';
+import categoryService from '@/modules/products/category.service';
 import { Order } from '@/modules/orders/entity/order';
+import { PaymentMethod } from '@/modules/orders/enum/order.enum';
 import orderService from '@/modules/orders/order.service';
 import productService from '@/modules/products/product.service';
 import { Promotion } from '@/modules/promotions/entity/promotion';
@@ -184,6 +186,39 @@ export const getChatbotFunctionDeclarations = (): ChatbotFunctionDeclaration[] =
     },
   },
   {
+    name: 'get_categories',
+    description:
+      'Get product categories so you can guide the customer to the right shopping section or category path.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        rootOnly: {
+          type: 'BOOLEAN',
+          description: 'When true, only return top-level categories.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_related_products',
+    description:
+      'Get related or similar products for a known product. Use after identifying a product the customer is interested in.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        productId: {
+          type: 'NUMBER',
+          description: 'The numeric product id.',
+        },
+        limit: {
+          type: 'NUMBER',
+          description: 'Maximum number of related products to return.',
+        },
+      },
+      required: ['productId'],
+    },
+  },
+  {
     name: 'get_featured_products',
     description: 'Get a small list of featured or highlighted TechNova products.',
     parameters: {
@@ -194,6 +229,15 @@ export const getChatbotFunctionDeclarations = (): ChatbotFunctionDeclaration[] =
           description: 'Maximum number of featured products to return.',
         },
       },
+    },
+  },
+  {
+    name: 'get_store_info',
+    description:
+      'Get store checkout information such as supported payment methods and the current base shipping fee used by the server.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {},
     },
   },
   {
@@ -290,6 +334,41 @@ export const executeChatbotFunctionCall = async (
 
       return {
         products: featuredProducts.map(summarizeProduct),
+      };
+    }
+
+    case 'get_categories': {
+      const rootOnly = Boolean(args.rootOnly);
+      const categories = rootOnly
+        ? await categoryService.getRootCategories()
+        : await categoryService.getAllCategories();
+
+      return {
+        categories,
+      };
+    }
+
+    case 'get_related_products': {
+      const productId = toNumberOrUndefined(args.productId);
+      if (!productId) {
+        return {
+          error: 'productId is required',
+        };
+      }
+
+      const limit = clampLimit(args.limit, 4);
+      const relatedProducts = await productService.getRelatedProducts(productId, limit);
+
+      return {
+        products: relatedProducts.map(summarizeProduct),
+      };
+    }
+
+    case 'get_store_info': {
+      return {
+        supported_payment_methods: Object.values(PaymentMethod),
+        default_shipping_fee_vnd: 30000,
+        currency: 'VND',
       };
     }
 
