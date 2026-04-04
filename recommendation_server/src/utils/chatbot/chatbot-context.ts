@@ -1,0 +1,371 @@
+import { AppDataSource } from '@/config/database.config';
+import { Order } from '@/modules/orders/entity/order';
+import orderService from '@/modules/orders/order.service';
+import productService from '@/modules/products/product.service';
+import { Promotion } from '@/modules/promotions/entity/promotion';
+
+type ChatbotFunctionDeclaration = {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'OBJECT';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+};
+
+export type ChatbotToolExecutionContext = {
+  userId?: number;
+};
+
+export type ChatbotFunctionCall = {
+  id?: string;
+  name: string;
+  args?: Record<string, unknown>;
+};
+
+const MAX_TOOL_LIMIT = 5;
+
+const clampLimit = (value: unknown, fallback: number): number => {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return fallback;
+  }
+
+  return Math.min(Math.floor(numericValue), MAX_TOOL_LIMIT);
+};
+
+const toNumberOrUndefined = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+const summarizeProduct = (product: any) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+
+  const variantSummaries = variants.slice(0, 3).map((variant: any) => {
+    const quantityAvailable = Array.isArray(variant?.inventory)
+      ? variant.inventory.reduce(
+          (sum: number, inventory: any) => sum + (toNumberOrUndefined(inventory?.quantity_available) ?? 0),
+          0,
+        )
+      : undefined;
+
+    return {
+      id: variant.id,
+      sku: variant.sku,
+      color: variant.color ?? null,
+      size: variant.size ?? null,
+      material: variant.material ?? null,
+      final_price: variant.final_price,
+      quantity_available: quantityAvailable,
+    };
+  });
+
+  const totalAvailable = variantSummaries.reduce(
+    (sum: number, variant: { quantity_available?: number }) => sum + (variant.quantity_available ?? 0),
+    0,
+  );
+
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    sku: product.sku,
+    brand: product.brand?.name ?? null,
+    category: product.category?.name ?? null,
+    base_price: product.base_price,
+    compare_at_price: product.compare_at_price ?? null,
+    short_description: product.short_description ?? null,
+    sold_count: toNumberOrUndefined(product.sold_count) ?? 0,
+    total_available: variantSummaries.length > 0 ? totalAvailable : undefined,
+    stock_status:
+      variantSummaries.length === 0 ? 'unknown' : totalAvailable > 0 ? 'in_stock' : 'out_of_stock',
+    variants: variantSummaries,
+  };
+};
+
+const summarizePromotion = (promotion: Promotion) => ({
+  code: promotion.code,
+  name: promotion.name,
+  description: promotion.description ?? null,
+  type: promotion.type,
+  value: promotion.value,
+  min_order_amount: promotion.min_order_amount ?? null,
+  max_discount_amount: promotion.max_discount_amount ?? null,
+  applies_to: promotion.applies_to,
+  ends_at: promotion.ends_at ?? null,
+});
+
+const summarizeOrder = (order: any) => ({
+  id: order.id,
+  order_number: order.order_number,
+  status: order.status,
+  payment_status: order.payment_status,
+  total_amount: order.total_amount,
+  currency: order.currency,
+  tracking_number: order.tracking_number ?? null,
+  created_at: order.created_at ?? null,
+  items: Array.isArray(order.items)
+    ? order.items.slice(0, 3).map((item: any) => ({
+        product_name: item.product?.name ?? item.product_snapshot?.product_name ?? null,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      }))
+    : [],
+});
+
+const loadActivePromotions = async (limit: number) => {
+  const now = new Date();
+  const promotionRepository = AppDataSource.getRepository(Promotion);
+
+  const promotions = await promotionRepository
+    .createQueryBuilder('promotion')
+    .where('promotion.is_active = :isActive', { isActive: true })
+    .andWhere('promotion.deleted_at IS NULL')
+    .andWhere('(promotion.starts_at IS NULL OR promotion.starts_at <= :now)', { now })
+    .andWhere('(promotion.ends_at IS NULL OR promotion.ends_at >= :now)', { now })
+    .orderBy('CASE WHEN promotion.ends_at IS NULL THEN 1 ELSE 0 END', 'ASC')
+    .addOrderBy('promotion.ends_at', 'ASC')
+    .addOrderBy('promotion.created_at', 'DESC')
+    .limit(limit)
+    .getMany();
+
+  return promotions.map(summarizePromotion);
+};
+
+export const getChatbotFunctionDeclarations = (): ChatbotFunctionDeclaration[] => [
+  {
+    name: 'search_products',
+    description:
+      'Search the TechNova catalog for products that match the customer request. Use for product advice, shopping recommendations, and comparing options.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: {
+          type: 'STRING',
+          description: 'The customer search query, such as "27 inch Dell monitor for office".',
+        },
+        limit: {
+          type: 'NUMBER',
+          description: 'Maximum number of product matches to return. Use a small number like 3.',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'get_product_details',
+    description:
+      'Get detailed information for a specific product, including variants and stock summary when available.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        productId: {
+          type: 'NUMBER',
+          description: 'The numeric product id when known.',
+        },
+        slug: {
+          type: 'STRING',
+          description: 'The product slug when the id is not known.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_featured_products',
+    description: 'Get a small list of featured or highlighted TechNova products.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: {
+          type: 'NUMBER',
+          description: 'Maximum number of featured products to return.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_active_promotions',
+    description: 'Get currently active promotions, sales, vouchers, or discount campaigns.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: {
+          type: 'NUMBER',
+          description: 'Maximum number of promotions to return.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_my_recent_orders',
+    description:
+      'Get the signed-in customer recent orders. Use only when the user asks about their own orders or delivery status.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: {
+          type: 'NUMBER',
+          description: 'Maximum number of recent orders to return.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_my_order_by_number',
+    description:
+      'Get one specific signed-in customer order by order number, for example ORD-2026-123456.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        orderNumber: {
+          type: 'STRING',
+          description: 'The order number to look up.',
+        },
+      },
+      required: ['orderNumber'],
+    },
+  },
+];
+
+export const executeChatbotFunctionCall = async (
+  functionCall: ChatbotFunctionCall,
+  context: ChatbotToolExecutionContext,
+) => {
+  const args = functionCall.args ?? {};
+
+  switch (functionCall.name) {
+    case 'search_products': {
+      const query = typeof args.query === 'string' ? args.query.trim() : '';
+      if (!query) {
+        return {
+          error: 'query is required',
+        };
+      }
+
+      const limit = clampLimit(args.limit, 3);
+      const searchResults = await productService.searchProducts(query, limit);
+
+      return {
+        query,
+        suggestions: searchResults.suggestions ?? [],
+        products: Array.isArray(searchResults.data) ? searchResults.data.slice(0, limit).map(summarizeProduct) : [],
+      };
+    }
+
+    case 'get_product_details': {
+      const productId = toNumberOrUndefined(args.productId);
+      const slug = typeof args.slug === 'string' ? args.slug.trim() : '';
+
+      if (!productId && !slug) {
+        return {
+          error: 'productId or slug is required',
+        };
+      }
+
+      const product = productId
+        ? await productService.getProductById(productId)
+        : await productService.getProductBySlug(slug);
+
+      return {
+        product: summarizeProduct(product),
+      };
+    }
+
+    case 'get_featured_products': {
+      const limit = clampLimit(args.limit, 3);
+      const featuredProducts = await productService.getFeaturedProducts(limit);
+
+      return {
+        products: featuredProducts.map(summarizeProduct),
+      };
+    }
+
+    case 'get_active_promotions': {
+      const limit = clampLimit(args.limit, 3);
+
+      return {
+        promotions: await loadActivePromotions(limit),
+      };
+    }
+
+    case 'get_my_recent_orders': {
+      if (!context.userId) {
+        return {
+          requires_auth: true,
+          error: 'user must be authenticated',
+        };
+      }
+
+      const limit = clampLimit(args.limit, 3);
+      const recentOrders = await orderService.getUserOrders(context.userId, { page: 1, limit });
+
+      return {
+        orders: Array.isArray(recentOrders.data) ? recentOrders.data.slice(0, limit).map(summarizeOrder) : [],
+      };
+    }
+
+    case 'get_my_order_by_number': {
+      if (!context.userId) {
+        return {
+          requires_auth: true,
+          error: 'user must be authenticated',
+        };
+      }
+
+      const orderNumber = typeof args.orderNumber === 'string' ? args.orderNumber.trim().toUpperCase() : '';
+      if (!orderNumber) {
+        return {
+          error: 'orderNumber is required',
+        };
+      }
+
+      const orderRepository = AppDataSource.getRepository(Order);
+      const order = await orderRepository.findOne({
+        where: {
+          order_number: orderNumber,
+          user_id: context.userId,
+        },
+      });
+
+      if (!order) {
+        return {
+          order_found: false,
+          order_number: orderNumber,
+        };
+      }
+
+      const orderDetails = await orderService.getOrderById(order.id, context.userId);
+
+      return {
+        order_found: true,
+        order: summarizeOrder(orderDetails),
+      };
+    }
+
+    default:
+      return {
+        error: `Unsupported function: ${functionCall.name}`,
+      };
+  }
+};
+
+export const buildChatbotSystemInstruction = (baseInstructions: string): string =>
+  [
+    baseInstructions,
+    'Khi câu hỏi liên quan đến sản phẩm, tồn kho, khuyến mãi hoặc đơn hàng của khách, hãy ưu tiên dùng function phù hợp để lấy dữ liệu thật từ hệ thống trước khi trả lời.',
+    'Không bịa ra giá, tồn kho, khuyến mãi, mã đơn, trạng thái giao hàng hoặc chính sách riêng của khách.',
+    'Nếu function trả về requires_auth hoặc không có dữ liệu, hãy nói rõ điều đó và hướng dẫn ngắn gọn bước tiếp theo.',
+  ].join('\n\n');

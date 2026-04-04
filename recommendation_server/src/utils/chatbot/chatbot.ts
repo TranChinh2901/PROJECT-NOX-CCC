@@ -1,5 +1,11 @@
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { loadedEnv } from '@/config/load-env';
+import {
+  buildChatbotSystemInstruction,
+  executeChatbotFunctionCall,
+  getChatbotFunctionDeclarations,
+  type ChatbotFunctionCall,
+} from '@/utils/chatbot/chatbot-context';
 
 export type ChatbotMessage = {
   role: 'user' | 'assistant';
@@ -9,6 +15,7 @@ export type ChatbotMessage = {
 export type GenerateChatbotReplyParams = {
   message: string;
   history?: ChatbotMessage[];
+  userId?: number;
   config?: Partial<ChatbotConfig>;
 };
 
@@ -18,27 +25,30 @@ export type ChatbotReply = {
   configured: boolean;
 };
 
-type OpenAIResponseContent = {
-  type?: string;
+type GeminiTextPart = {
   text?: string;
 };
 
-type OpenAIOutputItem = {
-  type?: string;
-  content?: OpenAIResponseContent[];
+type GeminiCandidate = {
+  content?: {
+    role?: 'model';
+    parts?: Array<
+      GeminiTextPart & {
+        functionCall?: ChatbotFunctionCall;
+      }
+    >;
+  };
 };
 
-type OpenAIResponsesPayload = {
-  output_text?: string;
-  output?: OpenAIOutputItem[];
+type GeminiGenerateContentResponse = {
+  text?: string;
+  functionCalls?: ChatbotFunctionCall[];
+  candidates?: GeminiCandidate[];
 };
 
-type OpenAIInputMessage = {
-  role: ChatbotMessage['role'];
-  content: Array<{
-    type: 'input_text';
-    text: string;
-  }>;
+type GeminiContent = {
+  role: 'user' | 'model';
+  parts: GeminiTextPart[];
 };
 
 export type ChatbotConfig = {
@@ -48,12 +58,12 @@ export type ChatbotConfig = {
   chatbotInstructions: string;
 };
 
-const OFFICIAL_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-const DEFAULT_MODEL = 'gpt-5.4-mini';
+const DEFAULT_MODEL = 'gemini-3-flash-preview';
 const MAX_HISTORY_MESSAGES = 10;
+const MAX_FUNCTION_CALL_ROUNDS = 4;
 export const CHATBOT_MAX_MESSAGE_LENGTH = 2000;
 export const CHATBOT_NOT_CONFIGURED_REPLY =
-  'Chatbot hiện chưa sẵn sàng vì server chưa được cấu hình OPENAI_API_KEY. Vui lòng thêm API key rồi thử lại.';
+  'Chatbot hiện chưa sẵn sàng vì server chưa được cấu hình GEMINI_API_KEY. Vui lòng thêm API key rồi thử lại.';
 const DEFAULT_SYSTEM_PROMPT = [
   'Bạn là trợ lý mua sắm của TechNova, một cửa hàng công nghệ cao cấp.',
   'Nhiệm vụ của bạn là trả lời ngắn gọn, hữu ích, thân thiện bằng tiếng Việt.',
@@ -71,25 +81,26 @@ const normalizeBaseUrl = (value: string | undefined): string | undefined => {
     return undefined;
   }
 
-  const trimmedBaseUrl = normalizedValue.replace(/\/$/, '');
-  return trimmedBaseUrl === OFFICIAL_OPENAI_BASE_URL ? undefined : trimmedBaseUrl;
+  return normalizedValue.replace(/\/$/, '');
 };
 
 const resolveChatbotConfig = (config?: Partial<ChatbotConfig>): ChatbotConfig => ({
-  apiKey: config?.apiKey ?? loadedEnv.openai.apiKey?.trim(),
-  model: config?.model ?? loadedEnv.openai.model ?? DEFAULT_MODEL,
-  baseUrl: normalizeBaseUrl(config?.baseUrl ?? loadedEnv.openai.baseUrl),
+  apiKey: config?.apiKey ?? loadedEnv.gemini.apiKey?.trim(),
+  model: config?.model ?? loadedEnv.gemini.model ?? DEFAULT_MODEL,
+  baseUrl: normalizeBaseUrl(config?.baseUrl ?? loadedEnv.gemini.baseUrl),
   chatbotInstructions:
-    config?.chatbotInstructions ?? loadedEnv.openai.chatbotInstructions ?? DEFAULT_SYSTEM_PROMPT,
+    config?.chatbotInstructions ?? loadedEnv.gemini.chatbotInstructions ?? DEFAULT_SYSTEM_PROMPT,
 });
 
-export const createOpenAIClient = (config: Pick<ChatbotConfig, 'apiKey' | 'baseUrl'>): OpenAI => {
+export const createGeminiClient = (config: Pick<ChatbotConfig, 'apiKey' | 'baseUrl'>): GoogleGenAI => {
   const baseUrl = normalizeBaseUrl(config.baseUrl);
 
-  return new OpenAI({
+  return new GoogleGenAI({
     apiKey: config.apiKey,
-    timeout: 30000,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    httpOptions: {
+      timeout: 30000,
+      ...(baseUrl ? { baseUrl } : {}),
+    },
   });
 };
 
@@ -116,36 +127,54 @@ export const sanitizeConversationHistory = (history: unknown): ChatbotMessage[] 
     .slice(-MAX_HISTORY_MESSAGES);
 };
 
-export const buildConversationInput = (history: ChatbotMessage[], message: string): OpenAIInputMessage[] =>
+export const buildConversationInput = (history: ChatbotMessage[], message: string): GeminiContent[] =>
   [...history, { role: 'user' as const, content: message }].map((entry) => ({
-    role: entry.role,
-    content: [{ type: 'input_text', text: entry.content }],
+    role: entry.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: entry.content }],
   }));
 
-export const extractOutputText = (payload: OpenAIResponsesPayload): string => {
-  const directText = payload.output_text?.trim();
+export const extractOutputText = (payload: GeminiGenerateContentResponse): string => {
+  const directText = payload.text?.trim();
   if (directText) {
     return directText;
   }
 
-  const outputText = (payload.output || [])
-    .flatMap((item) => item.content || [])
-    .filter((content) => content.type === 'output_text' && typeof content.text === 'string')
-    .map((content) => content.text?.trim() || '')
+  const outputText = ((payload.candidates as GeminiCandidate[]) || [])
+    .flatMap((candidate) => candidate.content?.parts || [])
+    .map((part) => part.text?.trim() || '')
     .filter(Boolean)
     .join('\n\n')
     .trim();
 
   if (!outputText) {
-    throw new Error('OpenAI response did not include assistant text');
+    throw new Error('Gemini response did not include assistant text');
   }
 
   return outputText;
 };
 
+const getAssistantToolContent = (payload: GeminiGenerateContentResponse) => {
+  const candidateContent = payload.candidates?.[0]?.content;
+  if (candidateContent) {
+    return candidateContent;
+  }
+
+  if (!payload.functionCalls?.length) {
+    return undefined;
+  }
+
+  return {
+    role: 'model' as const,
+    parts: payload.functionCalls.map((functionCall) => ({
+      functionCall,
+    })),
+  };
+};
+
 export const generateChatbotReply = async ({
   message,
   history = [],
+  userId,
   config,
 }: GenerateChatbotReplyParams): Promise<ChatbotReply> => {
   const resolvedConfig = resolveChatbotConfig(config);
@@ -164,18 +193,64 @@ export const generateChatbotReply = async ({
   }
 
   const conversationHistory = sanitizeConversationHistory(history);
-  const client = createOpenAIClient({
+  const client = createGeminiClient({
     apiKey: resolvedConfig.apiKey,
     baseUrl: resolvedConfig.baseUrl,
   });
-  const response = await client.responses.create({
-    model: resolvedConfig.model,
-    instructions: resolvedConfig.chatbotInstructions,
-    input: buildConversationInput(conversationHistory, sanitizedMessage),
-  });
+  const baseContents = buildConversationInput(conversationHistory, sanitizedMessage);
+  let contents: Array<Record<string, unknown>> = [...baseContents];
+  let response: GeminiGenerateContentResponse | undefined;
+
+  for (let round = 0; round < MAX_FUNCTION_CALL_ROUNDS; round += 1) {
+    response = (await client.models.generateContent({
+      model: resolvedConfig.model,
+      contents,
+      config: {
+        systemInstruction: buildChatbotSystemInstruction(resolvedConfig.chatbotInstructions),
+        tools: [
+          {
+            functionDeclarations: getChatbotFunctionDeclarations() as any,
+          },
+        ],
+      },
+    })) as GeminiGenerateContentResponse;
+
+    const functionCalls = response.functionCalls ?? [];
+    if (functionCalls.length === 0) {
+      break;
+    }
+
+    const assistantContent = getAssistantToolContent(response);
+    if (!assistantContent) {
+      break;
+    }
+
+    const functionResponseParts = await Promise.all(
+      functionCalls.map(async (functionCall) => ({
+        functionResponse: {
+          name: functionCall.name,
+          response: await executeChatbotFunctionCall(functionCall, { userId }),
+          ...(functionCall.id ? { id: functionCall.id } : {}),
+        },
+      })),
+    );
+
+    contents = [
+      ...contents,
+      assistantContent as Record<string, unknown>,
+      {
+        role: 'user',
+        parts: functionResponseParts,
+      },
+    ];
+  }
+
+  if (!response) {
+    throw new Error('Gemini did not return a response');
+  }
 
   return {
-    reply: extractOutputText(response as OpenAIResponsesPayload),
+    reply: extractOutputText(response),
     model: resolvedConfig.model,
     configured: true,
   };

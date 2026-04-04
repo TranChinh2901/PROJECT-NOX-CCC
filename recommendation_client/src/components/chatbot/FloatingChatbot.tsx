@@ -9,6 +9,10 @@ type WidgetMessage = ChatbotMessage & {
   id: string;
 };
 
+type MessageBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'list'; items: string[] };
+
 const HISTORY_LIMIT = 8;
 const CHATBOT_ERROR_REPLY =
   'Xin lỗi, chatbot đang bận hoặc chưa được cấu hình hoàn chỉnh. Bạn vui lòng thử lại sau nhé.';
@@ -35,6 +39,82 @@ const shouldHideChatbot = (pathname: string | null) => {
   }
 
   return pathname.startsWith('/admin');
+};
+
+const BULLET_PATTERN = /^[-*•]\s+(.*)$/;
+
+const parseMessageBlocks = (content: string): MessageBlock[] => {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const blocks: MessageBlock[] = [];
+  let listItems: string[] = [];
+
+  const flushListItems = () => {
+    if (listItems.length === 0) {
+      return;
+    }
+
+    blocks.push({ type: 'list', items: listItems });
+    listItems = [];
+  };
+
+  for (const line of lines) {
+    const bulletMatch = line.match(BULLET_PATTERN);
+
+    if (bulletMatch) {
+      listItems.push(bulletMatch[1]);
+      continue;
+    }
+
+    flushListItems();
+    blocks.push({ type: 'paragraph', text: line });
+  }
+
+  flushListItems();
+  return blocks;
+};
+
+const renderInlineFormatting = (text: string) => {
+  const segments = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+
+  return segments.map((segment, index) => {
+    const boldMatch = segment.match(/^\*\*([^*]+)\*\*$/);
+
+    if (boldMatch) {
+      return (
+        <strong key={`${segment}-${index}`} className="font-semibold text-stone-900">
+          {boldMatch[1]}
+        </strong>
+      );
+    }
+
+    return <React.Fragment key={`${segment}-${index}`}>{segment}</React.Fragment>;
+  });
+};
+
+const renderAssistantMessage = (content: string) => {
+  const blocks = parseMessageBlocks(content);
+
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, index) =>
+        block.type === 'list' ? (
+          <ul key={`list-${index}`} className="list-disc space-y-1 pl-5">
+            {block.items.map((item, itemIndex) => (
+              <li key={`list-item-${index}-${itemIndex}`}>{renderInlineFormatting(item)}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={`paragraph-${index}`} className="whitespace-pre-wrap">
+            {renderInlineFormatting(block.text)}
+          </p>
+        ),
+      )}
+    </div>
+  );
 };
 
 export function FloatingChatbot() {
@@ -114,7 +194,7 @@ export function FloatingChatbot() {
               </div>
               <div>
                 <p className="text-sm font-semibold">TechNova Assistant</p>
-                <p className="text-xs text-stone-300">Hỗ trợ mua sắm với OpenAI</p>
+                <p className="text-xs text-stone-300">Hỗ trợ mua sắm với Gemini</p>
               </div>
             </div>
 
@@ -144,7 +224,11 @@ export function FloatingChatbot() {
                       : 'ml-auto bg-amber-500 text-stone-950'
                   }`}
                 >
-                  {message.content}
+                  {isAssistant ? (
+                    renderAssistantMessage(message.content)
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </article>
               );
             })}
