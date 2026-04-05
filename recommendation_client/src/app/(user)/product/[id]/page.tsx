@@ -334,9 +334,9 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white mt-10">
+      <div className="min-h-screen bg-white">
         <Header />
-        <main className="pt-32 pb-16">
+        <main className="pt-28 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
@@ -353,9 +353,9 @@ export default function ProductPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-white mt-10">
+      <div className="min-h-screen bg-white">
         <Header />
-        <main className="pt-32 pb-16">
+        <main className="pt-36 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
@@ -376,7 +376,7 @@ export default function ProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white mt-10">
+    <div className="min-h-screen bg-white">
       <Header />
 
       {flyingItems.map((item) => (
@@ -388,7 +388,7 @@ export default function ProductPage() {
         />
       ))}
 
-      <main className="pt-32 pb-16">
+      <main className="pt-36 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
             <span className="hover:text-gray-900 cursor-pointer">Trang Chủ</span>

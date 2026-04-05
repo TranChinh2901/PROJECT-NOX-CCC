@@ -398,7 +398,7 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pt-32 sm:pt-36 pb-12">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)]  sm:pt-24 pb-7">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
           <div className="hero-grid absolute inset-0 opacity-50" />
@@ -545,7 +545,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="sticky top-24 z-40 bg-white/95 backdrop-blur-lg border-b border-gray-200 py-4 shadow-sm">
+      <section className="sticky top-28 z-40 border-b border-gray-200 bg-white/95 py-4 shadow-sm backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
