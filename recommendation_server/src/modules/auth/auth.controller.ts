@@ -9,7 +9,7 @@ import { ErrorCode } from '@/constants/error-code';
 import { AppError } from '@/common/error.response';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { UpdateProfileDto } from './dto/auth.dto';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/auth.dto';
 
 class AuthController {
   async register(req: Request, res: Response) {
@@ -94,6 +94,27 @@ class AuthController {
       message: SuccessMessages.USER.USER_GET,
       statusCode: HttpStatusCode.OK,
       data: users
+    }).sendResponse(res);
+  }
+
+  async changePassword(req: AuthenticatedRequest, res: Response) {
+    const user = req.user;
+
+    if (!user) {
+      throw new AppError(
+        ErrorMessages.USER.USER_NOT_FOUND,
+        HttpStatusCode.UNAUTHORIZED,
+        ErrorCode.UNAUTHORIZED
+      );
+    }
+
+    const changePasswordDto: ChangePasswordDto = req.body;
+    const result = await authService.changePassword(user.id, changePasswordDto);
+
+    return new AppResponse({
+      message: 'Password changed successfully',
+      statusCode: HttpStatusCode.OK,
+      data: result
     }).sendResponse(res);
   }
 

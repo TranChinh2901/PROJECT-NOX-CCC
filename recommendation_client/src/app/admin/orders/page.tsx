@@ -1,12 +1,32 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Filter, Download, Eye, Edit, Package, Clock, CheckCircle, XCircle, Truck } from 'lucide-react';
+import { Search, Filter, Download, Eye, Edit, Package, Clock, CheckCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { adminApi, type AdminOrder } from '@/lib/api/admin.api';
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | '';
 type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | '';
+
+const orderStatusLabels: Record<Exclude<OrderStatus, ''>, string> = {
+  pending: 'Chờ xử lý',
+  confirmed: 'Đã xác nhận',
+  processing: 'Đang xử lý',
+  shipped: 'Đã giao vận',
+  delivered: 'Đã giao',
+  cancelled: 'Đã hủy',
+  refunded: 'Đã hoàn tiền',
+};
+
+const validStatusTransitions: Record<Exclude<OrderStatus, ''>, Array<Exclude<OrderStatus, ''>>> = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['delivered', 'cancelled'],
+  delivered: ['refunded'],
+  cancelled: [],
+  refunded: [],
+};
 
 export default function OrdersManagement() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -136,6 +156,16 @@ export default function OrdersManagement() {
       refunded: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getAllowedStatusOptions = (currentStatus: string) => {
+    const normalizedStatus = currentStatus as Exclude<OrderStatus, ''>;
+    const nextStatuses = validStatusTransitions[normalizedStatus] ?? [];
+
+    return [normalizedStatus, ...nextStatuses].map((status) => ({
+      value: status,
+      label: orderStatusLabels[status],
+    }));
   };
 
   const getPaymentStatusColor = (status: string) => {
@@ -358,17 +388,22 @@ export default function OrdersManagement() {
                         value={order.status}
                         onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
                         disabled={updatingOrderId === order.id}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-0 focus:outline-none focus:ring-2 focus:ring-[#7366ff] cursor-pointer ${getStatusColor(order.status)} ${
-                          updatingOrderId === order.id ? 'opacity-50' : ''
-                        }`}
+                        title={
+                          getAllowedStatusOptions(order.status).length > 1
+                            ? `Có thể chuyển sang: ${getAllowedStatusOptions(order.status)
+                              .slice(1)
+                              .map((option) => option.label)
+                              .join(', ')}`
+                            : 'Trạng thái này không có bước chuyển tiếp tiếp theo'
+                        }
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-0 focus:outline-none focus:ring-2 focus:ring-[#7366ff] cursor-pointer ${getStatusColor(order.status)} ${updatingOrderId === order.id ? 'opacity-50' : ''
+                          }`}
                       >
-                        <option value="pending">Chờ xử lý</option>
-                        <option value="confirmed">Đã xác nhận</option>
-                        <option value="processing">Đang xử lý</option>
-                        <option value="shipped">Đã giao vận</option>
-                        <option value="delivered">Đã giao</option>
-                        <option value="cancelled">Đã hủy</option>
-                        <option value="refunded">Đã hoàn tiền</option>
+                        {getAllowedStatusOptions(order.status).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </td>

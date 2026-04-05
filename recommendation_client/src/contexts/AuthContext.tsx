@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { AuthContextType, User, LoginDto, SignupDto, UpdateProfileDto, AuthResponse } from '@/types';
+import { AuthContextType, User, LoginDto, SignupDto, UpdateProfileDto, AuthResponse, ChangePasswordDto, ChangePasswordResponse } from '@/types';
 import { authApi } from '@/lib/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,6 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [storeUser]
   );
 
+  const changePassword = useCallback(
+    async (data: ChangePasswordDto): Promise<ChangePasswordResponse> => {
+      return await authApi.changePassword(data);
+    },
+    []
+  );
+
   const uploadAvatar = useCallback(async (file: File) => {
     return await authApi.uploadAvatar(file);
   }, []);
@@ -166,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser) as User);
-      } catch (error) {
+      } catch {
         localStorage.removeItem(STORAGE_KEYS.user);
         localStorage.removeItem(STORAGE_KEYS.legacyUser);
       }
@@ -190,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshToken,
     getProfile,
     updateProfile,
+    changePassword,
     uploadAvatar,
     getAllUsers,
     deleteAccount,

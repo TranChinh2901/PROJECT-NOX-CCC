@@ -17,6 +17,8 @@ const COLORS = [
   'rgb(var(--admin-chart-senary))',
 ];
 
+type OrderStatusDatum = AnalyticsData['orderStatusDistribution'][number];
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
@@ -262,8 +264,14 @@ export default function AdminDashboard() {
     return null;
   };
 
-  const renderOrderStatusLabel = ({ status, percentage }: PieLabelRenderProps) => {
-    return `${status}: ${percentage}%`;
+  const renderOrderStatusLabel = ({
+    payload,
+  }: PieLabelRenderProps & { payload?: OrderStatusDatum }) => {
+    if (!payload) {
+      return '';
+    }
+
+    return `${payload.status}: ${payload.percentage}%`;
   };
 
   return (
@@ -337,7 +345,7 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
                   <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
                   <YAxis tickFormatter={formatCurrencyShort} stroke="rgb(100, 116, 139)" fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={CustomTooltip} />
                   <Area type="monotone" dataKey="revenue" stroke="rgb(var(--admin-chart-primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -350,7 +358,7 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
                   <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
                   <YAxis stroke="rgb(100, 116, 139)" fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={CustomTooltip} />
                   <Bar dataKey="orders" fill="rgb(var(--admin-chart-primary))" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -401,7 +409,7 @@ export default function AdminDashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={CustomTooltip} />
                 </PieChart>
               </ResponsiveContainer>
             </GlassCard>
@@ -416,7 +424,7 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(226, 232, 240)" />
                   <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="rgb(100, 116, 139)" fontSize={12} />
                   <YAxis stroke="rgb(100, 116, 139)" fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={CustomTooltip} />
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
                   <Line type="monotone" dataKey="users" stroke="rgb(var(--admin-chart-primary))" strokeWidth={3} name="Tổng người dùng" dot={{ r: 4 }} activeDot={{ r: 6 }} />
                   <Line type="monotone" dataKey="active_users" stroke="rgb(var(--admin-chart-quaternary))" strokeWidth={3} name="Người dùng hoạt động" dot={{ r: 4 }} activeDot={{ r: 6 }} />

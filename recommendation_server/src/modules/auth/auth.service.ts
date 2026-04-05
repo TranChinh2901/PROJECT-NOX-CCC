@@ -12,7 +12,7 @@ import { RoleType } from "./enum/auth.enum";
 import { LoginDto } from "./dto/login.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { ErrorMessages, SuccessMessages } from "@/constants/message";
-import { UpdateProfileDto } from "./dto/auth.dto";
+import { ChangePasswordDto, UpdateProfileDto } from "./dto/auth.dto";
 import { GenderType } from "../users/enum/user.enum";
 
 export class AuthService {
@@ -251,6 +251,47 @@ export class AuthService {
       updated_at: user.updated_at
     }));
     
+  }
+
+  async changePassword(userId: number, dto: ChangePasswordDto) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new AppError(
+        ErrorMessages.USER.USER_NOT_FOUND,
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.USER_NOT_FOUND
+      );
+    }
+
+    const isCurrentPasswordValid = await compare(dto.currentPassword, user.password);
+
+    if (!isCurrentPasswordValid) {
+      throw new AppError(
+        'Current password is incorrect',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const isSamePassword = await compare(dto.newPassword, user.password);
+
+    if (isSamePassword) {
+      throw new AppError(
+        'New password must be different from the current password',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const hashedPassword = await hash(dto.newPassword, this.SALT_ROUNDS);
+    await this.userRepository.update(userId, { password: hashedPassword });
+
+    return {
+      message: 'Password changed successfully'
+    };
   }
 
   async updateProfile(userId: number, updateProfileDto: UpdateProfileDto) {

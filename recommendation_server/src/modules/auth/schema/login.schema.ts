@@ -33,3 +33,21 @@ export const UpdateProfileSchema = Joi.object({
     'string.uri': 'Avatar must be a valid URL'
   })
 });
+
+export const ChangePasswordSchema = Joi.object({
+  currentPassword: Joi.string().min(6).required().messages({
+    'string.empty': 'Current password is required',
+    'string.min': 'Current password must be at least 6 characters',
+    'any.required': 'Current password is required',
+  }),
+  newPassword: Joi.string().min(6).required().messages({
+    'string.empty': 'New password is required',
+    'string.min': 'New password must be at least 6 characters',
+    'any.required': 'New password is required',
+  }),
+  confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required().messages({
+    'any.only': 'Password confirmation does not match',
+    'string.empty': 'Password confirmation is required',
+    'any.required': 'Password confirmation is required',
+  }),
+});

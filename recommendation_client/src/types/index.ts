@@ -14,7 +14,9 @@ export type {
   LoginDto,
   SignupDto,
   UpdateProfileDto,
+  ChangePasswordDto,
   AuthResponse,
+  ChangePasswordResponse,
   RefreshTokenResponse,
   AuthContextType,
 } from './auth.types';

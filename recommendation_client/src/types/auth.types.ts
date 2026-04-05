@@ -50,6 +50,12 @@ export interface UpdateProfileDto {
   date_of_birth?: Date | string;
 }
 
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 // Auth response types
 export interface AuthResponse {
   accessToken: string;
@@ -59,6 +65,10 @@ export interface AuthResponse {
 
 export interface RefreshTokenResponse {
   accessToken: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
 }
 
 /**
@@ -88,6 +98,8 @@ export interface AuthContextType {
   getProfile(): Promise<User>;
 
   updateProfile(data: UpdateProfileDto): Promise<User>;
+
+  changePassword(data: ChangePasswordDto): Promise<ChangePasswordResponse>;
 
   uploadAvatar(file: File): Promise<{ avatarUrl: string }>;
 

@@ -1,5 +1,7 @@
 import apiClient from './apiClient';
 import { 
+  ChangePasswordDto,
+  ChangePasswordResponse,
   LoginDto, 
   SignupDto, 
   UpdateProfileDto,
@@ -33,6 +35,10 @@ export const authApi = {
 
   async updateProfile(data: UpdateProfileDto): Promise<User> {
     return await apiClient.put<User>('/auth/profile', data);
+  },
+
+  async changePassword(data: ChangePasswordDto): Promise<ChangePasswordResponse> {
+    return await apiClient.put<ChangePasswordResponse>('/auth/change-password', data);
   },
 
   async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {

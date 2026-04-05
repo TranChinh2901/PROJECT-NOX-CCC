@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import authController from '@/modules/auth/auth.controller';
-import { LoginSchema, UpdateProfileSchema } from '@/modules/auth/schema/login.schema';
+import { ChangePasswordSchema, LoginSchema, UpdateProfileSchema } from '@/modules/auth/schema/login.schema';
 import { RegisterSchema } from '@/modules/auth/schema/signup.chema';
 import { authMiddleware, requireAdmin } from '@/middlewares/auth.middleware';
 import { validateBody } from '@/middlewares/validate.middleware';
@@ -43,6 +43,12 @@ router.put('/profile',
   authMiddleware(),
   validateBody(UpdateProfileSchema),
   asyncHandle(authController.updateProfile)
+);
+
+router.put('/change-password',
+  authMiddleware(),
+  validateBody(ChangePasswordSchema),
+  asyncHandle(authController.changePassword)
 );
 
 router.delete('/delete-account/:id',
