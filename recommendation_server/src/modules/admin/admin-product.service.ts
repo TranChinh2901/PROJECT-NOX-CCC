@@ -155,7 +155,7 @@ export class AdminProductService {
     const product = this.productRepository.create(data);
     const savedProduct = await this.productRepository.save(product);
 
-    return this.formatProductResponse(savedProduct, 0);
+    return this.getProduct(savedProduct.id);
   }
 
   async updateProduct(id: number, data: UpdateProductDto) {
@@ -217,7 +217,7 @@ export class AdminProductService {
     Object.assign(product, data);
     const updatedProduct = await this.productRepository.save(product);
 
-    return this.formatProductResponse(updatedProduct, 0);
+    return this.getProduct(updatedProduct.id);
   }
 
   async deleteProduct(id: number): Promise<void> {

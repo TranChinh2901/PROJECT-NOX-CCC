@@ -8,8 +8,8 @@ import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
 import { Skeleton } from '../../common/Skeleton';
 import { productApi, categoryApi } from '@/lib/api';
-import { useCart } from '@/contexts/CartContext';
 import { Product, Category } from '@/types';
+import { buildProductPath } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -17,7 +17,6 @@ import {
   BadgeCheck,
   Search, 
   ShieldCheck,
-  ShoppingCart, 
   Filter,
   Sparkles,
   Truck,
@@ -53,6 +52,24 @@ const bannerMetrics = [
   { value: 'Top 5%', label: 'thiết bị được chọn lọc' },
   { value: '1:1', label: 'hỗ trợ chọn cấu hình' },
 ];
+
+const findCategoryInTree = (
+  categories: Category[],
+  matcher: (category: Category) => boolean,
+): Category | null => {
+  for (const category of categories) {
+    if (matcher(category)) {
+      return category;
+    }
+
+    const nestedMatch = findCategoryInTree(category.children || [], matcher);
+    if (nestedMatch) {
+      return nestedMatch;
+    }
+  }
+
+  return null;
+};
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -145,23 +162,26 @@ function FlyToCartAnimation({
 
 function HomeSearchParamsSync({
   onQueryChange,
+  onCategoryChange,
 }: {
   onQueryChange: (query: string) => void;
+  onCategoryChange: (category: string) => void;
 }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
     onQueryChange(searchParams.get('q') || '');
-  }, [onQueryChange, searchParams]);
+    onCategoryChange(searchParams.get('category') || '');
+  }, [onCategoryChange, onQueryChange, searchParams]);
 
   return null;
 }
 
 function HomePageContent() {
   const INITIAL_VISIBLE_PRODUCTS = 10;
-  const { addToCart: addToCartContext } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilterSlug, setCategoryFilterSlug] = useState('');
   const [sortBy, setSortBy] = useState('featured');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PRODUCTS);
   const [products, setProducts] = useState<Product[]>([]);
@@ -196,6 +216,19 @@ function HomePageContent() {
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (!categoryFilterSlug) {
+      setSelectedCategory(null);
+      return;
+    }
+
+    const matchedCategory = findCategoryInTree(categories, (category) =>
+      category.slug === categoryFilterSlug || String(category.id) === categoryFilterSlug,
+    );
+
+    setSelectedCategory(matchedCategory?.id ?? null);
+  }, [categories, categoryFilterSlug]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -306,44 +339,39 @@ function HomePageContent() {
   );
 
   useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE_PRODUCTS);
-  }, [selectedCategory, searchQuery, sortBy]);
+    if (loading || isInitialLoad || typeof window === 'undefined') {
+      return;
+    }
 
-  const handleAddToCart = useCallback(async (product: Product, imageElement: HTMLImageElement | null) => {
-    try {
-      if (!product.variants || product.variants.length === 0) {
-        toast.error('Sản phẩm không có phiên bản nào khả dụng');
+    if (window.location.hash !== '#catalog') {
+      return;
+    }
+
+    const scrollToCatalog = () => {
+      const catalogSection = document.getElementById('catalog');
+      if (!catalogSection) {
         return;
       }
-      
-      const defaultVariant = product.variants[0];
 
-      if (imageElement) {
-        const rect = imageElement.getBoundingClientRect();
-        const imageUrl = imageElement.src;
+      const topOffset = 120;
+      const targetTop = catalogSection.getBoundingClientRect().top + window.scrollY - topOffset;
 
-        setFlyingItems(prev => [...prev, {
-          id: Date.now(),
-          rect,
-          imageUrl
-        }]);
-      }
+      window.scrollTo({
+        top: Math.max(targetTop, 0),
+        behavior: 'smooth',
+      });
+    };
 
-      await addToCartContext(
-        {
-          variant_id: defaultVariant.id,
-          quantity: 1,
-        },
-        product,
-        defaultVariant
-      );
-      
-      toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      toast.error('Không thể thêm vào giỏ hàng');
-    }
-  }, [addToCartContext]);
+    const firstFrameId = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(scrollToCatalog);
+    });
+
+    return () => window.cancelAnimationFrame(firstFrameId);
+  }, [loading, isInitialLoad, selectedCategory, filteredProducts.length]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_PRODUCTS);
+  }, [selectedCategory, searchQuery, sortBy]);
 
   const removeFlyingItem = useCallback((id: number) => {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
@@ -385,7 +413,10 @@ function HomePageContent() {
   return (
     <div className="min-h-screen bg-gray-50 mt-10 sm:mt-10">
       <Suspense fallback={null}>
-        <HomeSearchParamsSync onQueryChange={setSearchQuery} />
+        <HomeSearchParamsSync
+          onQueryChange={setSearchQuery}
+          onCategoryChange={setCategoryFilterSlug}
+        />
       </Suspense>
       <Header />
 
@@ -409,11 +440,6 @@ function HomePageContent() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="max-w-2xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#CA8A04]/20 bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#8a5a00] shadow-sm backdrop-blur">
-                <Sparkles className="h-3.5 w-3.5" />
-                Curated Tech Experience
-              </div>
-
               <h1 className="max-w-xl text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
                 Chọn đúng thiết bị dễ hơn.
                 <span className="block text-[#8a5a00]">
@@ -452,19 +478,6 @@ function HomePageContent() {
                     <p className="mt-1 text-sm text-slate-500">{metric.label}</p>
                   </GlassCard>
                 ))}
-              </div>
-
-              <div className="mt-6 max-w-2xl">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm sản phẩm, thông số kỹ thuật..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-2xl border border-white/70 bg-white/85 py-4 pr-4 pl-12 text-gray-900 placeholder-gray-400 shadow-[0_12px_40px_rgba(17,24,39,0.06)] backdrop-blur transition-all focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20"
-                  />
-                </div>
               </div>
             </div>
 
@@ -580,7 +593,9 @@ function HomePageContent() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-heading font-bold text-gray-900">
-                {selectedCategory === null ? 'Tất Cả Sản Phẩm' : categories.find(c => c.id === selectedCategory)?.name}
+                {selectedCategory === null
+                  ? 'Tất Cả Sản Phẩm'
+                  : findCategoryInTree(categories, (category) => category.id === selectedCategory)?.name}
               </h2>
             <p className="text-sm text-gray-500 mt-1">
               {filteredProducts.length} sản phẩm
@@ -605,20 +620,20 @@ function HomePageContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5">
             {loading ? (
               Array.from({ length: 8 }).map((_, index) => (
                 <div
                   key={`product-skeleton-${index}`}
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-200"
+                  className="overflow-hidden rounded-3xl border border-gray-200 bg-white"
                 >
-                  <Skeleton className="w-full aspect-square" rounded="none" />
-                  <div className="p-4 space-y-3">
+                  <Skeleton className="aspect-[4/3.65] w-full" rounded="none" />
+                  <div className="space-y-2.5 p-3 sm:p-4">
                     <Skeleton height="20px" className="w-3/4" />
                     <Skeleton height="14px" className="w-full" />
                     <Skeleton height="14px" className="w-5/6" />
                     <Skeleton height="24px" className="w-1/2" />
-                    <Skeleton height="44px" className="w-full" rounded="lg" />
+                    <Skeleton height="40px" className="w-full" rounded="lg" />
                   </div>
                 </div>
               ))
@@ -627,7 +642,6 @@ function HomePageContent() {
                 <ProductCard 
                   key={product.id} 
                   product={product} 
-                  onAddToCart={(imageEl) => handleAddToCart(product, imageEl)}
                   imageRef={(el) => {
                     if (el) {
                       productImageRefs.current.set(product.id, el);
@@ -680,11 +694,9 @@ export default function HomePage() {
 
 function ProductCard({ 
   product, 
-  onAddToCart,
   imageRef
 }: { 
   product: Product; 
-  onAddToCart: (imageEl: HTMLImageElement | null) => void;
   imageRef?: (el: HTMLImageElement | null) => void;
 }) {
   const localImageRef = useRef<HTMLImageElement>(null);
@@ -695,37 +707,33 @@ function ProductCard({
   const primaryImage = product.images?.find(img => img.is_primary)?.image_url || 
                        product.images?.[0]?.image_url ||
                        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
-  const destinationHref = `/product/${product.id}`;
+  const destinationHref = buildProductPath(product);
   const categoryLabel = product.category?.name ?? 'Thiết bị chọn lọc';
   const brandLabel = product.brand?.name ?? 'TechNova Select';
   const soldCount = product.sold_count ?? 0;
 
-  const handleAddToCart = () => {
-    onAddToCart(localImageRef.current);
-  };
-
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#ece4d7] bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-[#d8c6a3] hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#ece4d7] bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d8c6a3] hover:shadow-[0_18px_52px_rgba(15,23,42,0.11)] sm:rounded-[28px]">
       <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top,#fff7e6_0%,#f8f5ef_46%,#f3efe6_100%)]">
         {product.is_featured && (
-          <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-[#171717] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg shadow-black/10">
-            <Sparkles className="h-3.5 w-3.5 text-[#f6c453]" />
+          <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#171717] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-lg shadow-black/10 sm:left-4 sm:top-4 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">
+            <Sparkles className="h-3 w-3 text-[#f6c453] sm:h-3.5 sm:w-3.5" />
             Nổi bật
           </div>
         )}
 
         {discount && (
-          <div className="absolute right-4 top-4 z-10 rounded-full border border-red-100 bg-white/92 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-500 shadow-sm">
+          <div className="absolute right-3 top-3 z-10 rounded-full border border-red-100 bg-white/92 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-500 shadow-sm sm:right-4 sm:top-4 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.16em]">
             -{discount}%
           </div>
         )}
 
-        <Link href={destinationHref} className="relative block aspect-[4/4.35] overflow-hidden">
+        <Link href={destinationHref} className="relative block aspect-[4/3.65] overflow-hidden sm:aspect-[4/3.85]">
           <Image
             src={primaryImage}
             alt={product.name}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
             className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.045]"
             onLoad={(event) => {
               const target = event.currentTarget as HTMLImageElement;
@@ -735,72 +743,39 @@ function ProductCard({
           />
         </Link>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#171717]/16 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#171717]/16 to-transparent sm:h-24" />
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9a6a12]">
+      <div className="flex flex-1 flex-col p-3.5 sm:p-4">
+        <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a6a12] sm:mb-3 sm:gap-3 sm:text-[11px] sm:tracking-[0.16em]">
           <span className="truncate">{brandLabel}</span>
-          <span className="rounded-full bg-[#fbf6ed] px-2.5 py-1 text-[#7a6a4a] normal-case tracking-normal">
+          <span className="rounded-full bg-[#fbf6ed] px-2 py-0.5 text-[#7a6a4a] normal-case tracking-normal sm:px-2.5 sm:py-1">
             {categoryLabel}
           </span>
         </div>
 
         <Link href={destinationHref} className="group/title">
-          <h3 className="font-heading text-[1.15rem] font-bold leading-tight text-[#111827] transition-colors group-hover/title:text-[#a16207] line-clamp-2 min-h-[3.4rem]">
+          <h3 className="min-h-[2.5rem] line-clamp-2 font-heading text-base font-bold leading-snug text-[#111827] transition-colors group-hover/title:text-[#a16207] sm:min-h-[3rem] sm:text-[1.05rem]">
             {product.name}
           </h3>
         </Link>
 
-        <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#667085] min-h-[3rem]">
-          {product.short_description || product.description}
-        </p>
-
-        <div className="mt-4 flex items-end gap-2 border-t border-[#efe7da] pt-4">
-          <span className="text-[1.45rem] font-bold leading-none tracking-[-0.03em] text-[#111827]">
+        <div className="mt-3 flex items-end gap-2 border-t border-[#efe7da] pt-3 sm:mt-4 sm:pt-4">
+          <span className="text-[1.2rem] font-bold leading-none tracking-[-0.03em] text-[#111827] sm:text-[1.35rem]">
             {formatPrice(product.base_price)}
           </span>
           {product.compare_at_price && (
-            <span className="pb-0.5 text-sm text-[#98a2b3] line-through">
+            <span className="pb-0.5 text-xs text-[#98a2b3] line-through sm:text-sm">
               {formatPrice(product.compare_at_price)}
             </span>
           )}
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-xs text-[#7a6a4a]">
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#7a6a4a] sm:mt-3 sm:gap-2 sm:text-xs">
           <BadgeCheck className="h-3.5 w-3.5 text-[#c58a10]" />
           <span>Đã bán {soldCount.toLocaleString('vi-VN')}</span>
         </div>
 
-        <div className="mt-auto pt-5">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleAddToCart}
-              disabled={!product.is_active}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                product.is_active
-                  ? 'bg-[#c58a10] text-white shadow-[0_16px_30px_rgba(197,138,16,0.22)] hover:bg-[#b27b08]'
-                  : 'cursor-not-allowed bg-[#f4efe7] text-[#b0a392]'
-              }`}
-            >
-              {product.is_active ? (
-                <>
-                  <ShoppingCart className="h-4 w-4" />
-                  Thêm vào giỏ
-                </>
-              ) : (
-                'Hết hàng'
-              )}
-            </button>
-            <Link
-              href={destinationHref}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8dcc6] bg-[#fffaf1] text-[#a16207] transition-colors hover:bg-[#f9f0df]"
-              aria-label={`Xem chi tiết ${product.name}`}
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
       </div>
     </article>
   );

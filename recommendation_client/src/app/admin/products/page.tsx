@@ -2,10 +2,11 @@
 
 import { useDeferredValue, useEffect, useState } from 'react';
 import { Search, Plus, Edit, Trash2, SlidersHorizontal, Package, TrendingUp, AlertCircle, CheckCircle, Grid3x3, LayoutList } from 'lucide-react';
-import { Product } from '@/types';
+import { Brand, Category, Product } from '@/types';
 import { productApi } from '@/lib/api';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AdminPagination } from '@/components/admin/AdminPagination';
+import { adminApi } from '@/lib/api/admin.api';
 
 interface ProductFilters {
   search?: string;
@@ -17,6 +18,41 @@ interface ProductFilters {
 }
 
 type ViewMode = 'grid' | 'list';
+
+interface ProductEditForm {
+  category_id: number | '';
+  brand_id: number | '';
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  short_description: string;
+  base_price: string;
+  compare_at_price: string;
+  cost_price: string;
+  weight_kg: string;
+  is_active: boolean;
+  is_featured: boolean;
+}
+
+const emptyProductForm: ProductEditForm = {
+  category_id: '',
+  brand_id: '',
+  name: '',
+  slug: '',
+  sku: '',
+  description: '',
+  short_description: '',
+  base_price: '',
+  compare_at_price: '',
+  cost_price: '',
+  weight_kg: '',
+  is_active: false,
+  is_featured: false,
+};
+
+const toOptionalNumber = (value: string): number | null =>
+  value.trim() === '' ? null : Number(value);
 
 export default function ProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -31,6 +67,12 @@ export default function ProductManagement() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<ProductEditForm>(emptyProductForm);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [productModalError, setProductModalError] = useState('');
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -74,6 +116,125 @@ export default function ProductManagement() {
 
     fetchProducts();
   }, [currentPage, deferredSearchTerm, selectedCategory, selectedBrand, selectedStatus, viewMode]);
+
+  useEffect(() => {
+    const loadProductMeta = async () => {
+      try {
+        const [categoryOptions, brandOptions] = await Promise.all([
+          adminApi.getAllCategories(),
+          adminApi.getAllBrands(),
+        ]);
+        setCategories(categoryOptions);
+        setBrands(brandOptions);
+      } catch (error) {
+        console.error('Failed to load product metadata:', error);
+      }
+    };
+
+    void loadProductMeta();
+  }, []);
+
+  const mapProductToForm = (product: Product): ProductEditForm => ({
+    category_id: product.category?.id ?? '',
+    brand_id: product.brand?.id ?? '',
+    name: product.name ?? '',
+    slug: product.slug ?? '',
+    sku: product.sku ?? '',
+    description: product.description ?? '',
+    short_description: product.short_description ?? '',
+    base_price: String(product.base_price ?? ''),
+    compare_at_price:
+      typeof product.compare_at_price === 'number' ? String(product.compare_at_price) : '',
+    cost_price: typeof product.cost_price === 'number' ? String(product.cost_price) : '',
+    weight_kg: typeof product.weight_kg === 'number' ? String(product.weight_kg) : '',
+    is_active: Boolean(product.is_active),
+    is_featured: Boolean(product.is_featured),
+  });
+
+  const openEditModal = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm(mapProductToForm(product));
+    setProductModalError('');
+  };
+
+  const closeEditModal = () => {
+    if (isSavingProduct) return;
+    setEditingProduct(null);
+    setProductForm(emptyProductForm);
+    setProductModalError('');
+  };
+
+  const recalculateStats = (nextProducts: Product[]) => {
+    setStats((currentStats) => ({
+      ...currentStats,
+      active: nextProducts.filter((p) => p.is_active).length,
+      lowStock: nextProducts.filter((p) => (p.stock_quantity || 0) < 10 && (p.stock_quantity || 0) > 0).length,
+      outOfStock: nextProducts.filter((p) => (p.stock_quantity || 0) === 0).length,
+    }));
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+
+    if (!productForm.name.trim() || !productForm.slug.trim() || !productForm.sku.trim()) {
+      setProductModalError('Tên, slug và SKU là bắt buộc.');
+      return;
+    }
+
+    if (!productForm.category_id) {
+      setProductModalError('Vui lòng chọn danh mục.');
+      return;
+    }
+
+    if (!productForm.description.trim()) {
+      setProductModalError('Mô tả sản phẩm là bắt buộc.');
+      return;
+    }
+
+    if (productForm.base_price.trim() === '' || Number(productForm.base_price) <= 0) {
+      setProductModalError('Giá bán phải lớn hơn 0.');
+      return;
+    }
+
+    try {
+      setIsSavingProduct(true);
+      setProductModalError('');
+
+      const updatedProduct = await adminApi.updateProduct(editingProduct.id, {
+        category_id: Number(productForm.category_id),
+        brand_id: productForm.brand_id === '' ? null : Number(productForm.brand_id),
+        name: productForm.name.trim(),
+        slug: productForm.slug.trim(),
+        sku: productForm.sku.trim(),
+        description: productForm.description.trim(),
+        short_description: productForm.short_description.trim() || null,
+        base_price: Number(productForm.base_price),
+        compare_at_price: toOptionalNumber(productForm.compare_at_price),
+        cost_price: toOptionalNumber(productForm.cost_price),
+        weight_kg: toOptionalNumber(productForm.weight_kg),
+        is_active: productForm.is_active,
+        is_featured: productForm.is_featured,
+      });
+
+      setProducts((currentProducts) => {
+        const nextProducts = currentProducts.map((product) =>
+          product.id === editingProduct.id ? updatedProduct : product,
+        );
+        recalculateStats(nextProducts);
+        return nextProducts;
+      });
+      setEditingProduct(null);
+      setProductForm(emptyProductForm);
+      setProductModalError('');
+    } catch (error) {
+      console.error('Failed to update product:', error);
+      setProductModalError(
+        error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsSavingProduct(false);
+    }
+  };
 
   const handleDeleteProduct = async (productId: number) => {
     try {
@@ -347,10 +508,8 @@ export default function ProductManagement() {
                   {/* Actions */}
                   <div className="flex gap-2">
                     <button
-                      type="button"
-                      disabled
-                      title="Tính năng chỉnh sửa sản phẩm chưa khả dụng."
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-300 text-slate-500 rounded-lg cursor-not-allowed"
+                      onClick={() => openEditModal(product)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors cursor-pointer"
                     >
                       <Edit className="w-4 h-4" />
                       <span className="text-sm">Chỉnh sửa</span>
@@ -425,10 +584,8 @@ export default function ProductManagement() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        type="button"
-                        disabled
-                        title="Tính năng chỉnh sửa sản phẩm chưa khả dụng."
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-300 text-slate-500 rounded-lg cursor-not-allowed"
+                        onClick={() => openEditModal(product)}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors"
                       >
                         <Edit className="w-4 h-4" />
                         <span className="text-sm">Chỉnh sửa</span>
@@ -471,6 +628,199 @@ export default function ProductManagement() {
           variant="standalone"
         />
       </div>
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="glass-card max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
+            <h3 className="mb-4 text-xl font-bold">Chỉnh sửa sản phẩm</h3>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Tên sản phẩm</label>
+                <input
+                  type="text"
+                  value={productForm.name}
+                  onChange={(e) => setProductForm((current) => ({ ...current, name: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">SKU</label>
+                <input
+                  type="text"
+                  value={productForm.sku}
+                  onChange={(e) => setProductForm((current) => ({ ...current, sku: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Slug</label>
+                <input
+                  type="text"
+                  value={productForm.slug}
+                  onChange={(e) => setProductForm((current) => ({ ...current, slug: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Danh mục</label>
+                <select
+                  value={productForm.category_id}
+                  onChange={(e) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      category_id: e.target.value ? Number(e.target.value) : '',
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                >
+                  <option value="">Chọn danh mục</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Thương hiệu</label>
+                <select
+                  value={productForm.brand_id}
+                  onChange={(e) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      brand_id: e.target.value ? Number(e.target.value) : '',
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                >
+                  <option value="">Không có thương hiệu</option>
+                  {brands.map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Giá bán</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.base_price}
+                  onChange={(e) => setProductForm((current) => ({ ...current, base_price: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Giá so sánh</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.compare_at_price}
+                  onChange={(e) =>
+                    setProductForm((current) => ({ ...current, compare_at_price: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Giá vốn</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.cost_price}
+                  onChange={(e) => setProductForm((current) => ({ ...current, cost_price: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Cân nặng (kg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={productForm.weight_kg}
+                  onChange={(e) => setProductForm((current) => ({ ...current, weight_kg: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div className="flex items-center gap-6 md:col-span-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={productForm.is_active}
+                    onChange={(e) =>
+                      setProductForm((current) => ({ ...current, is_active: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-[#7366ff] focus:ring-[#7366ff]"
+                  />
+                  Đang hoạt động
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={productForm.is_featured}
+                    onChange={(e) =>
+                      setProductForm((current) => ({ ...current, is_featured: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-[#7366ff] focus:ring-[#7366ff]"
+                  />
+                  Nổi bật
+                </label>
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium">Mô tả ngắn</label>
+                <textarea
+                  rows={2}
+                  value={productForm.short_description}
+                  onChange={(e) =>
+                    setProductForm((current) => ({ ...current, short_description: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium">Mô tả sản phẩm</label>
+                <textarea
+                  rows={5}
+                  value={productForm.description}
+                  onChange={(e) =>
+                    setProductForm((current) => ({ ...current, description: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                />
+              </div>
+            </div>
+
+            {productModalError && (
+              <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                {productModalError}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={closeEditModal}
+                className="rounded border border-slate-200 bg-white px-4 py-2 text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdateProduct}
+                disabled={isSavingProduct}
+                className="rounded bg-[#7366ff] px-4 py-2 text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingProduct ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (

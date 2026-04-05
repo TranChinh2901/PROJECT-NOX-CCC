@@ -19,7 +19,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import OrdersSkeleton from '@/components/common/OrdersSkeleton';
 import { orderApi } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
+import { buildProductPath, formatPrice } from '@/lib/utils';
 import { OrderDetail, OrderStatus, OrderStatusHistoryEntry, PaymentMethod, PaymentStatus } from '@/types';
 
 const statusClasses: Record<OrderStatus, string> = {
@@ -282,7 +282,7 @@ export default function OrderDetailPage() {
                             {item.product?.id && (
                               <div className="mt-3">
                                 <Link
-                                  href={`/product/${item.product.id}`}
+                                  href={buildProductPath(item.product)}
                                   className="text-sm font-medium text-[#CA8A04] transition hover:text-[#B47B04]"
                                 >
                                   View product

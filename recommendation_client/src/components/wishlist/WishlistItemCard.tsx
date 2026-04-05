@@ -6,7 +6,7 @@ import { WishlistItem } from '../../types/wishlist.types';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { useCart } from '../../contexts/CartContext';
 import { LiquidButton } from '../ui/LiquidButton';
-import { formatPrice } from '../../lib/utils';
+import { buildProductPath, formatPrice } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
 interface WishlistItemCardProps {
@@ -25,7 +25,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
   const productName = product?.name ?? 'Sản phẩm không khả dụng';
   const productDescription = product?.description ?? 'San pham da bi xoa hoac khong con thong tin.';
   const imageUrl = product?.images?.find((image) => image.is_primary)?.image_url ?? product?.images?.[0]?.image_url ?? '/placeholder.png';
-  const productHref = product?.id ? `/product/${product.id}` : '/';
+  const productHref = product ? buildProductPath(product) : '/';
 
   const getPriorityLabel = (priority: string) => {
     const labels: Record<string, string> = {

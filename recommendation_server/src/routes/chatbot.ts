@@ -89,7 +89,7 @@ export const chatbotMessageHandler = async (req: Request, res: Response): Promis
     console.error('Chatbot request failed:', error);
     result = {
       reply: CHATBOT_TEMPORARY_UNAVAILABLE_REPLY,
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash',
       configured: true,
       historyContents: [],
     };

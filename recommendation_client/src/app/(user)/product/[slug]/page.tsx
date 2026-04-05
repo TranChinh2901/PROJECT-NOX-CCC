@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
@@ -11,6 +12,7 @@ import { productApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { Product, ProductReviewsSummary, ProductVariant, Review } from '@/types';
+import { buildProductPath } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   Star,
@@ -146,7 +148,9 @@ function FlyToCartAnimation({
 
 export default function ProductPage() {
   const params = useParams();
-  const productId = Number(params.id);
+  const router = useRouter();
+  const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  const productSlug = typeof slugParam === 'string' ? decodeURIComponent(slugParam) : '';
   const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
@@ -163,9 +167,18 @@ export default function ProductPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [productData, reviewsData, relatedProductsData] = await Promise.all([
-          productApi.getProductById(productId),
-          reviewApi.getProductReviews(productId).catch(() => ({
+        const isLegacyIdPath = /^\d+$/.test(productSlug);
+        const productData = isLegacyIdPath
+          ? await productApi.getProductById(Number(productSlug))
+          : await productApi.getProductBySlug(productSlug);
+
+        const canonicalPath = buildProductPath(productData);
+        if (productSlug && canonicalPath !== `/product/${productSlug}`) {
+          router.replace(canonicalPath, { scroll: false });
+        }
+
+        const [reviewsData, relatedProductsData] = await Promise.all([
+          reviewApi.getProductReviews(productData.id).catch(() => ({
             data: [],
             summary: {
               total_reviews: 0,
@@ -179,7 +192,7 @@ export default function ProductPage() {
               total_pages: 0
             }
           })),
-          productApi.getRelatedProducts(productId, 4).catch(() => [])
+          productApi.getRelatedProducts(productData.id, 4).catch(() => [])
         ]);
         setProduct(productData);
         setReviews(reviewsData.data || []);
@@ -201,8 +214,14 @@ export default function ProductPage() {
       }
     };
 
+    if (!productSlug) {
+      setError('Không tìm thấy sản phẩm');
+      setLoading(false);
+      return;
+    }
+
     fetchData();
-  }, [productId]);
+  }, [productSlug, router]);
 
   useEffect(() => {
     const variants = product?.variants ?? [];
@@ -391,9 +410,16 @@ export default function ProductPage() {
       <main className="pt-36 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-            <span className="hover:text-gray-900 cursor-pointer">Trang Chủ</span>
+            <Link href="/" className="transition-colors hover:text-gray-900">
+              Trang Chủ
+            </Link>
             <ChevronRight className="w-4 h-4" />
-            <span className="hover:text-gray-900 cursor-pointer">{product.category?.name || 'Sản phẩm'}</span>
+            <Link
+              href={product.category?.slug ? `/?category=${product.category.slug}#catalog` : '/#catalog'}
+              className="transition-colors hover:text-gray-900"
+            >
+              {product.category?.name || 'Sản phẩm'}
+            </Link>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900">{product.name}</span>
           </nav>
@@ -793,7 +819,7 @@ export default function ProductPage() {
                     : null;
 
                   return (
-                    <a key={relatedProduct.id} href={`/product/${relatedProduct.id}`} className="group block">
+                    <Link key={relatedProduct.id} href={buildProductPath(relatedProduct)} className="group block">
                       <GlassCard className="h-full overflow-hidden border-gray-200 bg-white transition-transform duration-200 group-hover:-translate-y-1">
                         <div className="relative overflow-hidden border-b border-gray-100 bg-gray-50 p-4">
                           {relatedDiscount ? (
@@ -841,7 +867,7 @@ export default function ProductPage() {
                           </div>
                         </div>
                       </GlassCard>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>

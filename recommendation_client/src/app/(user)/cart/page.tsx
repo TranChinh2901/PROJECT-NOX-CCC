@@ -409,13 +409,13 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Link href="/checkout">
+                <div className="flex flex-col gap-4">
+                  <Link href="/checkout" className="block">
                     <Button variant="primary" size="lg" fullWidth>
                       Tiến Hành Thanh Toán
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/" className="block">
                     <Button variant="outline" size="lg" fullWidth>
                       Tiếp Tục Mua Sắm
                     </Button>

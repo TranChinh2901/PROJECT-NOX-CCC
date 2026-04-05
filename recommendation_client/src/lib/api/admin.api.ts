@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { Brand, Category, User } from '@/types';
+import { Brand, Category, Product, User } from '@/types';
 
 // Types for admin API responses
 export interface DashboardStats {
@@ -129,6 +129,35 @@ export interface AdminUsersResponse<T> {
   };
 }
 
+interface PaginatedAdminEntityResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages?: number;
+    totalPages?: number;
+  };
+}
+
+export interface UpdateAdminProductDto {
+  category_id?: number;
+  brand_id?: number | null;
+  name?: string;
+  slug?: string;
+  sku?: string;
+  description?: string;
+  short_description?: string | null;
+  base_price?: number;
+  compare_at_price?: number | null;
+  cost_price?: number | null;
+  weight_kg?: number | null;
+  is_active?: boolean;
+  is_featured?: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
+}
+
 export const adminApi = {
   // Dashboard statistics
   async getDashboardStats(): Promise<DashboardStats> {
@@ -200,6 +229,14 @@ export const adminApi = {
     return await apiClient.get<AdminProductStats>('/admin/products/stats');
   },
 
+  async getProductById(productId: number): Promise<Product> {
+    return await apiClient.get<Product>(`/admin/products/${productId}`);
+  },
+
+  async updateProduct(productId: number, data: UpdateAdminProductDto): Promise<Product> {
+    return await apiClient.patch<Product>(`/admin/products/${productId}`, data);
+  },
+
   async deleteProduct(productId: number): Promise<void> {
     return await apiClient.delete(`/admin/products/${productId}`);
   },
@@ -227,7 +264,9 @@ export const adminApi = {
 
   // Category management
   async getAllCategories(): Promise<Category[]> {
-    const response = await apiClient.get<AdminUsersResponse<Category>>('/admin/categories');
+    const response = await apiClient.get<PaginatedAdminEntityResponse<Category>>('/admin/categories', {
+      params: { page: 1, limit: 100 },
+    });
     return Array.isArray(response.data) ? response.data : [];
   },
 
@@ -245,7 +284,10 @@ export const adminApi = {
 
   // Brand management
   async getAllBrands(): Promise<Brand[]> {
-    return await apiClient.get<Brand[]>('/admin/brands');
+    const response = await apiClient.get<PaginatedAdminEntityResponse<Brand>>('/admin/brands', {
+      params: { page: 1, limit: 100 },
+    });
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   async createBrand(data: { name: string; description?: string }): Promise<Brand> {
