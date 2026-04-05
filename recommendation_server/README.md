@@ -118,6 +118,18 @@ DATABASE_TYPE=mariadb
 # Server Port
 PORT=5000
 
+# CORS
+# Comma-separated list of allowed origins
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+
+# Optional runtime/logging metadata
+# NODE_ENV=development
+NODE_ENV=
+# LOG_LEVEL=info
+LOG_LEVEL=
+# APP_VERSION=1.0.0
+APP_VERSION=
+
 # JWT Configuration
 # Supported aliases:
 # ACCESS_TOKEN_SECRET or JWT_SECRET

@@ -31,17 +31,7 @@
     return null;
   }
 
-  const DEFAULT_DELIVERY_ADDRESSES: DeliveryAddress[] = [
-    {
-      id: 'dn-q1',
-      fullName: 'Hoàng Văn Chuẩn',
-      phoneNumber: '0985981024',
-      city: 'Đà Nẵng',
-      houseNumber: '24 Trần Kim Bảng',
-      note: 'Giao giờ hành chính',
-    },
-   
-  ];
+  const DEFAULT_DELIVERY_ADDRESSES: DeliveryAddress[] = [];
   const VIETNAM_CITY_OPTIONS = [
     'Hà Nội',
     'TP. Hồ Chí Minh',
@@ -79,7 +69,7 @@
     const [searchValue, setSearchValue] = useState('');
     const [navLinks, setNavLinks] = useState<NavigationItem[]>([]);
     const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>(DEFAULT_DELIVERY_ADDRESSES);
-    const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>(DEFAULT_DELIVERY_ADDRESSES[0].id);
+    const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>('');
     const [isDeliveryStorageHydrated, setIsDeliveryStorageHydrated] = useState(false);
     const [deliveryFullNameInput, setDeliveryFullNameInput] = useState('');
     const [deliveryPhoneNumberInput, setDeliveryPhoneNumberInput] = useState('');
@@ -87,13 +77,14 @@
     const [deliveryHouseNumberInput, setDeliveryHouseNumberInput] = useState('');
     const [deliveryNoteInput, setDeliveryNoteInput] = useState('');
     const selectedDeliveryAddress =
-      deliveryAddresses.find((address) => address.id === selectedDeliveryAddressId) || deliveryAddresses[0];
+      deliveryAddresses.find((address) => address.id === selectedDeliveryAddressId) ||
+      (deliveryAddresses.length > 0 ? deliveryAddresses[0] : undefined);
     const selectedDeliveryText = selectedDeliveryAddress
       ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
-      : user?.address || 'your address';
+      : '';
     const selectedDeliveryMapQuery = selectedDeliveryAddress
       ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
-      : user?.address || '';
+      : '';
     const userMenuRef = useRef<HTMLDivElement>(null);
     const cartPreviewRef = useRef<HTMLDivElement>(null);
     const deliveryPanelRef = useRef<HTMLDivElement>(null);
@@ -150,13 +141,12 @@
     useEffect(() => {
       const syncFromStorage = () => {
         const storedAddresses = readDeliveryAddressesFromStorage();
-        if (storedAddresses.length === 0) {
-          setIsDeliveryStorageHydrated(true);
-          return;
-        }
-
         setDeliveryAddresses(storedAddresses);
         setSelectedDeliveryAddressId((currentSelectedId) => {
+          if (storedAddresses.length === 0) {
+            return '';
+          }
+
           const stillExists = storedAddresses.some((address) => address.id === currentSelectedId);
           return stillExists ? currentSelectedId : storedAddresses[0].id;
         });
@@ -184,16 +174,8 @@
         return;
       }
 
-      if (deliveryAddresses.length === 0) {
-        return;
-      }
-
       window.localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(deliveryAddresses));
-      const selectedStillExists = deliveryAddresses.some((address) => address.id === selectedDeliveryAddressId);
-      if (!selectedStillExists) {
-        setSelectedDeliveryAddressId(deliveryAddresses[0].id);
-      }
-    }, [deliveryAddresses, isDeliveryStorageHydrated, selectedDeliveryAddressId]);
+    }, [deliveryAddresses, isDeliveryStorageHydrated]);
 
     useEffect(() => {
       const handlePointerDown = (event: PointerEvent) => {
@@ -285,12 +267,8 @@
       setDeliveryAddresses((currentAddresses) => {
         const nextAddresses = currentAddresses.filter((address) => address.id !== addressId);
 
-        if (nextAddresses.length === 0) {
-          return currentAddresses;
-        }
-
         if (selectedDeliveryAddressId === addressId) {
-          setSelectedDeliveryAddressId(nextAddresses[0].id);
+          setSelectedDeliveryAddressId(nextAddresses[0]?.id || '');
         }
 
         return nextAddresses;
@@ -381,8 +359,7 @@
                                 aria-label="Xoá địa chỉ"
                                 className="text-red-500 hover:text-red-600 transition-colors mt-0.5"
                                 onClick={() => handleRemoveDeliveryAddress(address.id)}
-                                disabled={deliveryAddresses.length === 1}
-                                title={deliveryAddresses.length === 1 ? 'Cần tối thiểu 1 địa chỉ' : 'Xoá địa chỉ'}
+                                title="Xoá địa chỉ"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>

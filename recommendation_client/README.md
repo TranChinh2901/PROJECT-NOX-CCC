@@ -2,6 +2,24 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Environment variables
+
+Create a local env file from the example:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Common variables:
+
+```env
+# Backend REST API base URL
+NEXT_PUBLIC_API_BASE=http://localhost:5000/api/v1
+
+# WebSocket base URL (notifications)
+NEXT_PUBLIC_WS_URL=ws://localhost:5000
+```
+
 First, run the development server:
 
 ```bash
