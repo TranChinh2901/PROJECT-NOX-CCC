@@ -28,6 +28,220 @@ export interface ProductFilterOptions {
   limit?: number;
 }
 
+export interface ProductSearchContext {
+  categoryIds?: number[];
+  brandNames?: string[];
+  queryVariants?: string[];
+  requiredTerms?: string[];
+  preferredTerms?: string[];
+  avoidTerms?: string[];
+  strictCategory?: boolean;
+  strictBrand?: boolean;
+}
+
+type SearchableProductEntry = {
+  product: Product;
+  leafCategoryName: string;
+  normalizedLeafCategoryName: string;
+  normalizedBrandName: string;
+  searchText: string;
+};
+
+const SEARCH_NOISE_PREFIXES = [
+  'toi dang tim',
+  'toi can tim',
+  'toi muon tim',
+  'toi muon mua',
+  'toi dang can',
+  'toi can',
+  'minh dang tim',
+  'minh can tim',
+  'minh can',
+  'em dang tim',
+  'em can tim',
+  'em can',
+  'cho minh xem',
+  'cho toi xem',
+  'cho minh',
+  'cho toi',
+  'tim cho toi',
+  'can mua',
+];
+
+const SEARCH_QUERY_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bchoi game\b/g, 'gaming'],
+  [/\bdanh choi game\b/g, 'gaming'],
+  [/\bcho game\b/g, 'gaming'],
+];
+
+const normalizeSearchText = (value: unknown): string =>
+  String(value ?? '')
+    .replace(/đ/gi, (char) => (char === 'Đ' ? 'D' : 'd'))
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getLeafCategoryName = (value: string | null | undefined): string => {
+  const categoryName = value?.trim();
+  if (!categoryName) {
+    return '';
+  }
+
+  const parts = categoryName.split(' - ').map((part) => part.trim()).filter(Boolean);
+  return parts[parts.length - 1] ?? categoryName;
+};
+
+const stripSearchNoisePrefix = (query: string): string => {
+  let nextQuery = query.trim();
+
+  while (nextQuery) {
+    const matchedPrefix = SEARCH_NOISE_PREFIXES.find((prefix) => nextQuery.startsWith(`${prefix} `));
+    if (!matchedPrefix) {
+      break;
+    }
+
+    nextQuery = nextQuery.slice(matchedPrefix.length).trim();
+  }
+
+  return nextQuery;
+};
+
+const applySearchQueryReplacements = (query: string): string =>
+  SEARCH_QUERY_REPLACEMENTS.reduce(
+    (currentQuery, [pattern, replacement]) => currentQuery.replace(pattern, replacement).trim(),
+    query,
+  );
+
+const buildSearchQueryVariants = (query: string, matchedLeafCategories: string[]): string[] => {
+  const normalizedQuery = normalizeSearchText(query);
+  const strippedQuery = stripSearchNoisePrefix(normalizedQuery);
+  const replacedQuery = applySearchQueryReplacements(strippedQuery || normalizedQuery);
+
+  return Array.from(
+    new Set(
+      [
+        normalizedQuery,
+        strippedQuery,
+        replacedQuery,
+        ...matchedLeafCategories,
+      ].filter((value): value is string => Boolean(value && value.length >= 2)),
+    ),
+  );
+};
+
+const normalizeSearchValues = (values: string[] | undefined): string[] =>
+  Array.from(
+    new Set(
+      (values ?? [])
+        .map((value) => normalizeSearchText(value))
+        .filter((value) => value.length >= 2),
+    ),
+  );
+
+const buildSearchableProductEntry = (product: Product): SearchableProductEntry => {
+  const leafCategoryName = getLeafCategoryName(product.category?.name);
+  const searchTextParts = [
+    product.name,
+    product.description,
+    product.short_description,
+    product.sku,
+    product.brand?.name,
+    product.category?.name,
+    leafCategoryName,
+    ...(product.variants ?? []).flatMap((variant) => [variant.color, variant.size, variant.material]),
+  ]
+    .map((value) => normalizeSearchText(value))
+    .filter(Boolean);
+
+  return {
+    product,
+    leafCategoryName,
+    normalizedLeafCategoryName: normalizeSearchText(leafCategoryName),
+    normalizedBrandName: normalizeSearchText(product.brand?.name),
+    searchText: Array.from(new Set(searchTextParts)).join(' '),
+  };
+};
+
+const collectMatchingLeafCategories = (
+  entries: SearchableProductEntry[],
+  normalizedQuery: string,
+): string[] =>
+  Array.from(
+    new Set(
+      entries
+        .map((entry) => entry.normalizedLeafCategoryName)
+        .filter((leafCategoryName) => leafCategoryName.length >= 2 && normalizedQuery.includes(leafCategoryName)),
+    ),
+  );
+
+const runSearch = (
+  entries: SearchableProductEntry[],
+  queryVariants: string[],
+  limit: number,
+  context?: ProductSearchContext,
+): SearchableProductEntry[] => {
+  if (entries.length === 0 || queryVariants.length === 0) {
+    return [];
+  }
+
+  const fuse = new Fuse(entries, {
+    keys: [
+      { name: 'searchText', weight: 3 },
+      { name: 'normalizedLeafCategoryName', weight: 1.75 },
+    ],
+    threshold: 0.55,
+    includeScore: true,
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+  });
+
+  const bestMatchesByProductId = new Map<number, { entry: SearchableProductEntry; score: number }>();
+  const requiredTerms = normalizeSearchValues(context?.requiredTerms);
+  const preferredTerms = normalizeSearchValues(context?.preferredTerms);
+  const avoidTerms = normalizeSearchValues(context?.avoidTerms);
+  const preferredBrands = normalizeSearchValues(context?.brandNames);
+
+  for (const queryVariant of queryVariants) {
+    const searchResults = fuse.search(queryVariant);
+
+    for (const result of searchResults) {
+      const productId = result.item.product.id;
+      let nextScore = result.score ?? Number.POSITIVE_INFINITY;
+      const searchableText = result.item.searchText;
+
+      const missingRequiredTerms = requiredTerms.filter((term) => !searchableText.includes(term)).length;
+      const matchedPreferredTerms = preferredTerms.filter((term) => searchableText.includes(term)).length;
+      const matchedAvoidTerms = avoidTerms.filter((term) => searchableText.includes(term)).length;
+      const brandMatched = preferredBrands.includes(result.item.normalizedBrandName);
+
+      nextScore += missingRequiredTerms * 0.35;
+      nextScore -= matchedPreferredTerms * 0.08;
+      nextScore += matchedAvoidTerms * 0.2;
+
+      if (brandMatched) {
+        nextScore -= 0.12;
+      }
+
+      const currentBest = bestMatchesByProductId.get(productId);
+
+      if (!currentBest || nextScore < currentBest.score) {
+        bestMatchesByProductId.set(productId, {
+          entry: result.item,
+          score: nextScore,
+        });
+      }
+    }
+  }
+
+  return Array.from(bestMatchesByProductId.values())
+    .sort((left, right) => left.score - right.score)
+    .slice(0, limit)
+    .map(({ entry }) => entry);
+};
+
 export class ProductService {
   private productRepository: Repository<Product>;
   private productVariantRepository: Repository<ProductVariant>;
@@ -296,7 +510,12 @@ export class ProductService {
   }
 
   async searchProducts(query: string, limit: number = 20) {
-    if (!query || query.trim().length < 2) {
+    return this.searchProductsWithContext(query, limit);
+  }
+
+  async searchProductsWithContext(query: string, limit: number = 20, context: ProductSearchContext = {}) {
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery || normalizedQuery.length < 2) {
       return { data: [], suggestions: [] };
     }
 
@@ -305,30 +524,41 @@ export class ProductService {
       relations: ['category', 'brand', 'variants', 'images']
     });
 
-    const fuse = new Fuse(products, {
-      keys: [
-        { name: 'name', weight: 2 },
-        { name: 'description', weight: 1 },
-        { name: 'short_description', weight: 1.5 },
-        { name: 'sku', weight: 1.2 },
-        { name: 'brand.name', weight: 1.5 },
-        { name: 'category.name', weight: 1.3 },
-        { name: 'variants.color', weight: 0.8 },
-        { name: 'variants.size', weight: 0.8 },
-        { name: 'variants.material', weight: 0.8 }
-      ],
-      threshold: 0.4,
-      includeScore: true,
-      minMatchCharLength: 2
-    });
-
-    const searchResults = fuse.search(query.trim());
-    
-    const limitedResults = searchResults.slice(0, limit);
-    const matchedProducts = limitedResults.map((result: { item: Product }) => result.item);
+    const searchableEntries = products.map((product) => buildSearchableProductEntry(product));
+    const explicitCategoryIds = Array.from(new Set((context.categoryIds ?? []).filter((value) => Number.isInteger(value))));
+    const explicitBrandNames = normalizeSearchValues(context.brandNames);
+    const matchedLeafCategories = explicitCategoryIds.length > 0
+      ? searchableEntries
+          .filter((entry) => explicitCategoryIds.includes(entry.product.category?.id ?? -1))
+          .map((entry) => entry.normalizedLeafCategoryName)
+      : collectMatchingLeafCategories(searchableEntries, normalizedQuery);
+    const categoryPreferredEntries = explicitCategoryIds.length > 0
+      ? searchableEntries.filter((entry) => explicitCategoryIds.includes(entry.product.category?.id ?? -1))
+      : matchedLeafCategories.length > 0
+        ? searchableEntries.filter((entry) => matchedLeafCategories.includes(entry.normalizedLeafCategoryName))
+        : searchableEntries;
+    const brandPreferredEntries = explicitBrandNames.length > 0
+      ? categoryPreferredEntries.filter((entry) => explicitBrandNames.includes(entry.normalizedBrandName))
+      : categoryPreferredEntries;
+    const preferredEntries = brandPreferredEntries.length > 0
+      ? brandPreferredEntries
+      : context.strictBrand
+        ? []
+        : categoryPreferredEntries;
+    const queryVariants = Array.from(
+      new Set([
+        ...buildSearchQueryVariants(query, matchedLeafCategories),
+        ...normalizeSearchValues(context.queryVariants),
+      ]),
+    );
+    const rankedEntries = runSearch(preferredEntries, queryVariants, limit, context);
+    const fallbackEntries = rankedEntries.length > 0 || preferredEntries === searchableEntries || context.strictCategory
+      ? rankedEntries
+      : runSearch(searchableEntries, queryVariants, limit, context);
+    const matchedProducts = fallbackEntries.map((entry) => entry.product);
 
     const suggestions = Array.from(
-      new Set(searchResults.slice(0, 5).map((result: { item: Product }) => result.item.name))
+      new Set(fallbackEntries.slice(0, 5).map((entry) => entry.product.name))
     );
 
     const productIds = matchedProducts.map((product) => product.id);

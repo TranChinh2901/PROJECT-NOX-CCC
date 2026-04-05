@@ -1,10 +1,12 @@
 import { GoogleGenAI } from '@google/genai';
 import {
   CHATBOT_NOT_CONFIGURED_REPLY,
+  CHATBOT_TEMPORARY_UNAVAILABLE_REPLY,
   buildConversationInput,
   createGeminiClient,
   extractOutputText,
   generateChatbotReply,
+  sanitizeConversationContents,
   sanitizeConversationHistory,
 } from '../../../src/utils/chatbot/chatbot';
 import * as chatbotContext from '../../../src/utils/chatbot/chatbot-context';
@@ -62,6 +64,34 @@ describe('chatbot util', () => {
     ]);
   });
 
+  it('sanitizes persisted Gemini contents and keeps alternating user/model turns', () => {
+    const sanitized = sanitizeConversationContents([
+      { role: 'model', parts: [{ text: 'ignore because history must start with user' }] },
+      { role: 'user', parts: [{ text: 'Xin chào' }] },
+      { role: 'user', parts: [{ text: 'duplicate user turn' }] },
+      {
+        role: 'model',
+        parts: [{ functionCall: { id: 'call-1', name: 'search_products', args: { query: 'monitor' } }, thoughtSignature: 'sig-1' }],
+      },
+      {
+        role: 'user',
+        parts: [{ functionResponse: { id: 'call-1', name: 'search_products', response: { result: 'ok' } } }],
+      },
+    ]);
+
+    expect(sanitized).toEqual([
+      { role: 'user', parts: [{ text: 'Xin chào' }] },
+      {
+        role: 'model',
+        parts: [{ functionCall: { id: 'call-1', name: 'search_products', args: { query: 'monitor' } }, thoughtSignature: 'sig-1' }],
+      },
+      {
+        role: 'user',
+        parts: [{ functionResponse: { id: 'call-1', name: 'search_products', response: { result: 'ok' } } }],
+      },
+    ]);
+  });
+
   it('builds Gemini contents from the conversation history', () => {
     expect(
       buildConversationInput([{ role: 'assistant', content: 'Chào bạn' }], 'Tôi muốn mua tai nghe'),
@@ -111,6 +141,7 @@ describe('chatbot util', () => {
       reply: CHATBOT_NOT_CONFIGURED_REPLY,
       model: 'gemini-3-flash-preview',
       configured: false,
+      historyContents: [],
     });
 
     expect(MockedGoogleGenAI).not.toHaveBeenCalled();
@@ -125,7 +156,7 @@ describe('chatbot util', () => {
     expect(MockedGoogleGenAI).toHaveBeenCalledWith({
       apiKey: 'test-key',
       httpOptions: {
-        timeout: 30000,
+        timeout: 60000,
       },
     });
   });
@@ -140,7 +171,7 @@ describe('chatbot util', () => {
       apiKey: 'test-key',
       httpOptions: {
         baseUrl: 'https://proxy.example.com',
-        timeout: 30000,
+        timeout: 60000,
       },
     });
   });
@@ -164,12 +195,22 @@ describe('chatbot util', () => {
       reply: 'Bạn nên xem mẫu laptop mỏng nhẹ 14 inch.',
       model: 'gemini-3-flash-preview',
       configured: true,
+      historyContents: [
+        {
+          role: 'user',
+          parts: [{ text: 'Tư vấn laptop đi học' }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Bạn nên xem mẫu laptop mỏng nhẹ 14 inch.' }],
+        },
+      ],
     });
 
     expect(MockedGoogleGenAI).toHaveBeenCalledWith({
       apiKey: 'test-key',
       httpOptions: {
-        timeout: 30000,
+        timeout: 60000,
       },
     });
     expect(mockGenerateContent).toHaveBeenCalledWith(
@@ -241,6 +282,44 @@ describe('chatbot util', () => {
       reply: 'Bạn có thể tham khảo Dell UltraSharp 27 vì phù hợp nhu cầu văn phòng.',
       model: 'gemini-3-flash-preview',
       configured: true,
+      historyContents: [
+        {
+          role: 'user',
+          parts: [{ text: 'Tư vấn màn hình Dell 27 inch' }],
+        },
+        {
+          role: 'model',
+          parts: [
+            {
+              functionCall: {
+                id: 'call-1',
+                name: 'search_products',
+                args: {
+                  query: 'màn hình Dell 27 inch',
+                },
+              },
+            },
+          ],
+        },
+        {
+          role: 'user',
+          parts: [
+            {
+              functionResponse: {
+                name: 'search_products',
+                id: 'call-1',
+                response: {
+                  products: [{ id: 10, name: 'Dell UltraSharp 27' }],
+                },
+              },
+            },
+          ],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Bạn có thể tham khảo Dell UltraSharp 27 vì phù hợp nhu cầu văn phòng.' }],
+        },
+      ],
     });
 
     expect(mockedExecuteChatbotFunctionCall).toHaveBeenCalledWith(
@@ -271,5 +350,29 @@ describe('chatbot util', () => {
         ]),
       }),
     );
+  });
+
+  it('retries once and returns a graceful reply when Gemini times out', async () => {
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error('Deadline expired before operation could complete.'))
+      .mockRejectedValueOnce(new Error('Deadline expired before operation could complete.'));
+
+    await expect(
+      generateChatbotReply({
+        message: 'Xin chào',
+        config: {
+          apiKey: 'test-key',
+          model: 'gemini-3-flash-preview',
+          chatbotInstructions: 'Bạn là trợ lý mua sắm.',
+        },
+      }),
+    ).resolves.toEqual({
+      reply: CHATBOT_TEMPORARY_UNAVAILABLE_REPLY,
+      model: 'gemini-3-flash-preview',
+      configured: true,
+      historyContents: [],
+    });
+
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
   });
 });

@@ -3,6 +3,7 @@ import {
   executeChatbotFunctionCall,
   getChatbotFunctionDeclarations,
 } from '../../../src/utils/chatbot/chatbot-context';
+import { planCatalogSearch } from '../../../src/utils/chatbot/chatbot-query-planner';
 import { AppDataSource } from '../../../src/config/database.config';
 import categoryService from '../../../src/modules/products/category.service';
 import { Order } from '../../../src/modules/orders/entity/order';
@@ -22,6 +23,7 @@ jest.mock('../../../src/modules/products/product.service', () => ({
   __esModule: true,
   default: {
     searchProducts: jest.fn(),
+    searchProductsWithContext: jest.fn(),
     getProductById: jest.fn(),
     getProductBySlug: jest.fn(),
     getFeaturedProducts: jest.fn(),
@@ -43,14 +45,31 @@ jest.mock('../../../src/config/database.config', () => ({
   },
 }));
 
+jest.mock('../../../src/utils/chatbot/chatbot-query-planner', () => ({
+  planCatalogSearch: jest.fn(),
+}));
+
 const mockedProductService = jest.mocked(productService);
 const mockedOrderService = jest.mocked(orderService);
 const mockedCategoryService = jest.mocked(categoryService);
 const mockedGetRepository = jest.mocked(AppDataSource.getRepository);
+const mockedPlanCatalogSearch = jest.mocked(planCatalogSearch);
 
 describe('chatbot function tools', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedPlanCatalogSearch.mockResolvedValue({
+      rewrittenQuery: 'man hinh Dell 27 gaming',
+      matchedCategoryIds: [2],
+      matchedCategoryNames: ['PC - Màn Hình - Màn Hình'],
+      brands: ['Dell'],
+      requiredTerms: ['27 inch'],
+      preferredTerms: ['gaming'],
+      avoidTerms: [],
+      strictCategory: true,
+      strictBrand: true,
+      confidence: 0.9,
+    });
   });
 
   it('declares the expected Gemini function tools', () => {
@@ -68,7 +87,22 @@ describe('chatbot function tools', () => {
   });
 
   it('executes product search with scoped product summaries', async () => {
-    mockedProductService.searchProducts.mockResolvedValue({
+    mockedCategoryService.getAllCategories.mockResolvedValue([
+      {
+        id: 1,
+        name: 'PC - Màn Hình',
+        slug: 'pc-man-hinh',
+        children: [
+          {
+            id: 2,
+            name: 'PC - Màn Hình - Màn Hình',
+            slug: 'pc-man-hinh-man-hinh',
+            children: [],
+          },
+        ],
+      },
+    ] as never);
+    mockedProductService.searchProductsWithContext.mockResolvedValue({
       data: [
         {
           id: 10,
@@ -108,10 +142,31 @@ describe('chatbot function tools', () => {
       {},
     );
 
-    expect(mockedProductService.searchProducts).toHaveBeenCalledWith('man hinh Dell 27', 3);
+    expect(mockedPlanCatalogSearch).toHaveBeenCalledWith(
+      'man hinh Dell 27',
+      [
+        {
+          id: 2,
+          name: 'PC - Màn Hình - Màn Hình',
+          slug: 'pc-man-hinh-man-hinh',
+          leafName: 'Màn Hình',
+        },
+      ],
+    );
+    expect(mockedProductService.searchProductsWithContext).toHaveBeenCalledWith('man hinh Dell 27 gaming', 3, {
+      categoryIds: [2],
+      brandNames: ['Dell'],
+      queryVariants: ['man hinh Dell 27', 'man hinh Dell 27 gaming', '27 inch', 'gaming'],
+      requiredTerms: ['27 inch'],
+      preferredTerms: ['gaming'],
+      avoidTerms: [],
+      strictCategory: true,
+      strictBrand: true,
+    });
     expect(result).toEqual(
       expect.objectContaining({
         query: 'man hinh Dell 27',
+        rewritten_query: 'man hinh Dell 27 gaming',
         suggestions: ['Dell 27 inch'],
         products: [
           expect.objectContaining({
@@ -119,6 +174,12 @@ describe('chatbot function tools', () => {
             name: 'Dell UltraSharp 27',
             total_available: 333,
             stock_status: 'in_stock',
+          }),
+        ],
+        matched_categories: [
+          expect.objectContaining({
+            id: 2,
+            leaf_name: 'Màn Hình',
           }),
         ],
       }),

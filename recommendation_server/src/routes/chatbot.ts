@@ -5,11 +5,18 @@ import authService from '@/modules/auth/auth.service';
 import { RoleType } from '@/modules/auth/enum/auth.enum';
 import { AuthenticatedRequest } from '@/middlewares/auth.middleware';
 import { asyncHandle } from '@/utils/handle-error';
-import { CHATBOT_MAX_MESSAGE_LENGTH, generateChatbotReply, sanitizeConversationHistory } from '@/utils/chatbot/chatbot';
+import {
+  CHATBOT_MAX_MESSAGE_LENGTH,
+  CHATBOT_TEMPORARY_UNAVAILABLE_REPLY,
+  generateChatbotReply,
+  sanitizeConversationContents,
+  sanitizeConversationHistory,
+} from '@/utils/chatbot/chatbot';
 
 type ChatbotRequestBody = {
   message?: string;
   history?: unknown;
+  historyContents?: unknown;
 };
 
 const router = Router();
@@ -68,11 +75,25 @@ export const chatbotMessageHandler = async (req: Request, res: Response): Promis
   }
 
   const history = sanitizeConversationHistory(body.history);
-  const result = await generateChatbotReply({
-    message,
-    history,
-    userId: authenticatedRequest.user?.id,
-  });
+  const historyContents = sanitizeConversationContents(body.historyContents);
+  let result;
+
+  try {
+    result = await generateChatbotReply({
+      message,
+      history,
+      historyContents,
+      userId: authenticatedRequest.user?.id,
+    });
+  } catch (error) {
+    console.error('Chatbot request failed:', error);
+    result = {
+      reply: CHATBOT_TEMPORARY_UNAVAILABLE_REPLY,
+      model: 'gemini-3-flash-preview',
+      configured: true,
+      historyContents: [],
+    };
+  }
 
   return new AppResponse({
     message: result.configured

@@ -3,7 +3,7 @@
 import React, { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Bot, Loader2, MessageCircle, Send, X } from 'lucide-react';
-import { chatbotApi, type ChatbotMessage } from '@/lib/api/chatbot.api';
+import { chatbotApi, type ChatbotHistoryContent, type ChatbotMessage } from '@/lib/api/chatbot.api';
 
 type WidgetMessage = ChatbotMessage & {
   id: string;
@@ -123,6 +123,7 @@ export function FloatingChatbot() {
   const [isSending, setIsSending] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<WidgetMessage[]>([INITIAL_MESSAGE]);
+  const [historyContents, setHistoryContents] = useState<ChatbotHistoryContent[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const recentHistory = useMemo(
@@ -176,16 +177,18 @@ export function FloatingChatbot() {
         const response = await chatbotApi.sendMessage({
           message: nextMessage,
           history: recentHistory,
+          historyContents,
         });
 
         appendMessage('assistant', response.reply);
+        setHistoryContents(response.historyContents ?? []);
       } catch {
         appendMessage('assistant', CHATBOT_ERROR_REPLY);
       } finally {
         setIsSending(false);
       }
     },
-    [appendMessage, inputValue, isSending, recentHistory],
+    [appendMessage, historyContents, inputValue, isSending, recentHistory],
   );
 
   if (shouldHideChatbot(pathname)) {

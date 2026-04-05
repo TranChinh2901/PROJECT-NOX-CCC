@@ -5,6 +5,10 @@ import { PaymentMethod } from '@/modules/orders/enum/order.enum';
 import orderService from '@/modules/orders/order.service';
 import productService from '@/modules/products/product.service';
 import { Promotion } from '@/modules/promotions/entity/promotion';
+import {
+  planCatalogSearch,
+  type CatalogCategoryOption,
+} from '@/utils/chatbot/chatbot-query-planner';
 
 type ChatbotFunctionDeclaration = {
   name: string;
@@ -27,6 +31,13 @@ export type ChatbotFunctionCall = {
 };
 
 const MAX_TOOL_LIMIT = 5;
+
+type CategoryTreeNode = {
+  id: number;
+  name: string;
+  slug: string;
+  children?: CategoryTreeNode[];
+};
 
 const clampLimit = (value: unknown, fallback: number): number => {
   const numericValue = typeof value === 'number' ? value : Number(value);
@@ -164,6 +175,22 @@ const loadActivePromotions = async (limit: number) => {
 
   return promotions.map(summarizePromotion);
 };
+
+const flattenLeafCategories = (categories: CategoryTreeNode[]): CatalogCategoryOption[] =>
+  categories.flatMap((category) => {
+    if (!Array.isArray(category.children) || category.children.length === 0) {
+      return [
+        {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          leafName: category.name.split(' - ').pop()?.trim() || category.name,
+        },
+      ];
+    }
+
+    return flattenLeafCategories(category.children);
+  });
 
 export const getChatbotFunctionDeclarations = (): ChatbotFunctionDeclaration[] => [
   {
@@ -318,10 +345,33 @@ export const executeChatbotFunctionCall = async (
       }
 
       const limit = clampLimit(args.limit, 3);
-      const searchResults = await productService.searchProducts(query, limit);
+      const leafCategories = flattenLeafCategories((await categoryService.getAllCategories()) as CategoryTreeNode[]);
+      const searchPlan = await planCatalogSearch(query, leafCategories);
+      const searchResults = await productService.searchProductsWithContext(
+        searchPlan.rewrittenQuery || query,
+        limit,
+        {
+          categoryIds: searchPlan.matchedCategoryIds,
+          brandNames: searchPlan.brands,
+          queryVariants: [query, searchPlan.rewrittenQuery, ...searchPlan.requiredTerms, ...searchPlan.preferredTerms],
+          requiredTerms: searchPlan.requiredTerms,
+          preferredTerms: searchPlan.preferredTerms,
+          avoidTerms: searchPlan.avoidTerms,
+          strictCategory: searchPlan.strictCategory && searchPlan.confidence >= 0.45,
+          strictBrand: searchPlan.strictBrand,
+        },
+      );
 
       return {
         query,
+        rewritten_query: searchPlan.rewrittenQuery,
+        matched_categories: leafCategories
+          .filter((category) => searchPlan.matchedCategoryIds.includes(category.id))
+          .map(({ id, name, slug, leafName }) => ({ id, name, slug, leaf_name: leafName })),
+        required_terms: searchPlan.requiredTerms,
+        preferred_terms: searchPlan.preferredTerms,
+        avoid_terms: searchPlan.avoidTerms,
+        brands: searchPlan.brands,
         suggestions: searchResults.suggestions ?? [],
         products: Array.isArray(searchResults.data) ? searchResults.data.slice(0, limit).map(summarizeProduct) : [],
       };
