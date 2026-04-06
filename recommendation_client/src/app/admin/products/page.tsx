@@ -73,6 +73,8 @@ export default function ProductManagement() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [productModalError, setProductModalError] = useState('');
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+  const [deleteProductError, setDeleteProductError] = useState('');
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -238,12 +240,26 @@ export default function ProductManagement() {
 
   const handleDeleteProduct = async (productId: number) => {
     try {
-      // TODO: Implement delete product API
-      // await productApi.deleteProduct(productId);
-      setProducts(products.filter(product => product.id !== productId));
+      setIsDeletingProduct(true);
+      setDeleteProductError('');
+      await adminApi.deleteProduct(productId);
+      setProducts((currentProducts) => {
+        const nextProducts = currentProducts.filter((product) => product.id !== productId);
+        recalculateStats(nextProducts);
+        return nextProducts;
+      });
+      setStats((currentStats) => ({
+        ...currentStats,
+        total: Math.max(currentStats.total - 1, 0),
+      }));
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Failed to delete product:', error);
+      setDeleteProductError(
+        error instanceof Error ? error.message : 'Không thể xóa sản phẩm. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsDeletingProduct(false);
     }
   };
 
@@ -515,7 +531,10 @@ export default function ProductManagement() {
                       <span className="text-sm">Chỉnh sửa</span>
                     </button>
                     <button
-                      onClick={() => setShowDeleteConfirm(product.id)}
+                      onClick={() => {
+                        setDeleteProductError('');
+                        setShowDeleteConfirm(product.id);
+                      }}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -591,7 +610,10 @@ export default function ProductManagement() {
                         <span className="text-sm">Chỉnh sửa</span>
                       </button>
                       <button
-                        onClick={() => setShowDeleteConfirm(product.id)}
+                        onClick={() => {
+                          setDeleteProductError('');
+                          setShowDeleteConfirm(product.id);
+                        }}
                         className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -830,18 +852,28 @@ export default function ProductManagement() {
             <p className="text-slate-500 mb-6">
               Bạn có chắc chắn muốn xóa sản phẩm này không? Hành động này không thể hoàn tác.
             </p>
+            {deleteProductError && (
+              <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                {deleteProductError}
+              </p>
+            )}
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
+                onClick={() => {
+                  setShowDeleteConfirm(null);
+                  setDeleteProductError('');
+                }}
+                disabled={isDeletingProduct}
+                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Hủy
               </button>
               <button
                 onClick={() => handleDeleteProduct(showDeleteConfirm)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                disabled={isDeletingProduct}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Xóa
+                {isDeletingProduct ? 'Đang xóa...' : 'Xóa'}
               </button>
             </div>
           </div>

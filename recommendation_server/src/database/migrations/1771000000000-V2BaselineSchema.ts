@@ -189,6 +189,7 @@ export class V2BaselineSchema1771000000000 implements MigrationInterface {
         \`is_primary\` TINYINT(1) NOT NULL DEFAULT 0,
         \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        \`deleted_at\` DATETIME NULL,
         PRIMARY KEY (\`id\`),
         KEY \`IDX_product_images_product_id\` (\`product_id\`),
         KEY \`IDX_product_images_variant_id\` (\`variant_id\`),

@@ -65,6 +65,8 @@
     'Phan Thiết',
   ];
 
+  const headerContainerClass = 'mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-8';
+
   export const Header: React.FC = () => {
     const { itemCount } = useCart();
     const { wishlistCount } = useWishlist();
@@ -300,7 +302,7 @@
         </Suspense>
         <header className="fixed top-0 left-0 right-0 z-50">
         <div className={`bg-white border-b border-gray-200 shadow-sm transition-all ${isScrolled ? 'py-1.5' : 'py-2'}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={headerContainerClass}>
             <div className="flex items-center gap-3">
               <Link href="/" className="flex items-center flex-shrink-0" aria-label="TechNova home">
                 <Image
@@ -707,7 +709,7 @@
         </div>
 
         <div className="bg-gray-50 border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={headerContainerClass}>
             <div className="flex items-center gap-6 py-2 overflow-x-auto scrollbar-hide">
               <button className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-[#CA8A04] transition-colors whitespace-nowrap">
                 <Menu className="w-4 h-4" />

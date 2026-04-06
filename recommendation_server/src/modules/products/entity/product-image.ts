@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, DeleteDateColumn, Index } from "typeorm";
 import { Product } from "./product";
 import { ProductVariant } from "./product-variant";
 
@@ -45,5 +45,6 @@ export class ProductImage {
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 
+  @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
   deleted_at?: Date;
 }
