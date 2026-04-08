@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { WishlistCollection, WishlistItem, WishlistContextType, WishlistResponse } from '../types/wishlist.types';
 import { useAuth } from './AuthContext';
 import { wishlistApi } from '../lib/api/wishlist.api';
+import { recommendationApi } from '../lib/api/recommendation.api';
 import toast from 'react-hot-toast';
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -38,7 +39,7 @@ const matchesWishlistItem = (item: WishlistItem, targetId: number): boolean => {
 };
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const wishlistCount = items.length;
@@ -78,6 +79,21 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const newItem = await wishlistApi.addItem(productId);
       setItems(prev => [...prev, newItem]);
+
+      if (user?.id) {
+        recommendationApi.trackBehavior({
+          userId: user.id,
+          behaviorType: 'wishlist',
+          productId: getProductId(newItem) ?? productId,
+          metadata: {
+            source: 'wishlist_context',
+            wishlistItemId: newItem.id,
+          },
+        }).catch((error: unknown) => {
+          console.error('Failed to track wishlist addition:', error);
+        });
+      }
+
       toast.success('Added to wishlist');
     } catch (error) {
       console.error('Failed to add to wishlist', error);
