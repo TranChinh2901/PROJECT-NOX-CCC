@@ -6,10 +6,13 @@ import { ProductImage } from "@/modules/products/entity/product-image";
 import { Category } from "@/modules/products/entity/category";
 import { Brand } from "@/modules/products/entity/brand";
 import { Inventory } from "@/modules/inventory/entity/inventory";
+import { OrderItem } from "@/modules/orders/entity/order-item";
+import { CartItem } from "@/modules/cart/entity/cart-item";
+import { WishlistItem } from "@/modules/wishlist/entity/wishlist-item";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
-import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto, UpdateProductVariantDto } from "@/modules/admin/dto/admin-product.dto";
+import { AdminProductListQueryDto, CreateProductDto, CreateProductVariantDto, UpdateProductDto, UpdateProductVariantDto } from "@/modules/admin/dto/admin-product.dto";
 import cloudinaryProductImageService from "@/services/cloudinary-product-image.service";
 import supabaseStorageService from "@/services/supabase-storage.service";
 
@@ -27,6 +30,9 @@ export class AdminProductService {
   private categoryRepository: Repository<Category>;
   private brandRepository: Repository<Brand>;
   private inventoryRepository: Repository<Inventory>;
+  private orderItemRepository: Repository<OrderItem>;
+  private cartItemRepository: Repository<CartItem>;
+  private wishlistItemRepository: Repository<WishlistItem>;
   private dataSource: DataSource;
 
   constructor() {
@@ -36,6 +42,9 @@ export class AdminProductService {
     this.categoryRepository = AppDataSource.getRepository(Category);
     this.brandRepository = AppDataSource.getRepository(Brand);
     this.inventoryRepository = AppDataSource.getRepository(Inventory);
+    this.orderItemRepository = AppDataSource.getRepository(OrderItem);
+    this.cartItemRepository = AppDataSource.getRepository(CartItem);
+    this.wishlistItemRepository = AppDataSource.getRepository(WishlistItem);
     this.dataSource = AppDataSource;
   }
 
@@ -55,8 +64,8 @@ export class AdminProductService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.brand', 'brand')
-      .leftJoinAndSelect('product.variants', 'variants')
-      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.variants', 'variants', 'variants.deleted_at IS NULL')
+      .leftJoinAndSelect('product.images', 'images', 'images.deleted_at IS NULL')
       .withDeleted()
       .andWhere('product.deleted_at IS NULL');
 
@@ -109,11 +118,16 @@ export class AdminProductService {
   }
 
   async getProduct(id: number) {
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ['category', 'brand', 'variants', 'images'],
-      withDeleted: true // Include soft-deleted for admin
-    });
+    const product = await this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.variants', 'variants', 'variants.deleted_at IS NULL')
+      .leftJoinAndSelect('product.images', 'images', 'images.deleted_at IS NULL')
+      .withDeleted()
+      .where('product.id = :id', { id })
+      .andWhere('product.deleted_at IS NULL')
+      .getOne();
 
     if (!product) {
       throw new AppError(
@@ -254,6 +268,76 @@ export class AdminProductService {
     return this.getProduct(updatedProduct.id);
   }
 
+  async createProductVariant(productId: number, data: CreateProductVariantDto) {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
+
+    if (!product) {
+      throw new AppError(
+        'Product not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_NOT_FOUND
+      );
+    }
+
+    const existingSKU = await this.productVariantRepository.findOne({
+      where: { sku: data.sku },
+      withDeleted: true,
+    });
+
+    if (existingSKU) {
+      throw new AppError(
+        'Product variant SKU already exists',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.DUPLICATE_SKU
+      );
+    }
+
+    if (data.barcode) {
+      const existingBarcode = await this.productVariantRepository.findOne({
+        where: { barcode: data.barcode },
+        withDeleted: true,
+      });
+
+      if (existingBarcode) {
+        throw new AppError(
+          'Product variant barcode already exists',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.DUPLICATE_ENTRY
+        );
+      }
+    }
+
+    const nextSortOrder =
+      data.sort_order ??
+      ((product.variants ?? []).reduce((maxSortOrder, variant) => {
+        return Math.max(maxSortOrder, Number(variant.sort_order) || 0);
+      }, -1) + 1);
+
+    const priceAdjustment = Number(data.price_adjustment ?? 0);
+
+    const variant = this.productVariantRepository.create({
+      product_id: productId,
+      sku: data.sku,
+      size: data.size || undefined,
+      color: data.color || undefined,
+      color_code: data.color_code || undefined,
+      material: data.material || undefined,
+      price_adjustment: priceAdjustment,
+      final_price: Number(product.base_price) + priceAdjustment,
+      weight_kg: data.weight_kg ?? undefined,
+      barcode: data.barcode || undefined,
+      is_active: data.is_active ?? true,
+      sort_order: nextSortOrder,
+    });
+
+    const savedVariant = await this.productVariantRepository.save(variant);
+
+    return this.formatProductVariantResponse(savedVariant);
+  }
+
   async updateProductVariant(productId: number, variantId: number, data: UpdateProductVariantDto) {
     const product = await this.productRepository.findOne({
       where: { id: productId },
@@ -288,6 +372,7 @@ export class AdminProductService {
           sku: data.sku,
           id: Not(variantId),
         },
+        withDeleted: true,
       });
 
       if (existingSKU) {
@@ -295,6 +380,24 @@ export class AdminProductService {
           'Product variant SKU already exists',
           HttpStatusCode.BAD_REQUEST,
           ErrorCode.DUPLICATE_SKU
+        );
+      }
+    }
+
+    if (data.barcode && data.barcode !== variant.barcode) {
+      const existingBarcode = await this.productVariantRepository.findOne({
+        where: {
+          barcode: data.barcode,
+          id: Not(variantId),
+        },
+        withDeleted: true,
+      });
+
+      if (existingBarcode) {
+        throw new AppError(
+          'Product variant barcode already exists',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.DUPLICATE_ENTRY
         );
       }
     }
@@ -343,6 +446,43 @@ export class AdminProductService {
     const updatedVariant = await this.productVariantRepository.save(variant);
 
     return this.formatProductVariantResponse(updatedVariant);
+  }
+
+  async deleteProductVariant(productId: number, variantId: number): Promise<void> {
+    const variant = await this.productVariantRepository.findOne({
+      where: {
+        id: variantId,
+        product_id: productId,
+      },
+    });
+
+    if (!variant) {
+      throw new AppError(
+        'Product variant not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_NOT_FOUND
+      );
+    }
+
+    const [inventoryCount, orderItemCount, cartItemCount, wishlistItemCount] = await Promise.all([
+      this.inventoryRepository.count({ where: { variant_id: variantId } }),
+      this.orderItemRepository.count({ where: { variant_id: variantId } }),
+      this.cartItemRepository.count({ where: { variant_id: variantId } }),
+      this.wishlistItemRepository.count({ where: { variant_id: variantId } }),
+    ]);
+
+    if (inventoryCount > 0 || orderItemCount > 0 || cartItemCount > 0 || wishlistItemCount > 0) {
+      throw new AppError(
+        'Variant cannot be deleted because it is referenced by inventory, carts, wishlists, or orders',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.CONFLICT
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.softDelete(ProductImage, { product_id: productId, variant_id: variantId });
+      await manager.softDelete(ProductVariant, { id: variantId, product_id: productId });
+    });
   }
 
   async deleteProduct(id: number): Promise<void> {

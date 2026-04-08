@@ -11,7 +11,7 @@ import adminReviewController from '@/modules/admin/admin-review.controller';
 import adminOrderController from '@/modules/admin/admin-order.controller';
 import analyticsController from '@/modules/admin/analytics.controller';
 import AdminNotificationController from '@/modules/notification/presentation/AdminNotificationController';
-import { createProductSchema, listProductsQuerySchema, updateProductSchema, updateProductVariantSchema } from '@/modules/admin/schema/admin-product.schema';
+import { createProductSchema, createProductVariantSchema, listProductsQuerySchema, updateProductSchema, updateProductVariantSchema } from '@/modules/admin/schema/admin-product.schema';
 import { createCategorySchema, updateCategorySchema } from '@/modules/admin/schema/admin-category.schema';
 import { createBrandSchema, updateBrandSchema } from '@/modules/admin/schema/admin-brand.schema';
 import { updateUserSchema, bulkDeactivateSchema } from '@/modules/admin/schema/admin-user.schema';
@@ -69,10 +69,22 @@ router.patch(
   asyncHandle(adminProductController.updateProduct)
 );
 
+router.post(
+  '/products/:id/variants',
+  validateParams(idParamSchema),
+  validateBody(createProductVariantSchema),
+  asyncHandle(adminProductController.createProductVariant)
+);
+
 router.patch(
   '/products/:id/variants/:variantId',
   validateBody(updateProductVariantSchema),
   asyncHandle(adminProductController.updateProductVariant)
+);
+
+router.delete(
+  '/products/:id/variants/:variantId',
+  asyncHandle(adminProductController.deleteProductVariant)
 );
 
 router.delete(

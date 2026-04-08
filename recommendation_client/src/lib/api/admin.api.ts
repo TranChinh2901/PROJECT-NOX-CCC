@@ -188,6 +188,19 @@ export interface UpdateAdminProductVariantDto {
   sort_order?: number;
 }
 
+export interface CreateAdminProductVariantDto {
+  sku: string;
+  size?: string | null;
+  color?: string | null;
+  color_code?: string | null;
+  material?: string | null;
+  price_adjustment?: number;
+  weight_kg?: number | null;
+  barcode?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
 export const adminApi = {
   // Dashboard statistics
   async getDashboardStats(): Promise<DashboardStats> {
@@ -289,6 +302,17 @@ export const adminApi = {
       `/admin/products/${productId}/variants/${variantId}`,
       data,
     );
+  },
+
+  async createProductVariant(
+    productId: number,
+    data: CreateAdminProductVariantDto,
+  ): Promise<ProductVariant> {
+    return await apiClient.post<ProductVariant>(`/admin/products/${productId}/variants`, data);
+  },
+
+  async deleteProductVariant(productId: number, variantId: number): Promise<void> {
+    return await apiClient.delete(`/admin/products/${productId}/variants/${variantId}`);
   },
 
   async uploadProductImages(

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AppResponse } from '@/common/success.response';
 import { HttpStatusCode } from '@/constants/status-code';
 import adminProductService from './admin-product.service';
-import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto, UpdateProductVariantDto } from './dto/admin-product.dto';
+import { AdminProductListQueryDto, CreateProductDto, CreateProductVariantDto, UpdateProductDto, UpdateProductVariantDto } from './dto/admin-product.dto';
 import { BulkOperationDto } from './dto/bulk-operation.dto';
 import { AppError } from '@/common/error.response';
 import { ErrorCode } from '@/constants/error-code';
@@ -69,6 +69,19 @@ class AdminProductController {
     }).sendResponse(res);
   }
 
+  async createProductVariant(req: Request, res: Response) {
+    const productId = parseInt(req.params.id);
+    const data: CreateProductVariantDto = req.body;
+
+    const variant = await adminProductService.createProductVariant(productId, data);
+
+    return new AppResponse({
+      message: 'Product variant created successfully',
+      statusCode: HttpStatusCode.CREATED,
+      data: variant
+    }).sendResponse(res);
+  }
+
   async deleteProduct(req: Request, res: Response) {
     const id = parseInt(req.params.id);
 
@@ -92,6 +105,19 @@ class AdminProductController {
       message: 'Product variant updated successfully',
       statusCode: HttpStatusCode.OK,
       data: variant
+    }).sendResponse(res);
+  }
+
+  async deleteProductVariant(req: Request, res: Response) {
+    const productId = parseInt(req.params.id);
+    const variantId = parseInt(req.params.variantId);
+
+    await adminProductService.deleteProductVariant(productId, variantId);
+
+    return new AppResponse({
+      message: 'Product variant deleted successfully',
+      statusCode: HttpStatusCode.OK,
+      data: null
     }).sendResponse(res);
   }
 

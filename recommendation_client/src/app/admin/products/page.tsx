@@ -56,6 +56,19 @@ const emptyProductForm: ProductEditForm = {
   is_featured: false,
 };
 
+const emptyVariantForm: VariantEditForm = {
+  sku: '',
+  size: '',
+  color: '',
+  color_code: '',
+  material: '',
+  price_adjustment: '0',
+  weight_kg: '',
+  barcode: '',
+  is_active: true,
+  sort_order: '0',
+};
+
 const toOptionalNumber = (value: string): number | null =>
   value.trim() === '' ? null : Number(value);
 
@@ -118,17 +131,21 @@ export default function ProductManagement() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductEditForm>(emptyProductForm);
   const [variantForms, setVariantForms] = useState<Record<number, VariantEditForm>>({});
+  const [newVariantForm, setNewVariantForm] = useState<VariantEditForm>(emptyVariantForm);
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [isCreatingVariant, setIsCreatingVariant] = useState(false);
   const [savingVariantId, setSavingVariantId] = useState<number | null>(null);
+  const [deletingVariantId, setDeletingVariantId] = useState<number | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isDeletingImageId, setIsDeletingImageId] = useState<number | null>(null);
   const [productModalError, setProductModalError] = useState('');
   const [productImageActionError, setProductImageActionError] = useState('');
   const [variantErrors, setVariantErrors] = useState<Record<number, string>>({});
+  const [newVariantError, setNewVariantError] = useState('');
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
   const [deleteProductError, setDeleteProductError] = useState('');
   const [stats, setStats] = useState({
@@ -224,24 +241,41 @@ export default function ProductManagement() {
     setVariantForms(
       Object.fromEntries((product.variants ?? []).map((variant) => [variant.id, mapVariantToForm(variant)])),
     );
+    setNewVariantForm({
+      ...emptyVariantForm,
+      sort_order: String(product.variants?.length ?? 0),
+    });
     setProductImages(sortedImages);
     setSelectedImageId(sortedImages[0]?.id ?? null);
     setProductModalError('');
     setProductImageActionError('');
     setVariantErrors({});
+    setNewVariantError('');
+    setIsCreatingVariant(false);
   };
 
   const closeEditModal = () => {
-    if (isSavingProduct || isUploadingImages || isDeletingImageId !== null) return;
+    if (
+      isSavingProduct ||
+      isCreatingVariant ||
+      savingVariantId !== null ||
+      deletingVariantId !== null ||
+      isUploadingImages ||
+      isDeletingImageId !== null
+    ) return;
     setEditingProduct(null);
     setProductForm(emptyProductForm);
     setVariantForms({});
+    setNewVariantForm(emptyVariantForm);
     setProductImages([]);
     setSelectedImageId(null);
     setProductModalError('');
     setProductImageActionError('');
     setVariantErrors({});
+    setNewVariantError('');
+    setIsCreatingVariant(false);
     setSavingVariantId(null);
+    setDeletingVariantId(null);
     if (galleryInputRef.current) {
       galleryInputRef.current.value = '';
     }
@@ -425,6 +459,30 @@ export default function ProductManagement() {
     }));
   };
 
+  const validateVariantForm = (variantForm: VariantEditForm) => {
+    if (!variantForm.sku.trim()) {
+      return 'SKU phiên bản là bắt buộc.';
+    }
+
+    if (variantForm.color_code.trim() && !/^#(?:[0-9a-fA-F]{6})$/.test(variantForm.color_code.trim())) {
+      return 'Mã màu phải theo định dạng #RRGGBB.';
+    }
+
+    if (variantForm.price_adjustment.trim() === '' || Number.isNaN(Number(variantForm.price_adjustment))) {
+      return 'Điều chỉnh giá phải là một số hợp lệ.';
+    }
+
+    if (
+      variantForm.sort_order.trim() === '' ||
+      Number.isNaN(Number(variantForm.sort_order)) ||
+      !Number.isInteger(Number(variantForm.sort_order))
+    ) {
+      return 'Thứ tự hiển thị phải là một số nguyên.';
+    }
+
+    return '';
+  };
+
   const resetVariantForm = (variant: ProductVariant) => {
     setVariantForms((currentForms) => ({
       ...currentForms,
@@ -446,38 +504,19 @@ export default function ProductManagement() {
       return;
     }
 
-    if (!variantForm.sku.trim()) {
+    const validationError = validateVariantForm(variantForm);
+    if (validationError) {
       setVariantErrors((currentErrors) => ({
         ...currentErrors,
-        [variant.id]: 'SKU phiên bản là bắt buộc.',
+        [variant.id]: validationError,
       }));
       return;
     }
 
-    if (variantForm.color_code.trim() && !/^#(?:[0-9a-fA-F]{6})$/.test(variantForm.color_code.trim())) {
+    if (hasPendingBasePriceChange) {
       setVariantErrors((currentErrors) => ({
         ...currentErrors,
-        [variant.id]: 'Mã màu phải theo định dạng #RRGGBB.',
-      }));
-      return;
-    }
-
-    if (variantForm.price_adjustment.trim() === '' || Number.isNaN(Number(variantForm.price_adjustment))) {
-      setVariantErrors((currentErrors) => ({
-        ...currentErrors,
-        [variant.id]: 'Điều chỉnh giá phải là một số hợp lệ.',
-      }));
-      return;
-    }
-
-    if (
-      variantForm.sort_order.trim() === '' ||
-      Number.isNaN(Number(variantForm.sort_order)) ||
-      !Number.isInteger(Number(variantForm.sort_order))
-    ) {
-      setVariantErrors((currentErrors) => ({
-        ...currentErrors,
-        [variant.id]: 'Thứ tự hiển thị phải là một số nguyên.',
+        [variant.id]: 'Hãy lưu giá cơ bản của sản phẩm trước khi cập nhật phiên bản.',
       }));
       return;
     }
@@ -512,6 +551,137 @@ export default function ProductManagement() {
       }));
     } finally {
       setSavingVariantId(null);
+    }
+  };
+
+  const handleCreateVariant = async () => {
+    if (!editingProduct) {
+      return;
+    }
+
+    const validationError = validateVariantForm(newVariantForm);
+    if (validationError) {
+      setNewVariantError(validationError);
+      return;
+    }
+
+    if (hasPendingBasePriceChange) {
+      setNewVariantError('Hãy lưu giá cơ bản của sản phẩm trước khi tạo phiên bản mới.');
+      return;
+    }
+
+    try {
+      setIsCreatingVariant(true);
+      setNewVariantError('');
+
+      const createdVariant = await adminApi.createProductVariant(editingProduct.id, {
+        sku: newVariantForm.sku.trim(),
+        size: toOptionalString(newVariantForm.size),
+        color: toOptionalString(newVariantForm.color),
+        color_code: toOptionalString(newVariantForm.color_code),
+        material: toOptionalString(newVariantForm.material),
+        price_adjustment: Number(newVariantForm.price_adjustment),
+        weight_kg: toOptionalNumber(newVariantForm.weight_kg),
+        barcode: toOptionalString(newVariantForm.barcode),
+        is_active: newVariantForm.is_active,
+        sort_order: Number(newVariantForm.sort_order),
+      });
+
+      setEditingProduct((currentProduct) =>
+        currentProduct?.id === editingProduct.id
+          ? {
+              ...currentProduct,
+              variants: [...(currentProduct.variants ?? []), createdVariant],
+            }
+          : currentProduct,
+      );
+
+      setProducts((currentProducts) =>
+        currentProducts.map((product) =>
+          product.id === editingProduct.id
+            ? {
+                ...product,
+                variants: [...(product.variants ?? []), createdVariant],
+              }
+            : product,
+        ),
+      );
+
+      setVariantForms((currentForms) => ({
+        ...currentForms,
+        [createdVariant.id]: mapVariantToForm(createdVariant),
+      }));
+      setNewVariantForm({
+        ...emptyVariantForm,
+        sort_order: String(Number(createdVariant.sort_order ?? 0) + 1),
+      });
+    } catch (error) {
+      console.error('Failed to create product variant:', error);
+      setNewVariantError(
+        error instanceof Error ? error.message : 'Không thể tạo phiên bản. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsCreatingVariant(false);
+    }
+  };
+
+  const handleDeleteVariant = async (variant: ProductVariant) => {
+    if (!editingProduct) {
+      return;
+    }
+
+    if (!window.confirm(`Xóa phiên bản "${getVariantFormLabel(variantForms[variant.id] ?? mapVariantToForm(variant))}"?`)) {
+      return;
+    }
+
+    try {
+      setDeletingVariantId(variant.id);
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: '',
+      }));
+
+      await adminApi.deleteProductVariant(editingProduct.id, variant.id);
+
+      setEditingProduct((currentProduct) =>
+        currentProduct?.id === editingProduct.id
+          ? {
+              ...currentProduct,
+              variants: (currentProduct.variants ?? []).filter((currentVariant) => currentVariant.id !== variant.id),
+            }
+          : currentProduct,
+      );
+
+      setProducts((currentProducts) =>
+        currentProducts.map((product) =>
+          product.id === editingProduct.id
+            ? {
+                ...product,
+                variants: (product.variants ?? []).filter((currentVariant) => currentVariant.id !== variant.id),
+              }
+            : product,
+        ),
+      );
+
+      setVariantForms((currentForms) => {
+        const nextForms = { ...currentForms };
+        delete nextForms[variant.id];
+        return nextForms;
+      });
+      setVariantErrors((currentErrors) => {
+        const nextErrors = { ...currentErrors };
+        delete nextErrors[variant.id];
+        return nextErrors;
+      });
+    } catch (error) {
+      console.error('Failed to delete product variant:', error);
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]:
+          error instanceof Error ? error.message : 'Không thể xóa phiên bản. Vui lòng thử lại.',
+      }));
+    } finally {
+      setDeletingVariantId(null);
     }
   };
 
@@ -630,7 +800,14 @@ export default function ProductManagement() {
 
   const selectedProductImage =
     productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
-  const editingProductVariants = editingProduct?.variants ?? [];
+  const editingProductVariants = [...(editingProduct?.variants ?? [])].sort(
+    (firstVariant, secondVariant) =>
+      Number(firstVariant.sort_order ?? 0) - Number(secondVariant.sort_order ?? 0),
+  );
+  const hasPendingBasePriceChange =
+    Boolean(editingProduct) &&
+    productForm.base_price.trim() !== '' &&
+    Number(productForm.base_price) !== Number(editingProduct?.base_price ?? 0);
 
   if (initialLoading) {
     return (
@@ -1043,7 +1220,14 @@ export default function ProductManagement() {
               <button
                 type="button"
                 onClick={closeEditModal}
-                disabled={isSavingProduct || isUploadingImages || isDeletingImageId !== null}
+                disabled={
+                  isSavingProduct ||
+                  isCreatingVariant ||
+                  savingVariantId !== null ||
+                  deletingVariantId !== null ||
+                  isUploadingImages ||
+                  isDeletingImageId !== null
+                }
                 className="rounded-full border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Đóng hộp thoại chỉnh sửa sản phẩm"
               >
@@ -1235,6 +1419,152 @@ export default function ProductManagement() {
                     <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
                       SKU gốc: {editingProduct.sku}
                     </span>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Thêm phiên bản mới</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Tạo nhanh một phiên bản mới từ giá cơ bản hiện tại.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleCreateVariant();
+                      }}
+                      disabled={isCreatingVariant || hasPendingBasePriceChange}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#7366ff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isCreatingVariant ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      {isCreatingVariant ? 'Đang tạo...' : 'Thêm phiên bản'}
+                    </button>
+                  </div>
+
+                  {hasPendingBasePriceChange && (
+                    <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                      Bạn đã thay đổi giá cơ bản nhưng chưa lưu. Hãy lưu sản phẩm trước khi tạo hoặc cập nhật phiên bản để giá cuối cùng được tính đúng.
+                    </p>
+                  )}
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <input
+                      type="text"
+                      placeholder="SKU phiên bản"
+                      value={newVariantForm.sku}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, sku: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Kích cỡ"
+                      value={newVariantForm.size}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, size: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Màu sắc"
+                      value={newVariantForm.color}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, color: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#FFFFFF"
+                      value={newVariantForm.color_code}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, color_code: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Chất liệu"
+                      value={newVariantForm.material}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, material: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Barcode"
+                      value={newVariantForm.barcode}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, barcode: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Điều chỉnh giá"
+                      value={newVariantForm.price_adjustment}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, price_adjustment: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      placeholder="Khối lượng (kg)"
+                      value={newVariantForm.weight_kg}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, weight_kg: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Thứ tự hiển thị"
+                      value={newVariantForm.sort_order}
+                      onChange={(e) => {
+                        setNewVariantForm((current) => ({ ...current, sort_order: e.target.value }));
+                        setNewVariantError('');
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                    />
+                    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={newVariantForm.is_active}
+                        onChange={(e) => {
+                          setNewVariantForm((current) => ({ ...current, is_active: e.target.checked }));
+                          setNewVariantError('');
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-[#7366ff] focus:ring-[#7366ff]"
+                      />
+                      Kích hoạt ngay
+                    </label>
+                  </div>
+
+                  {newVariantError && (
+                    <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                      {newVariantError}
+                    </p>
                   )}
                 </div>
 
@@ -1434,7 +1764,7 @@ export default function ProductManagement() {
                               <button
                                 type="button"
                                 onClick={() => resetVariantForm(variant)}
-                                disabled={isSavingThisVariant}
+                                disabled={isSavingThisVariant || deletingVariantId === variant.id}
                                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 Hoàn tác
@@ -1444,11 +1774,26 @@ export default function ProductManagement() {
                                 onClick={() => {
                                   void handleSaveVariant(variant);
                                 }}
-                                disabled={isSavingThisVariant}
+                                disabled={isSavingThisVariant || deletingVariantId === variant.id || hasPendingBasePriceChange}
                                 className="inline-flex items-center gap-2 rounded-lg bg-[#7366ff] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {isSavingThisVariant && <LoaderCircle className="h-4 w-4 animate-spin" />}
                                 {isSavingThisVariant ? 'Đang lưu...' : 'Lưu phiên bản'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void handleDeleteVariant(variant);
+                                }}
+                                disabled={isSavingThisVariant || deletingVariantId === variant.id}
+                                className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {deletingVariantId === variant.id ? (
+                                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                {deletingVariantId === variant.id ? 'Đang xóa...' : 'Xóa'}
                               </button>
                             </div>
                           </div>
@@ -1639,6 +1984,14 @@ export default function ProductManagement() {
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={closeEditModal}
+                disabled={
+                  isSavingProduct ||
+                  isCreatingVariant ||
+                  savingVariantId !== null ||
+                  deletingVariantId !== null ||
+                  isUploadingImages ||
+                  isDeletingImageId !== null
+                }
                 className="rounded border border-slate-200 bg-white px-4 py-2 text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Hủy
