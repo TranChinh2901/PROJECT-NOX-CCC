@@ -564,7 +564,7 @@ async function seedDatabase() {
     console.log(`Created ${warehouses.length} warehouses`);
 
     console.log("Seeding products with variants and images...");
-    console.log("Ensuring Supabase sample product images...");
+    console.log("Ensuring Cloudinary sample product images...");
     await ensureSeedProductAssets();
     const products: Product[] = [];
     const variants: ProductVariant[] = [];

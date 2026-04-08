@@ -5,7 +5,7 @@
   "scripts": {
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-users-roles.ts",
     "seed:ecommerce": "ts-node -r tsconfig-paths/register src/scripts/seed-ecommerce.ts",
-    "sync:product-images": "ts-node -r tsconfig-paths/register src/scripts/sync-product-images-to-supabase.ts",
+    "sync:product-images": "ts-node -r tsconfig-paths/register src/scripts/sync-product-images-to-cloudinary.ts",
     "test:api": "ts-node -r tsconfig-paths/register src/scripts/test-api.ts",
     "test": "jest",
     "seed:blog": "ts-node -r tsconfig-paths/register src/scripts/seed-blog.ts",
