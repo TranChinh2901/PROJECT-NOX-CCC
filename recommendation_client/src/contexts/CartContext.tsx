@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { CartContextType, Cart, AddToCartDto, UpdateCartItemDto, CartItem, Product, ProductVariant, CartItemVariant } from '@/types';
 import { CartStatus } from '@/types/order.types';
 import { cartApi, productApi } from '@/lib/api';
+import { recommendationApi } from '@/lib/api/recommendation.api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CART_STORAGE_KEY = 'cart:state';
@@ -279,12 +280,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       await cartApi.addToCart({ variant_id: data.variant_id, quantity: safeQuantity });
       const synced = await syncWithAPI();
+
+      if (user?.id) {
+        recommendationApi.trackBehavior({
+          userId: user.id,
+          behaviorType: 'add_to_cart',
+          productId: product?.id ?? variant?.product_id,
+          categoryId: product?.category?.id,
+          metadata: {
+            source: 'cart_context',
+            variantId: data.variant_id,
+            quantity: safeQuantity,
+          },
+        }).catch((error: unknown) => {
+          console.error('Failed to track add to cart:', error);
+        });
+      }
+
       return synced ?? updatedCart;
     } catch (error) {
       console.error('Failed to sync addToCart with API:', error);
       return updatedCart;
     }
-  }, [cart, isAuthenticated, syncWithAPI, calculateItemCount, persistCart]);
+  }, [cart, isAuthenticated, syncWithAPI, calculateItemCount, persistCart, user?.id]);
   const updateQuantity = useCallback(async (itemId: number, data: UpdateCartItemDto): Promise<Cart> => {
     let updatedCart: Cart | null = null;
     const now = new Date();

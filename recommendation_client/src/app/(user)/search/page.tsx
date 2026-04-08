@@ -7,7 +7,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Skeleton } from '@/components/common/Skeleton';
-import { productApi, categoryApi } from '@/lib/api';
+import { productApi, categoryApi, recommendationApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Product, Category } from '@/types';
 import { buildProductPath } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -121,6 +122,7 @@ function ProductCard({ product }: { product: Product }) {
 function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [sortBy, setSortBy] = useState('relevance');
   const [products, setProducts] = useState<Product[]>([]);
@@ -131,6 +133,7 @@ function SearchPageContent() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const trackedSearchRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -188,6 +191,33 @@ function SearchPageContent() {
       isActive = false;
     };
   }, [searchQuery]);
+
+  useEffect(() => {
+    const normalizedQuery = searchQuery.trim();
+
+    if (!user?.id || normalizedQuery.length < 2) {
+      return;
+    }
+
+    const trackingKey = `${user.id}:${normalizedQuery.toLowerCase()}`;
+    if (trackedSearchRef.current === trackingKey) {
+      return;
+    }
+
+    trackedSearchRef.current = trackingKey;
+
+    recommendationApi.trackBehavior({
+      userId: user.id,
+      behaviorType: 'search',
+      metadata: {
+        query: normalizedQuery,
+        page: 'search',
+      },
+    }).catch((trackingError: unknown) => {
+      trackedSearchRef.current = null;
+      console.error('Failed to track search behavior:', trackingError);
+    });
+  }, [user?.id, searchQuery]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -289,7 +319,7 @@ function SearchPageContent() {
           <div className="mb-4 flex items-center gap-2">
             <Search className="w-5 h-5 text-gray-500" />
             <h1 className="text-xl text-gray-900 font-medium">
-              Kết quả tìm kiếm cho '<span className="text-[#CA8A04] font-bold">{searchQuery}</span>'
+              Kết quả tìm kiếm cho <span className="text-[#CA8A04] font-bold">&apos;{searchQuery}&apos;</span>
             </h1>
           </div>
 
