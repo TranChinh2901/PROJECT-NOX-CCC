@@ -46,6 +46,17 @@ class MomoController {
       message: ack.message,
     });
   }
+
+  async confirmReturn(req: Request, res: Response) {
+    const payload = req.body as MomoIpnPayload;
+    const ack = await momoService.handleIpn(payload);
+
+    return new AppResponse({
+      message: ack.message,
+      statusCode: ack.resultCode === 0 ? HttpStatusCode.OK : HttpStatusCode.BAD_REQUEST,
+      data: ack,
+    }).sendResponse(res);
+  }
 }
 
 export default new MomoController();

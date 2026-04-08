@@ -17,7 +17,6 @@ const avatarStorage = new CloudinaryStorage({
 });
 
 
-
 const fileFilter = (req: any, file: any, cb: any) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -39,7 +38,7 @@ export const uploadAvatar = multer({
   storage: avatarStorage,
   fileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024 //2mb
+    fileSize: 2 * 1024 * 1024 
   }
 });
 

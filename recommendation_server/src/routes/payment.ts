@@ -7,5 +7,6 @@ const router = Router();
 
 router.post('/momo/create', authMiddleware(), asyncHandle(momoController.createPayment));
 router.post('/momo/ipn', asyncHandle(momoController.ipn));
+router.post('/momo/return', asyncHandle(momoController.confirmReturn));
 
 export default router;

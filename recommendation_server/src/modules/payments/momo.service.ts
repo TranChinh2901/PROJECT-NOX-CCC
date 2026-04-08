@@ -26,7 +26,7 @@ export interface MomoIpnPayload {
   partnerCode: string;
   orderId: string;
   requestId: string;
-  amount: number;
+  amount: number | string;
   orderInfo: string;
   orderType: string;
   transId: number;
@@ -39,6 +39,8 @@ export interface MomoIpnPayload {
 }
 
 const MOMO_REQUEST_TYPE = 'payWithMethod';
+const MOMO_MIN_AMOUNT = 1000;
+const MOMO_MAX_AMOUNT = 50000000;
 
 class MomoService {
   private ensureMomoConfig() {
@@ -66,6 +68,30 @@ class MomoService {
     return crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
   }
 
+  private getInternalOrderId(payload: MomoIpnPayload): number | null {
+    if (payload.extraData) {
+      try {
+        const decoded = JSON.parse(Buffer.from(payload.extraData, 'base64').toString('utf8')) as {
+          orderId?: unknown;
+        };
+        const decodedOrderId = Number(decoded.orderId);
+        if (Number.isInteger(decodedOrderId) && decodedOrderId > 0) {
+          return decodedOrderId;
+        }
+      } catch {
+        // Fall back to parsing legacy MoMo orderId below.
+      }
+    }
+
+    const uniqueOrderIdMatch = payload.orderId.match(/^ORDER_(\d+)_/);
+    if (uniqueOrderIdMatch) {
+      return Number(uniqueOrderIdMatch[1]);
+    }
+
+    const legacyOrderId = Number(payload.orderId);
+    return Number.isInteger(legacyOrderId) && legacyOrderId > 0 ? legacyOrderId : null;
+  }
+
   async createPayment({ userId, orderId }: CreateMomoPaymentInput) {
     const momoConfig = this.ensureMomoConfig();
 
@@ -89,8 +115,17 @@ class MomoService {
     }
 
     const amount = Math.round(Number(order.total_amount));
+
+    if (!Number.isInteger(amount) || amount < MOMO_MIN_AMOUNT || amount > MOMO_MAX_AMOUNT) {
+      throw new AppError(
+        `MoMo only supports payment amounts from ${MOMO_MIN_AMOUNT} to ${MOMO_MAX_AMOUNT} VND`,
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.PAYMENT_FAILED
+      );
+    }
+
     const requestId = `MOMO_${order.id}_${Date.now()}`;
-    const momoOrderId = String(order.id);
+    const momoOrderId = `ORDER_${order.id}_${Date.now()}`;
     const orderInfo = `Thanh toan don hang ${order.order_number}`;
     const extraData = Buffer.from(
       JSON.stringify({ orderId: order.id, orderNumber: order.order_number }),
@@ -197,8 +232,8 @@ class MomoService {
       };
     }
 
-    const numericOrderId = Number(payload.orderId);
-    if (!Number.isInteger(numericOrderId) || numericOrderId <= 0) {
+    const internalOrderId = this.getInternalOrderId(payload);
+    if (!internalOrderId) {
       return {
         resultCode: 1,
         message: 'Invalid order id',
@@ -206,7 +241,7 @@ class MomoService {
     }
 
     const orderRepo = AppDataSource.getRepository(Order);
-    const order = await orderRepo.findOne({ where: { id: numericOrderId } });
+    const order = await orderRepo.findOne({ where: { id: internalOrderId } });
 
     if (!order) {
       return {
@@ -215,16 +250,32 @@ class MomoService {
       };
     }
 
+    if (payload.partnerCode !== momoConfig.partnerCode) {
+      return {
+        resultCode: 1,
+        message: 'Invalid partner code',
+      };
+    }
+
+    if (Number(payload.amount) !== Math.round(Number(order.total_amount))) {
+      return {
+        resultCode: 1,
+        message: 'Invalid payment amount',
+      };
+    }
+
     await AppDataSource.transaction(async manager => {
-      const orderInTx = await manager.getRepository(Order).findOne({ where: { id: numericOrderId } });
+      const orderInTx = await manager.getRepository(Order).findOne({ where: { id: internalOrderId } });
       if (!orderInTx) return;
 
       const isPaymentSuccess = Number(payload.resultCode) === 0;
       const paymentNote = `MoMo tx=${payload.transId}, request=${payload.requestId}, result=${payload.resultCode}`;
       const oldInternalNotes = orderInTx.internal_notes || '';
-      const nextInternalNotes = oldInternalNotes
-        ? `${oldInternalNotes}\n${paymentNote}`
-        : paymentNote;
+      const nextInternalNotes = oldInternalNotes.includes(paymentNote)
+        ? oldInternalNotes
+        : oldInternalNotes
+          ? `${oldInternalNotes}\n${paymentNote}`
+          : paymentNote;
 
       if (isPaymentSuccess) {
         orderInTx.payment_status = PaymentStatus.PAID;

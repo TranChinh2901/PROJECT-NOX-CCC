@@ -5,8 +5,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { orderApi, paymentApi } from '@/lib/api';
 import { PaymentStatus } from '@/types';
+import type { MomoCallbackPayload } from '@/lib/api/payment.api';
 
 const MOMO_LAST_SESSION_KEY = 'technova_momo_last_session';
+const MOMO_CALLBACK_FIELDS: Array<keyof MomoCallbackPayload> = [
+  'partnerCode',
+  'orderId',
+  'requestId',
+  'amount',
+  'orderInfo',
+  'orderType',
+  'transId',
+  'resultCode',
+  'message',
+  'payType',
+  'responseTime',
+  'extraData',
+  'signature',
+];
 
 type MomoSessionTrace = {
   order_id?: number;
@@ -14,6 +30,18 @@ type MomoSessionTrace = {
   request_id?: string;
   pay_url?: string;
   created_at?: string;
+};
+
+const getOrderIdFromExtraData = (extraData: string | null): number | null => {
+  if (!extraData) return null;
+
+  try {
+    const decoded = JSON.parse(atob(extraData)) as { orderId?: unknown };
+    const orderId = Number(decoded.orderId);
+    return Number.isInteger(orderId) && orderId > 0 ? orderId : null;
+  } catch {
+    return null;
+  }
 };
 
 export default function MomoReturnClient() {
@@ -33,11 +61,13 @@ export default function MomoReturnClient() {
   const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    const callbackOrderId = Number(searchParams.get('orderId'));
+    const rawCallbackOrderId = searchParams.get('orderId') || '';
+    const callbackOrderId = Number(rawCallbackOrderId);
     const callbackRequestId = searchParams.get('requestId') || '';
     const callbackResultCode = searchParams.get('resultCode') || '';
     const callbackMessage = searchParams.get('message') || '';
     const callbackTransId = searchParams.get('transId') || '';
+    let storedTrace: MomoSessionTrace | null = null;
 
     setRequestId(callbackRequestId);
     setResultCode(callbackResultCode);
@@ -47,24 +77,39 @@ export default function MomoReturnClient() {
     try {
       const rawTrace = localStorage.getItem(MOMO_LAST_SESSION_KEY);
       if (rawTrace) {
-        setTrace(JSON.parse(rawTrace) as MomoSessionTrace);
+        storedTrace = JSON.parse(rawTrace) as MomoSessionTrace;
+        setTrace(storedTrace);
       }
     } catch (traceError) {
       console.error('Failed to parse MoMo trace data from localStorage', traceError);
     }
 
-    if (!Number.isInteger(callbackOrderId) || callbackOrderId <= 0) {
+    const resolvedOrderId =
+      Number.isInteger(callbackOrderId) && callbackOrderId > 0
+        ? callbackOrderId
+        : getOrderIdFromExtraData(searchParams.get('extraData')) ?? storedTrace?.order_id ?? null;
+
+    if (!resolvedOrderId) {
       setError('Invalid MoMo callback order id.');
       setIsLoading(false);
       return;
     }
 
-    setOrderId(callbackOrderId);
+    setOrderId(resolvedOrderId);
 
     const loadOrderStatus = async () => {
       try {
         setIsLoading(true);
-        const order = await orderApi.getOrderById(callbackOrderId);
+        const callbackPayload = MOMO_CALLBACK_FIELDS.reduce((payload, field) => {
+          payload[field] = searchParams.get(field) || '';
+          return payload;
+        }, {} as MomoCallbackPayload);
+
+        if (callbackPayload.signature) {
+          await paymentApi.confirmMomoReturn(callbackPayload);
+        }
+
+        const order = await orderApi.getOrderById(resolvedOrderId);
         setOrderNumber(order.order_number);
         setPaymentStatus(order.payment_status);
       } catch (loadError) {
