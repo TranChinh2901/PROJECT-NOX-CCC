@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 
-import { IsNull, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
 import { AppDataSource } from "@/config/database.config";
 import { ProductImage } from "@/modules/products/entity/product-image";
@@ -91,25 +91,24 @@ async function loadProductImages(
   productImageRepository: Repository<ProductImage>,
   options: ScriptOptions,
 ): Promise<ProductImage[]> {
-  const where: Partial<ProductImage> & { deleted_at: null } = {
-    deleted_at: IsNull() as null,
-  };
+  const query = productImageRepository
+    .createQueryBuilder("image")
+    .where("image.deleted_at IS NULL")
+    .orderBy("image.id", "ASC");
 
   if (options.imageId !== undefined) {
-    where.id = options.imageId;
+    query.andWhere("image.id = :imageId", { imageId: options.imageId });
   }
 
   if (options.productId !== undefined) {
-    where.product_id = options.productId;
+    query.andWhere("image.product_id = :productId", { productId: options.productId });
   }
 
-  return productImageRepository.find({
-    where,
-    order: {
-      id: "ASC",
-    },
-    take: options.limit,
-  });
+  if (options.limit !== undefined) {
+    query.take(options.limit);
+  }
+
+  return query.getMany();
 }
 
 function resolveManifestPath(manifestFile: string | undefined): string {
