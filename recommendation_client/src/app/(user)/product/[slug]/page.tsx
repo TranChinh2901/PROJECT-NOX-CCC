@@ -178,6 +178,7 @@ export default function ProductPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsSummary, setReviewsSummary] = useState<ProductReviewsSummary | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [relatedProductReasons, setRelatedProductReasons] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
@@ -198,7 +199,7 @@ export default function ProductPage() {
           router.replace(canonicalPath, { scroll: false });
         }
 
-        const [reviewsData, relatedProductsData] = await Promise.all([
+        const [reviewsData, relatedProductsResult] = await Promise.all([
           reviewApi.getProductReviews(productData.id).catch(() => ({
             data: [],
             summary: {
@@ -217,7 +218,7 @@ export default function ProductPage() {
             .getSimilarProducts(productData.id, 4)
             .then(async ({ recommendations }) => {
               if (recommendations.length === 0) {
-                return [];
+                return { products: [], reasons: {} as Record<number, string> };
               }
 
               const products = await Promise.all(
@@ -226,14 +227,24 @@ export default function ProductPage() {
                 )
               );
 
-              return products.filter((candidate): candidate is Product => Boolean(candidate));
+              return {
+                products: products.filter((candidate): candidate is Product => Boolean(candidate)),
+                reasons: recommendations.reduce<Record<number, string>>((accumulator, recommendation) => {
+                  accumulator[recommendation.productId] = recommendation.reason;
+                  return accumulator;
+                }, {}),
+              };
             })
-            .catch(() => productApi.getRelatedProducts(productData.id, 4).catch(() => []))
+            .catch(async () => ({
+              products: await productApi.getRelatedProducts(productData.id, 4).catch(() => []),
+              reasons: {},
+            }))
         ]);
         setProduct(productData);
         setReviews(reviewsData.data || []);
         setReviewsSummary(reviewsData.summary || null);
-        setRelatedProducts(relatedProductsData || []);
+        setRelatedProducts(relatedProductsResult.products || []);
+        setRelatedProductReasons(relatedProductsResult.reasons || {});
         setError(null);
       } catch (err: unknown) {
         console.error('Error fetching product:', err);
@@ -921,6 +932,7 @@ export default function ProductPage() {
                   const relatedDiscount = relatedProduct.compare_at_price && relatedProduct.base_price
                     ? Math.round(((relatedProduct.compare_at_price - relatedProduct.base_price) / relatedProduct.compare_at_price) * 100)
                     : null;
+                  const recommendationReason = relatedProductReasons[relatedProduct.id];
 
                   return (
                     <Link key={relatedProduct.id} href={buildProductPath(relatedProduct)} className="group block">
@@ -942,6 +954,11 @@ export default function ProductPage() {
 
                         <div className="space-y-3 p-5">
                           <div>
+                            {recommendationReason ? (
+                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-[#8a5a00]">
+                                {recommendationReason}
+                              </p>
+                            ) : null}
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
                               {relatedProduct.category?.name || 'Danh mục công nghệ'}
                             </p>
