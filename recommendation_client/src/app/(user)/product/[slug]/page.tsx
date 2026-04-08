@@ -8,7 +8,7 @@ import { Header } from '../../../../components/layout/Header';
 import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { ProductImage } from '../../../../components/common/ProductImage';
-import { productApi, reviewApi } from '@/lib/api';
+import { productApi, recommendationApi, reviewApi } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { Product, ProductReviewsSummary, ProductVariant, Review } from '@/types';
@@ -210,7 +210,22 @@ export default function ProductPage() {
               total_pages: 0
             }
           })),
-          productApi.getRelatedProducts(productData.id, 4).catch(() => [])
+          recommendationApi
+            .getSimilarProducts(productData.id, 4)
+            .then(async ({ recommendations }) => {
+              if (recommendations.length === 0) {
+                return [];
+              }
+
+              const products = await Promise.all(
+                recommendations.map((recommendation) =>
+                  productApi.getProductById(recommendation.productId).catch(() => null)
+                )
+              );
+
+              return products.filter((candidate): candidate is Product => Boolean(candidate));
+            })
+            .catch(() => productApi.getRelatedProducts(productData.id, 4).catch(() => []))
         ]);
         setProduct(productData);
         setReviews(reviewsData.data || []);

@@ -4,6 +4,7 @@ export { categoryApi } from './category.api';
 export { cartApi } from './cart.api';
 export { orderApi } from './order.api';
 export { reviewApi } from './review.api';
+export { recommendationApi } from './recommendation.api';
 export { notificationApi } from './notification.api';
 export { wishlistApi } from './wishlist.api';
 export { navigationApi } from './navigation.api';
