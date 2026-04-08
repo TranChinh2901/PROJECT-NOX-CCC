@@ -11,6 +11,7 @@ import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
 import { PaginationQueryDto } from "@/modules/admin/dto/pagination-query.dto";
 import { CreateProductDto, UpdateProductDto } from "@/modules/admin/dto/admin-product.dto";
+import cloudinaryProductImageService from "@/services/cloudinary-product-image.service";
 import supabaseStorageService from "@/services/supabase-storage.service";
 
 type UploadProductImagesOptions = {
@@ -354,12 +355,12 @@ export class AdminProductService {
     const uploadedImages: ProductImage[] = [];
 
     for (const [index, file] of files.entries()) {
-      const uploadResult = await supabaseStorageService.uploadProductImage(productId, file);
+      const uploadResult = await cloudinaryProductImageService.uploadProductImage(productId, file);
       const image = this.productImageRepository.create({
         product_id: productId,
         variant_id: variantId,
-        image_url: uploadResult.publicUrl,
-        thumbnail_url: uploadResult.publicUrl,
+        image_url: uploadResult.secureUrl,
+        thumbnail_url: uploadResult.secureUrl,
         alt_text: options.alt_text || file.originalname,
         sort_order: options.sort_order !== undefined
           ? options.sort_order + index
@@ -390,7 +391,12 @@ export class AdminProductService {
       );
     }
 
-    await supabaseStorageService.deleteProductImageByPublicUrl(image.image_url);
+    if (cloudinaryProductImageService.isCloudinaryUrl(image.image_url)) {
+      await cloudinaryProductImageService.deleteProductImageByUrl(image.image_url);
+    } else {
+      await supabaseStorageService.deleteProductImageByPublicUrl(image.image_url);
+    }
+
     await this.productImageRepository.delete({ id: imageId });
   }
 

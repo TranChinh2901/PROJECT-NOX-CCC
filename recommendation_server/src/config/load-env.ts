@@ -38,6 +38,7 @@ export const loadedEnv = {
     name: process.env.CLOUD_NAME,
     key: process.env.CLOUD_KEY,
     secret: process.env.CLOUD_SECRET,
+    productImagesFolder: firstDefinedOr("products", process.env.CLOUDINARY_PRODUCT_IMAGES_FOLDER),
   },
   supabase: {
     url: process.env.SUPABASE_URL,

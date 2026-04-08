@@ -129,24 +129,26 @@ REFRESH_SECRET=your_refresh_token_secret_here
 ACCESS_EXPIRES_IN=1h
 REFRESH_EXPIRES_IN=5d
 
-# Cloudinary (for image uploads)
+# Cloudinary (active backend for image uploads and product images)
 CLOUD_NAME=your_cloud_name
 CLOUD_KEY=your_cloud_key
 CLOUD_SECRET=your_cloud_secret
+CLOUDINARY_PRODUCT_IMAGES_FOLDER=products
 
-# Supabase Storage (for product images)
+# Supabase Storage (optional for legacy backfill / rollback scripts)
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_STORAGE_BUCKET_PRODUCTS=product-images
 ```
 
-Supabase notes:
+Product image notes:
 
-- Create a public Storage bucket named `product-images` or set `SUPABASE_STORAGE_BUCKET_PRODUCTS`.
-- The backend uses the service role key for server-side uploads, so do not expose it to the client.
+- Admin product image uploads now write Cloudinary secure URLs into `product_images.image_url` and `thumbnail_url`.
+- `CLOUDINARY_PRODUCT_IMAGES_FOLDER` defaults to `products` and becomes the Cloudinary folder prefix for product images.
 - Product image upload endpoints:
   - `POST /api/v1/admin/products/:id/images` with multipart field `images`
   - `DELETE /api/v1/admin/products/:id/images/:imageId`
+- Keep the Supabase settings only if you still need legacy product-image migration, inventory, or rollback tooling.
 
 ### 4. Run Database Migrations
 

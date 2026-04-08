@@ -55,6 +55,7 @@ REFRESH_EXPIRES_IN=5d
 CLOUD_NAME=your_cloud_name
 CLOUD_KEY=your_cloud_key
 CLOUD_SECRET=your_cloud_secret
+CLOUDINARY_PRODUCT_IMAGES_FOLDER=products
 
 # MoMo Sandbox Config
 MOMO_PARTNER_CODE=
@@ -70,6 +71,7 @@ Notes:
 - The backend also accepts `ACCESS_TOKEN_SECRET` / `REFRESH_TOKEN_SECRET`.
 - `DB_HOST` and `DB_PORT` must be real values. Placeholders like `....` will fail.
 - Set `DATABASE_TYPE=mariadb` when the server is MariaDB. Use `mysql` only for MySQL servers.
+- Product image uploads now use Cloudinary by default. `CLOUDINARY_PRODUCT_IMAGES_FOLDER` controls the product image folder prefix.
 
 ### Create the database
 
