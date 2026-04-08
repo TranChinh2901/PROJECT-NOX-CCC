@@ -74,7 +74,7 @@ function FlyToCartAnimation({
   imageUrl: string;
   onComplete: () => void;
 }) {
-  const [position, setPosition] = useState({ x: 0, y: 0, scale: 1, opacity: 1 });
+  const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const cartIcon = document.querySelector('[data-cart-icon]');
@@ -94,6 +94,8 @@ function FlyToCartAnimation({
     const startTime = performance.now();
 
     const animate = (currentTime: number) => {
+      if (!elementRef.current) return;
+
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
@@ -101,15 +103,15 @@ function FlyToCartAnimation({
 
       const currentX = startX + (endX - startX) * easeOut;
       const currentY = startY + (endY - startY) * easeOut;
-      const scale = 1 - (0.7 * easeOut);
-      const opacity = 1 - (0.3 * progress);
+      const targetScale = 40 / startRect.width;
+      const scale = 1 - ((1 - targetScale) * easeOut);
+      const opacity = Math.max(0, 1 - (0.5 * progress));
 
-      setPosition({
-        x: currentX - startX,
-        y: currentY - startY,
-        scale,
-        opacity
-      });
+      const x = currentX - startX;
+      const y = currentY - startY;
+
+      elementRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${scale})`;
+      elementRef.current.style.opacity = opacity.toString();
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -123,15 +125,17 @@ function FlyToCartAnimation({
 
   return (
     <div
-      className="fixed z-50 pointer-events-none relative"
+      ref={elementRef}
+      className="fixed z-50 pointer-events-none"
       style={{
         left: startRect.left + startRect.width / 2,
         top: startRect.top + startRect.height / 2,
         width: startRect.width,
         height: startRect.height,
-        transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%) scale(${position.scale})`,
-        opacity: position.opacity,
+        transform: `translate(0px, 0px) translate(-50%, -50%) scale(1)`,
+        opacity: 1,
         transition: 'none',
+        willChange: 'transform, opacity',
       }}
     >
       <Image
@@ -356,7 +360,7 @@ export default function ProductPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <main className="pt-28 pb-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#CA8A04] mb-4"></div>
@@ -375,7 +379,7 @@ export default function ProductPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <main className="pt-36 pb-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
                 <p className="text-xl text-gray-900 mb-4">{error || 'Không tìm thấy sản phẩm'}</p>
@@ -408,7 +412,7 @@ export default function ProductPage() {
       ))}
 
       <main className="pt-36 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
             <Link href="/" className="transition-colors hover:text-gray-900">
               Trang Chủ
@@ -424,8 +428,8 @@ export default function ProductPage() {
             <span className="text-gray-900">{product.name}</span>
           </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-            <div className="relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+            <div className="relative lg:col-span-5">
               <GlassCard className="aspect-square overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/5 to-transparent z-10" />
                 <Image
@@ -447,7 +451,7 @@ export default function ProductPage() {
               )}
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex flex-col lg:col-span-7">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (

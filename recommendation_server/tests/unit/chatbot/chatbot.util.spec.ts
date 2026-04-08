@@ -27,7 +27,7 @@ jest.mock('@google/genai', () => ({
 jest.mock('../../../src/utils/chatbot/chatbot-context', () => ({
   getChatbotFunctionDeclarations: jest.fn().mockReturnValue([{ name: 'search_products' }]),
   executeChatbotFunctionCall: jest.fn().mockResolvedValue({
-    products: [{ id: 10, name: 'Dell UltraSharp 27' }],
+    products: [{ id: 10, name: 'Dell UltraSharp 27', product_path: '/product/dell-ultrasharp-27' }],
   }),
   buildChatbotSystemInstruction: jest.fn((instructions: string) => instructions),
 }));
@@ -44,7 +44,7 @@ describe('chatbot util', () => {
     mockGenerateContent.mockReset();
     mockedGetChatbotFunctionDeclarations.mockReturnValue([{ name: 'search_products' } as never]);
     mockedExecuteChatbotFunctionCall.mockResolvedValue({
-      products: [{ id: 10, name: 'Dell UltraSharp 27' }],
+      products: [{ id: 10, name: 'Dell UltraSharp 27', product_path: '/product/dell-ultrasharp-27' }],
     } as never);
     mockedBuildChatbotSystemInstruction.mockImplementation((instructions: string) => instructions);
   });
@@ -279,7 +279,8 @@ describe('chatbot util', () => {
         userId: 42,
       }),
     ).resolves.toEqual({
-      reply: 'Bạn có thể tham khảo Dell UltraSharp 27 vì phù hợp nhu cầu văn phòng.',
+      reply:
+        'Bạn có thể tham khảo Dell UltraSharp 27 vì phù hợp nhu cầu văn phòng.\n\nLink sản phẩm:\n- Dell UltraSharp 27: /product/dell-ultrasharp-27',
       model: 'gemini-3-flash-preview',
       configured: true,
       historyContents: [
@@ -309,7 +310,13 @@ describe('chatbot util', () => {
                 name: 'search_products',
                 id: 'call-1',
                 response: {
-                  products: [{ id: 10, name: 'Dell UltraSharp 27' }],
+                  products: [
+                    {
+                      id: 10,
+                      name: 'Dell UltraSharp 27',
+                      product_path: '/product/dell-ultrasharp-27',
+                    },
+                  ],
                 },
               },
             },
@@ -350,6 +357,58 @@ describe('chatbot util', () => {
         ]),
       }),
     );
+  });
+
+  it('keeps the model reply unchanged when it already includes a product path', async () => {
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        functionCalls: [
+          {
+            id: 'call-1',
+            name: 'search_products',
+            args: {
+              query: 'màn hình Dell 27 inch',
+            },
+          },
+        ],
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'call-1',
+                    name: 'search_products',
+                    args: {
+                      query: 'màn hình Dell 27 inch',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        text: 'Bạn có thể xem trực tiếp tại /product/dell-ultrasharp-27',
+      });
+
+    await expect(
+      generateChatbotReply({
+        message: 'Cho tôi link sản phẩm đó',
+        config: {
+          apiKey: 'test-key',
+          model: 'gemini-3-flash-preview',
+          chatbotInstructions: 'Bạn là trợ lý mua sắm.',
+        },
+      }),
+    ).resolves.toEqual({
+      reply: 'Bạn có thể xem trực tiếp tại /product/dell-ultrasharp-27',
+      model: 'gemini-3-flash-preview',
+      configured: true,
+      historyContents: expect.any(Array),
+    });
   });
 
   it('retries once and returns a graceful reply when Gemini times out', async () => {

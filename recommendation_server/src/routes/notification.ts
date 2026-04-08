@@ -5,8 +5,7 @@
 import { Router } from 'express';
 import NotificationController from '../modules/notification/presentation/NotificationController';
 import PreferenceController from '../modules/notification/presentation/PreferenceController';
-import AdminNotificationController from '../modules/notification/presentation/AdminNotificationController';
-import { requireAuth, requireAdmin } from '../middlewares/auth.middleware';
+import { requireAuth } from '../middlewares/auth.middleware';
 import { validateBody, validateQuery, validateParams } from '../middlewares/validate.middleware';
 import { asyncHandle } from '../utils/handle-error';
 import {
@@ -17,10 +16,6 @@ import {
   categoryPreferencesSchema,
   quietHoursSchema,
   emailDigestSchema,
-  adminSendNotificationSchema,
-  adminSendBulkNotificationSchema,
-  createTemplateSchema,
-  updateTemplateSchema,
   idParamSchema,
 } from '../modules/notification/presentation/validation.schema';
 

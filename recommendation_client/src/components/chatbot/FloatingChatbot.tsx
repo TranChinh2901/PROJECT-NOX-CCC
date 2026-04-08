@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bot, Loader2, MessageCircle, Send, X } from 'lucide-react';
 import { chatbotApi, type ChatbotHistoryContent, type ChatbotMessage } from '@/lib/api/chatbot.api';
@@ -42,6 +43,27 @@ const shouldHideChatbot = (pathname: string | null) => {
 };
 
 const BULLET_PATTERN = /^[-*•]\s+(.*)$/;
+const INLINE_FORMATTING_PATTERN =
+  /(\*\*[^*]+\*\*|\[[^[\]]+\]\((?:https?:\/\/[^\s)]+|\/[^\s)]+)\)|https?:\/\/[^\s)]+[^\s).,!?;:]|\/product\/[^\s).,!?;:]+)/g;
+const MARKDOWN_LINK_PATTERN = /^\[([^[\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)$/;
+
+const renderLinkNode = (href: string, label: string, key: string) => {
+  const className = 'font-medium text-amber-700 underline underline-offset-4 transition hover:text-amber-600';
+
+  if (href.startsWith('/')) {
+    return (
+      <Link key={key} href={href} className={className}>
+        {label}
+      </Link>
+    );
+  }
+
+  return (
+    <a key={key} href={href} className={className} target="_blank" rel="noreferrer">
+      {label}
+    </a>
+  );
+};
 
 const parseMessageBlocks = (content: string): MessageBlock[] => {
   const lines = content
@@ -78,10 +100,11 @@ const parseMessageBlocks = (content: string): MessageBlock[] => {
 };
 
 const renderInlineFormatting = (text: string) => {
-  const segments = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  const segments = text.split(INLINE_FORMATTING_PATTERN).filter(Boolean);
 
   return segments.map((segment, index) => {
     const boldMatch = segment.match(/^\*\*([^*]+)\*\*$/);
+    const markdownLinkMatch = segment.match(MARKDOWN_LINK_PATTERN);
 
     if (boldMatch) {
       return (
@@ -89,6 +112,14 @@ const renderInlineFormatting = (text: string) => {
           {boldMatch[1]}
         </strong>
       );
+    }
+
+    if (markdownLinkMatch) {
+      return renderLinkNode(markdownLinkMatch[2], markdownLinkMatch[1], `${segment}-${index}`);
+    }
+
+    if (segment.startsWith('/product/') || segment.startsWith('http://') || segment.startsWith('https://')) {
+      return renderLinkNode(segment, segment, `${segment}-${index}`);
     }
 
     return <React.Fragment key={`${segment}-${index}`}>{segment}</React.Fragment>;

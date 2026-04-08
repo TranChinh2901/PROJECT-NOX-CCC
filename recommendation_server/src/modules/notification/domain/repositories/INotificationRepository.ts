@@ -8,11 +8,13 @@ import { NotificationType, NotificationPriority } from '../../enum/notification.
 export interface NotificationFilter {
   userId: number;
   type?: NotificationType;
+  types?: NotificationType[];
   priority?: NotificationPriority;
   isRead?: boolean;
   isArchived?: boolean;
   fromDate?: Date;
   toDate?: Date;
+  search?: string;
   limit?: number;
   offset?: number;
 }

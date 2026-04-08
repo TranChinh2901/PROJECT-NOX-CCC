@@ -172,6 +172,7 @@ describe('chatbot function tools', () => {
           expect.objectContaining({
             id: 10,
             name: 'Dell UltraSharp 27',
+            product_path: '/product/dell-ultrasharp-27',
             total_available: 333,
             stock_status: 'in_stock',
           }),
@@ -303,6 +304,7 @@ describe('chatbot function tools', () => {
         expect.objectContaining({
           id: 11,
           name: 'Dell UltraSharp 24',
+          product_path: '/product/dell-ultrasharp-24',
         }),
       ],
     });
@@ -395,6 +397,8 @@ describe('chatbot function tools', () => {
 
     expect(instructions).toContain('Base instructions');
     expect(instructions).toContain('ưu tiên dùng function');
+    expect(instructions).toContain('product_path');
+    expect(instructions).toContain('Không tự chế URL sản phẩm');
     expect(instructions).toContain('Không bịa ra giá');
     expect(instructions).toContain('Chỉ được nói một sản phẩm "hết hàng"');
     expect(instructions).toContain('chưa xác minh được tồn kho');

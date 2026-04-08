@@ -39,7 +39,7 @@ const OrdersPage = () => {
       );
       setOrders(sortedOrders);
     } catch (err) {
-      setError('Failed to load orders. Please try again later.');
+      setError('Không thể tải danh sách đơn hàng. Vui lòng thử lại sau.');
       console.error('Error fetching orders:', err);
     } finally {
       setIsLoading(false);
@@ -75,7 +75,16 @@ const OrdersPage = () => {
   };
 
   const getStatusLabel = (status: OrderStatus) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    const labels: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: 'Chờ xử lý',
+      [OrderStatus.CONFIRMED]: 'Đã xác nhận',
+      [OrderStatus.PROCESSING]: 'Đang xử lý',
+      [OrderStatus.SHIPPED]: 'Đang giao',
+      [OrderStatus.DELIVERED]: 'Đã giao',
+      [OrderStatus.CANCELLED]: 'Đã hủy',
+      [OrderStatus.REFUNDED]: 'Đã hoàn tiền',
+    };
+    return labels[status] || status;
   };
 
   if (authLoading || isLoading) {
@@ -92,10 +101,10 @@ const OrdersPage = () => {
     <>
       <Header />
       <div className="min-h-screen bg-white py-12 pt-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Order History</h1>
-            <p className="mt-2 text-gray-600">View and manage your orders</p>
+            <h1 className="text-3xl font-bold text-gray-900">Lịch sử đơn hàng</h1>
+            <p className="mt-2 text-gray-600">Xem và quản lý đơn hàng của bạn</p>
           </div>
 
           {error && (
@@ -122,16 +131,16 @@ const OrdersPage = () => {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No orders yet
+                Chưa có đơn hàng nào
               </h3>
               <p className="text-gray-600 mb-6">
-                When you place orders, they will appear here
+                Khi bạn đặt hàng, đơn hàng sẽ xuất hiện ở đây
               </p>
               <Button
                 variant="primary"
                 onClick={() => router.push('/')}
               >
-                Start Shopping
+                Bắt đầu mua sắm
               </Button>
             </div>
           )}
@@ -142,19 +151,19 @@ const OrdersPage = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order Number
+                      Mã đơn hàng
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                      Ngày
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
+                      Tổng tiền
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
+                      Thao tác
                     </th>
                   </tr>
                 </thead>
@@ -198,7 +207,7 @@ const OrdersPage = () => {
                             router.push(`/account/orders/${order.id}`);
                           }}
                         >
-                          View Details
+                          Xem chi tiết
                         </Button>
                       </td>
                     </tr>
@@ -245,7 +254,7 @@ const OrdersPage = () => {
                         router.push(`/account/orders/${order.id}`);
                       }}
                     >
-                      View
+                      Xem
                     </Button>
                   </div>
                 </div>

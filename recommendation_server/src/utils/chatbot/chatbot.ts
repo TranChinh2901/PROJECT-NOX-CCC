@@ -82,6 +82,11 @@ export type ChatbotConfig = {
   chatbotInstructions: string;
 };
 
+type ProductLinkCandidate = {
+  name: string;
+  path: string;
+};
+
 const DEFAULT_MODEL = DEFAULT_GEMINI_MODEL;
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_FUNCTION_CALL_ROUNDS = 4;
@@ -159,6 +164,49 @@ export const sanitizeConversationHistory = (history: unknown): ChatbotMessage[] 
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const extractProductLinkCandidates = (value: unknown): ProductLinkCandidate[] => {
+  if (!isPlainObject(value)) {
+    return [];
+  }
+
+  const readCandidate = (candidate: unknown): ProductLinkCandidate | null => {
+    if (!isPlainObject(candidate)) {
+      return null;
+    }
+
+    const path = typeof candidate.product_path === 'string' ? candidate.product_path.trim() : '';
+    const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+
+    if (!path.startsWith('/product/') || !name) {
+      return null;
+    }
+
+    return { name, path };
+  };
+
+  const product = readCandidate(value.product);
+  const products = Array.isArray(value.products)
+    ? value.products.map((item) => readCandidate(item)).filter((item): item is ProductLinkCandidate => item !== null)
+    : [];
+
+  return product ? [product, ...products] : products;
+};
+
+const appendMissingProductLinks = (
+  reply: string,
+  candidates: Map<string, ProductLinkCandidate>,
+): string => {
+  const normalizedReply = reply.trim();
+  const missingLinks = Array.from(candidates.values()).filter(({ path }) => !normalizedReply.includes(path));
+
+  if (missingLinks.length === 0) {
+    return normalizedReply;
+  }
+
+  const linkLines = missingLinks.slice(0, 3).map(({ name, path }) => `- ${name}: ${path}`);
+  return `${normalizedReply}\n\nLink sản phẩm:\n${linkLines.join('\n')}`;
+};
 
 const sanitizeConversationPart = (part: unknown): ChatbotConversationPart | null => {
   if (!isPlainObject(part)) {
@@ -346,6 +394,7 @@ export const generateChatbotReply = async ({
     : buildConversationInput(conversationHistory, sanitizedMessage);
   let contents: Array<Record<string, unknown>> = [...baseContents];
   let response: GeminiGenerateContentResponse | undefined;
+  const productLinkCandidates = new Map<string, ProductLinkCandidate>();
 
   try {
     for (let round = 0; round < MAX_FUNCTION_CALL_ROUNDS; round += 1) {
@@ -398,13 +447,21 @@ export const generateChatbotReply = async ({
       }
 
       const functionResponseParts = await Promise.all(
-        functionCalls.map(async (functionCall) => ({
-          functionResponse: {
-            name: functionCall.name,
-            response: await executeChatbotFunctionCall(functionCall, { userId }),
-            ...(functionCall.id ? { id: functionCall.id } : {}),
-          },
-        })),
+        functionCalls.map(async (functionCall) => {
+          const functionResult = await executeChatbotFunctionCall(functionCall, { userId });
+
+          for (const candidate of extractProductLinkCandidates(functionResult)) {
+            productLinkCandidates.set(candidate.path, candidate);
+          }
+
+          return {
+            functionResponse: {
+              name: functionCall.name,
+              response: functionResult,
+              ...(functionCall.id ? { id: functionCall.id } : {}),
+            },
+          };
+        }),
       );
 
       contents = [
@@ -433,8 +490,10 @@ export const generateChatbotReply = async ({
     throw new Error('Gemini did not return a response');
   }
 
+  const reply = appendMissingProductLinks(extractOutputText(response), productLinkCandidates);
+
   return {
-    reply: extractOutputText(response),
+    reply,
     model: resolvedConfig.model,
     configured: true,
     historyContents: sanitizeConversationContents([

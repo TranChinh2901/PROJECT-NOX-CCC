@@ -33,7 +33,7 @@ const getProductIcon = (category: string) => {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, index }) => {
   return (
     <div 
-      className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-[16px] border border-white/10 transition-all duration-500 ease-out hover:border-white/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)] cursor-pointer"
+      className="group relative overflow-hidden rounded-none bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-[16px] border border-white/10 transition-all duration-500 ease-out hover:border-white/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)] cursor-pointer"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-[#2A2624] to-[#1C1917] flex items-center justify-center">

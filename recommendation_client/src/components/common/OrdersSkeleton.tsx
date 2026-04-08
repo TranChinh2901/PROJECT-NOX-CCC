@@ -6,7 +6,7 @@ import { Skeleton } from './Skeleton';
 export const OrdersSkeleton: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <Skeleton width="200px" height="32px" rounded="md" className="mb-2" />
           <Skeleton width="300px" height="20px" rounded="md" />

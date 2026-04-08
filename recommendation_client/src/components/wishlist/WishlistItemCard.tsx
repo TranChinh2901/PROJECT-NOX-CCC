@@ -51,7 +51,7 @@ export const WishlistItemCard: React.FC<WishlistItemCardProps> = ({ item }) => {
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-white border border-gray-200 transition-all duration-300 hover:border-gray-300 hover:shadow-md flex flex-col md:flex-row">
+    <div className="group relative overflow-hidden rounded-none bg-white border border-gray-200 transition-all duration-300 hover:border-gray-300 hover:shadow-md flex flex-col md:flex-row">
       <Link href={productHref} className="w-full md:w-48 h-48 md:h-auto relative bg-gray-100 flex-shrink-0">
         <Image
           src={imageUrl}

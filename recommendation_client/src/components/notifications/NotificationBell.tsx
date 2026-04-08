@@ -19,6 +19,8 @@ export interface NotificationBellProps {
   maxBadgeCount?: number;
   onOpen?: () => void;
   onClose?: () => void;
+  settingsHref?: string;
+  listHref?: string;
 }
 
 export function NotificationBell({
@@ -27,6 +29,8 @@ export function NotificationBell({
   maxBadgeCount = 99,
   onOpen,
   onClose,
+  settingsHref,
+  listHref,
 }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -77,6 +81,8 @@ export function NotificationBell({
       <NotificationDropdown
         isOpen={isOpen}
         onClose={handleClose}
+        settingsHref={settingsHref}
+        listHref={listHref}
       />
     </div>
   );

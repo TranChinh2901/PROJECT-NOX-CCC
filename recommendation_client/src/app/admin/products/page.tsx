@@ -3,19 +3,9 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import { Search, Plus, Edit, Trash2, SlidersHorizontal, Package, TrendingUp, AlertCircle, CheckCircle, Grid3x3, LayoutList } from 'lucide-react';
 import { Brand, Category, Product } from '@/types';
-import { productApi } from '@/lib/api';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { adminApi } from '@/lib/api/admin.api';
-
-interface ProductFilters {
-  search?: string;
-  category?: string;
-  brand?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-}
 
 type ViewMode = 'grid' | 'list';
 
@@ -54,6 +44,12 @@ const emptyProductForm: ProductEditForm = {
 const toOptionalNumber = (value: string): number | null =>
   value.trim() === '' ? null : Number(value);
 
+const STATUS_OPTIONS = [
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'active', label: 'Đang hoạt động' },
+  { value: 'inactive', label: 'Không hoạt động' },
+] as const;
+
 export default function ProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -91,13 +87,17 @@ export default function ProductManagement() {
     const fetchProducts = async () => {
       try {
         setIsFetching(true);
-        const filters: ProductFilters = {
+        const response = await adminApi.getAllProducts({
           search: deferredSearchTerm || undefined,
+          category_id: selectedCategory ? Number(selectedCategory) : undefined,
+          brand_id: selectedBrand ? Number(selectedBrand) : undefined,
+          is_active:
+            selectedStatus === ''
+              ? undefined
+              : selectedStatus === 'active',
           page: currentPage,
           limit: viewMode === 'grid' ? 12 : 10,
-        };
-
-        const response = await productApi.getAllProducts(filters);
+        });
         setProducts(response.data);
         setTotalPages(response.pagination.total_pages);
 
@@ -422,10 +422,11 @@ export default function ProductManagement() {
                 className="w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all cursor-pointer"
               >
                 <option value="">Tất cả danh mục</option>
-                <option value="1">Áo</option>
-                <option value="2">Quần</option>
-                <option value="3">Giày</option>
-                <option value="4">Túi sách</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -436,9 +437,11 @@ export default function ProductManagement() {
                 className="w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all cursor-pointer"
               >
                 <option value="">Tất cả thương hiệu</option>
-                <option value="1">Nike</option>
-                <option value="2">Adidas</option>
-                <option value="3">Puma</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -448,10 +451,11 @@ export default function ProductManagement() {
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:border-transparent transition-all cursor-pointer"
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="inactive">Không hoạt động</option>
-                <option value="draft">Bản nháp</option>
+                {STATUS_OPTIONS.map((statusOption) => (
+                  <option key={statusOption.value || 'all'} value={statusOption.value}>
+                    {statusOption.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

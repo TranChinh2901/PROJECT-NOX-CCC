@@ -9,8 +9,7 @@ import { Inventory } from "@/modules/inventory/entity/inventory";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
-import { PaginationQueryDto } from "@/modules/admin/dto/pagination-query.dto";
-import { CreateProductDto, UpdateProductDto } from "@/modules/admin/dto/admin-product.dto";
+import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto } from "@/modules/admin/dto/admin-product.dto";
 import cloudinaryProductImageService from "@/services/cloudinary-product-image.service";
 import supabaseStorageService from "@/services/supabase-storage.service";
 
@@ -40,13 +39,16 @@ export class AdminProductService {
     this.dataSource = AppDataSource;
   }
 
-  async listProducts(query: PaginationQueryDto) {
+  async listProducts(query: AdminProductListQueryDto) {
     const {
       page = 1,
       limit = 10,
       sortBy = 'created_at',
       sortOrder = 'DESC',
-      search = ''
+      search = '',
+      category_id,
+      brand_id,
+      is_active,
     } = query;
 
     let queryBuilder = this.productRepository
@@ -63,6 +65,18 @@ export class AdminProductService {
         '(product.name LIKE :search OR product.sku LIKE :search OR product.description LIKE :search)',
         { search: `%${search}%` }
       );
+    }
+
+    if (category_id) {
+      queryBuilder = queryBuilder.andWhere('product.category_id = :category_id', { category_id });
+    }
+
+    if (brand_id) {
+      queryBuilder = queryBuilder.andWhere('product.brand_id = :brand_id', { brand_id });
+    }
+
+    if (is_active !== undefined) {
+      queryBuilder = queryBuilder.andWhere('product.is_active = :is_active', { is_active });
     }
 
     // Get total count

@@ -71,13 +71,33 @@ type BackendPreferencesPayload = {
 
 type NotificationChannel = 'inApp' | 'email' | 'push' | 'sms';
 
+const notificationTypeToBackendFilter: Record<NotificationType, string> = {
+  order: 'order',
+  inventory: 'inventory',
+  review: 'review',
+  user: 'user',
+  system: 'system',
+  promotion: 'promotion',
+  payment: 'payment',
+  shipping: 'shipping',
+};
+
 const mapTypeFromBackend = (type: string): NotificationType => {
-  if (type.startsWith('order_')) return 'order';
-  if (type.includes('price') || type.includes('stock') || type.includes('cart')) return 'inventory';
+  if (type.includes('refund') || type.includes('payment')) return 'payment';
+  if (type.includes('ship') || type.includes('deliver')) return 'shipping';
+  if (
+    type.includes('price') ||
+    type.includes('stock') ||
+    type.includes('cart') ||
+    type.includes('recommend') ||
+    type.includes('similar') ||
+    type.includes('trending')
+  ) {
+    return 'inventory';
+  }
   if (type.includes('review')) return 'review';
   if (type.includes('promotion') || type === 'flash_sale') return 'promotion';
-  if (type.includes('payment')) return 'payment';
-  if (type.includes('ship')) return 'shipping';
+  if (type.startsWith('order_')) return 'order';
   if (type.includes('account') || type.includes('user') || type === 'welcome') return 'user';
   return 'system';
 };
@@ -99,22 +119,6 @@ const mapPriorityToBackend = (
   if (!priority || priority === 'all') return undefined;
   return priority === 'medium' ? 'normal' : priority;
 };
-
-const mapNotificationFromBackend = (notification: BackendNotification): Notification => ({
-  id: String(notification.id),
-  type: mapTypeFromBackend(notification.type),
-  priority: mapPriorityFromBackend(notification.priority),
-  status: notification.isArchived ? 'archived' : notification.isRead ? 'read' : 'unread',
-  title: notification.title,
-  message: notification.message,
-  summary: notification.message,
-  imageUrl: notification.imageUrl,
-  href: notification.actionUrl,
-  metadata: notification.data,
-  createdAt: new Date(notification.createdAt),
-  readAt: notification.readAt ? new Date(notification.readAt) : undefined,
-  expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : undefined,
-});
 
 const createCategorySettings = (
   enabled: boolean,
@@ -216,17 +220,40 @@ const mapPreferencesToBackend = (
   return payload;
 };
 
+export const mapNotificationFromBackend = (notification: BackendNotification): Notification => ({
+  id: String(notification.id),
+  type: mapTypeFromBackend(notification.type),
+  priority: mapPriorityFromBackend(notification.priority),
+  status: notification.isArchived ? 'archived' : notification.isRead ? 'read' : 'unread',
+  title: notification.title,
+  message: notification.message,
+  summary: notification.message,
+  imageUrl: notification.imageUrl,
+  href:
+    notification.actionUrl?.startsWith('/orders/')
+      ? notification.actionUrl.replace('/orders/', '/account/orders/')
+      : notification.actionUrl,
+  metadata: notification.data,
+  createdAt: new Date(notification.createdAt),
+  readAt: notification.readAt ? new Date(notification.readAt) : undefined,
+  expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : undefined,
+});
+
 export const notificationApi = {
   getNotifications: async (params: GetNotificationsParams = {}): Promise<PaginatedNotifications> => {
     const queryParams = new URLSearchParams();
 
     if (params.page) queryParams.set('page', String(params.page));
     if (params.limit) queryParams.set('limit', String(params.limit));
+    if (params.type && params.type !== 'all') {
+      queryParams.set('type', notificationTypeToBackendFilter[params.type]);
+    }
     if (params.status === 'read') queryParams.set('isRead', 'true');
     if (params.status === 'unread') queryParams.set('isRead', 'false');
     if (params.status === 'archived') queryParams.set('isArchived', 'true');
     const priority = mapPriorityToBackend(params.priority);
     if (priority) queryParams.set('priority', priority);
+    if (params.search?.trim()) queryParams.set('search', params.search.trim());
     if (params.dateRange) {
       queryParams.set('fromDate', params.dateRange.start.toISOString());
       queryParams.set('toDate', params.dateRange.end.toISOString());

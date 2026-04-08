@@ -4,6 +4,7 @@
  */
 import Joi from 'joi';
 import { NotificationType, NotificationPriority } from '../enum/notification.enum';
+import { notificationTypeGroupValues } from '../application/notification-type-groups';
 
 // Get notification types and priorities as arrays
 const notificationTypes = Object.values(NotificationType);
@@ -13,12 +14,13 @@ const notificationPriorities = Object.values(NotificationPriority);
  * Schema: Get notifications query parameters
  */
 export const getNotificationsQuerySchema = Joi.object({
-  type: Joi.string().valid(...notificationTypes).optional(),
+  type: Joi.string().valid(...notificationTypes, ...notificationTypeGroupValues).optional(),
   priority: Joi.string().valid(...notificationPriorities).optional(),
   isRead: Joi.string().valid('true', 'false').optional(),
   isArchived: Joi.string().valid('true', 'false').optional(),
   fromDate: Joi.string().isoDate().optional(),
   toDate: Joi.string().isoDate().optional(),
+  search: Joi.string().trim().max(255).optional(),
   page: Joi.number().integer().min(1).default(1).optional(),
   limit: Joi.number().integer().min(1).max(100).default(20).optional(),
 });
@@ -134,6 +136,19 @@ export const adminSendBulkNotificationSchema = Joi.object({
     .min(1)
     .required()
     .label('User IDs'),
+  type: Joi.string().valid(...notificationTypes).required().label('Notification Type'),
+  title: Joi.string().max(255).required().label('Title'),
+  message: Joi.string().required().label('Message'),
+  priority: Joi.string().valid(...notificationPriorities).default('normal').optional(),
+  data: Joi.object().optional(),
+  actionUrl: Joi.string().uri().max(500).optional(),
+  imageUrl: Joi.string().uri().max(255).optional(),
+  expiresAt: Joi.string().isoDate().optional(),
+  referenceId: Joi.number().integer().positive().optional(),
+  referenceType: Joi.string().max(50).optional(),
+});
+
+export const adminBroadcastNotificationSchema = Joi.object({
   type: Joi.string().valid(...notificationTypes).required().label('Notification Type'),
   title: Joi.string().max(255).required().label('Title'),
   message: Joi.string().required().label('Message'),

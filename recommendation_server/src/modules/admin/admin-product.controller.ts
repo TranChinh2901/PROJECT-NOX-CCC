@@ -2,20 +2,25 @@ import { Request, Response } from 'express';
 import { AppResponse } from '@/common/success.response';
 import { HttpStatusCode } from '@/constants/status-code';
 import adminProductService from './admin-product.service';
-import { CreateProductDto, UpdateProductDto } from './dto/admin-product.dto';
-import { PaginationQueryDto } from './dto/pagination-query.dto';
+import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto } from './dto/admin-product.dto';
 import { BulkOperationDto } from './dto/bulk-operation.dto';
 import { AppError } from '@/common/error.response';
 import { ErrorCode } from '@/constants/error-code';
 
 class AdminProductController {
   async listProducts(req: Request, res: Response) {
-    const query: PaginationQueryDto = {
+    const query: AdminProductListQueryDto = {
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
       sortBy: req.query.sortBy as string,
       sortOrder: req.query.sortOrder as 'ASC' | 'DESC',
       search: req.query.search as string,
+      category_id: req.query.category_id ? parseInt(req.query.category_id as string) : undefined,
+      brand_id: req.query.brand_id ? parseInt(req.query.brand_id as string) : undefined,
+      is_active:
+        req.query.is_active === undefined
+          ? undefined
+          : req.query.is_active === 'true',
     };
 
     const result = await adminProductService.listProducts(query);

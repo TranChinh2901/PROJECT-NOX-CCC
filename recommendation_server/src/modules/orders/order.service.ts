@@ -11,6 +11,7 @@ import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
 import { Inventory } from "@/modules/inventory/entity/inventory";
+import { OrderNotifications } from "@/modules/notification/infrastructure/NotificationEventPublisher";
 
 export interface CreateOrderDto {
   cart_id: number;
@@ -88,9 +89,9 @@ export class OrderService {
       const orderNumber = this.generateOrderNumber();
       const subtotal = Number(cart.total_amount);
       const shippingAmount = 30000;
-      const taxAmount = subtotal * 0.1;
+      const taxAmount = Number((subtotal * 0.1).toFixed(2));
       const discountAmount = 0;
-      const totalAmount = subtotal + shippingAmount + taxAmount - discountAmount;
+      const totalAmount = Number((subtotal + shippingAmount + taxAmount - discountAmount).toFixed(2));
 
       const reservations: Array<{ cartItem: CartItem; inventory: Inventory }> = [];
       for (const cartItem of cart.items) {
@@ -151,7 +152,14 @@ export class OrderService {
       return order.id;
     });
 
-    return this.getOrderById(orderId);
+    const order = await this.getOrderById(orderId);
+    await OrderNotifications.orderPlaced(
+      userId,
+      orderId,
+      Number(order.total_amount),
+    );
+
+    return order;
   }
 
   async getOrderById(orderId: number, userId?: number) {
@@ -278,7 +286,7 @@ export class OrderService {
   }
 
   async cancelOrder(userId: number, orderId: number, reason?: string) {
-    return AppDataSource.transaction(async manager => {
+    const result = await AppDataSource.transaction(async manager => {
       const order = await manager
         .getRepository(Order)
         .createQueryBuilder('order')
@@ -333,6 +341,10 @@ export class OrderService {
         order_id: order.id,
       };
     });
+
+    await OrderNotifications.orderCancelled(userId, orderId, reason);
+
+    return result;
   }
 
   private generateOrderNumber(): string {

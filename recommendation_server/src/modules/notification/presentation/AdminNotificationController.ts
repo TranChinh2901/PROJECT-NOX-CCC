@@ -17,7 +17,19 @@ export class AdminNotificationController {
    */
   async sendNotification(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const { userId, type, title, message, priority, data, actionUrl, imageUrl } = req.body;
+      const {
+        userId,
+        type,
+        title,
+        message,
+        priority,
+        data,
+        actionUrl,
+        imageUrl,
+        expiresAt,
+        referenceId,
+        referenceType,
+      } = req.body;
 
       if (!userId || !type || !title || !message) {
         throw new AppError(
@@ -37,6 +49,9 @@ export class AdminNotificationController {
         data,
         actionUrl,
         imageUrl,
+        expiresAt,
+        referenceId,
+        referenceType,
       });
 
       return new AppResponse({
@@ -60,7 +75,19 @@ export class AdminNotificationController {
    */
   async sendBulkNotification(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      const { userIds, type, title, message, priority, data, actionUrl, imageUrl } = req.body;
+      const {
+        userIds,
+        type,
+        title,
+        message,
+        priority,
+        data,
+        actionUrl,
+        imageUrl,
+        expiresAt,
+        referenceId,
+        referenceType,
+      } = req.body;
 
       if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
         throw new AppError(
@@ -88,6 +115,9 @@ export class AdminNotificationController {
         data,
         actionUrl,
         imageUrl,
+        expiresAt,
+        referenceId,
+        referenceType,
       });
 
       return new AppResponse({

@@ -1,5 +1,41 @@
 import Joi from "joi";
 
+export const listProductsQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1).messages({
+    "number.base": "Page must be a number",
+    "number.integer": "Page must be an integer",
+    "number.min": "Page must be at least 1",
+  }),
+  limit: Joi.number().integer().min(1).max(100).default(10).messages({
+    "number.base": "Limit must be a number",
+    "number.integer": "Limit must be an integer",
+    "number.min": "Limit must be at least 1",
+    "number.max": "Limit must not exceed 100",
+  }),
+  sortBy: Joi.string().optional().messages({
+    "string.base": "Sort by must be a string",
+  }),
+  sortOrder: Joi.string().valid('ASC', 'DESC').default('DESC').messages({
+    "any.only": "Sort order must be either ASC or DESC",
+  }),
+  search: Joi.string().optional().allow('').messages({
+    "string.base": "Search must be a string",
+  }),
+  category_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "Category ID must be a number",
+    "number.integer": "Category ID must be an integer",
+    "number.positive": "Category ID must be positive",
+  }),
+  brand_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "Brand ID must be a number",
+    "number.integer": "Brand ID must be an integer",
+    "number.positive": "Brand ID must be positive",
+  }),
+  is_active: Joi.boolean().optional().messages({
+    "boolean.base": "Is active must be a boolean",
+  }),
+});
+
 export const createProductSchema = Joi.object({
   category_id: Joi.number().integer().positive().required().messages({
     "number.base": "Category ID must be a number",

@@ -76,7 +76,7 @@ export const OrderNotifications = {
       type: NotificationType.ORDER_PLACED,
       data: { orderId, orderTotal },
       priority: NotificationPriority.NORMAL,
-      actionUrl: `/orders/${orderId}`,
+      actionUrl: `/account/orders/${orderId}`,
       referenceId: orderId,
       referenceType: 'order',
     });
@@ -88,7 +88,7 @@ export const OrderNotifications = {
       type: NotificationType.ORDER_CONFIRMED,
       data: { orderId },
       priority: NotificationPriority.NORMAL,
-      actionUrl: `/orders/${orderId}`,
+      actionUrl: `/account/orders/${orderId}`,
       referenceId: orderId,
       referenceType: 'order',
     });
@@ -100,7 +100,7 @@ export const OrderNotifications = {
       type: NotificationType.ORDER_SHIPPED,
       data: { orderId, trackingNumber },
       priority: NotificationPriority.NORMAL,
-      actionUrl: `/orders/${orderId}`,
+      actionUrl: `/account/orders/${orderId}`,
       referenceId: orderId,
       referenceType: 'order',
     });
@@ -112,7 +112,7 @@ export const OrderNotifications = {
       type: NotificationType.ORDER_DELIVERED,
       data: { orderId },
       priority: NotificationPriority.NORMAL,
-      actionUrl: `/orders/${orderId}`,
+      actionUrl: `/account/orders/${orderId}`,
       referenceId: orderId,
       referenceType: 'order',
     });
@@ -124,7 +124,7 @@ export const OrderNotifications = {
       type: NotificationType.ORDER_CANCELLED,
       data: { orderId, reason },
       priority: NotificationPriority.HIGH,
-      actionUrl: `/orders/${orderId}`,
+      actionUrl: `/account/orders/${orderId}`,
       referenceId: orderId,
       referenceType: 'order',
     });

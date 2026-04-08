@@ -30,6 +30,50 @@ class MockNotificationRepository implements Partial<INotificationRepository> {
   async countUnread(userId: number): Promise<number> {
     return this.notifications.filter(n => !n.isRead).length;
   }
+
+  async findById(): Promise<NotificationDomain | null> {
+    return null;
+  }
+
+  async save(notification: NotificationDomain): Promise<NotificationDomain> {
+    return notification;
+  }
+
+  async saveMany(notifications: NotificationDomain[]): Promise<NotificationDomain[]> {
+    return notifications;
+  }
+
+  async markAsRead(): Promise<boolean> {
+    return true;
+  }
+
+  async markAllAsRead(): Promise<number> {
+    return 0;
+  }
+
+  async markManyAsRead(): Promise<number> {
+    return 0;
+  }
+
+  async archive(): Promise<boolean> {
+    return true;
+  }
+
+  async archiveMany(): Promise<number> {
+    return 0;
+  }
+
+  async delete(): Promise<boolean> {
+    return true;
+  }
+
+  async deleteExpired(): Promise<number> {
+    return 0;
+  }
+
+  async findByReference(): Promise<NotificationDomain[]> {
+    return [];
+  }
 }
 
 describe('GetUserNotificationsUseCase', () => {

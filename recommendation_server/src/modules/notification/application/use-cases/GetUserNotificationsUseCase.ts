@@ -7,6 +7,7 @@ import { GetNotificationsRequestDTO } from '../dto/GetNotificationsRequest';
 import { GetNotificationsResponseDTO } from '../dto/GetNotificationsResponse';
 import { NotificationResponseDTO } from '../dto/CreateNotificationResponse';
 import { NotificationDomain } from '../../domain/entities/NotificationDomain';
+import { resolveNotificationTypesFilter } from '../notification-type-groups';
 
 export class GetUserNotificationsUseCase {
   constructor(private readonly notificationRepository: INotificationRepository) {}
@@ -22,12 +23,16 @@ export class GetUserNotificationsUseCase {
     // Build filter from request
     const filter = {
       userId: request.userId,
-      type: request.type,
+      type: request.type && resolveNotificationTypesFilter(request.type)?.length === 1
+        ? resolveNotificationTypesFilter(request.type)?.[0]
+        : undefined,
+      types: request.types ?? resolveNotificationTypesFilter(request.type),
       priority: request.priority,
       isRead: request.isRead,
       isArchived: request.isArchived ?? false, // Default to non-archived
       fromDate: request.fromDate ? new Date(request.fromDate) : undefined,
       toDate: request.toDate ? new Date(request.toDate) : undefined,
+      search: request.search?.trim(),
       limit,
       offset,
     };

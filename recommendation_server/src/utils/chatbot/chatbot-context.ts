@@ -64,6 +64,20 @@ const toNumberOrUndefined = (value: unknown): number | undefined => {
   return undefined;
 };
 
+const buildProductPath = (product: { id?: unknown; slug?: unknown }): string | null => {
+  const slug = typeof product.slug === 'string' ? product.slug.trim() : '';
+  if (slug) {
+    return `/product/${slug}`;
+  }
+
+  const productId = toNumberOrUndefined(product.id);
+  if (productId !== undefined) {
+    return `/product/${productId}`;
+  }
+
+  return null;
+};
+
 const summarizeProduct = (product: any) => {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   const explicitStockQuantity = toNumberOrUndefined(product?.stock_quantity);
@@ -113,6 +127,7 @@ const summarizeProduct = (product: any) => {
     id: product.id,
     name: product.name,
     slug: product.slug,
+    product_path: buildProductPath(product),
     sku: product.sku,
     brand: product.brand?.name ?? null,
     category: product.category?.name ?? null,
@@ -513,6 +528,8 @@ export const buildChatbotSystemInstruction = (baseInstructions: string): string 
   [
     baseInstructions,
     'Khi câu hỏi liên quan đến sản phẩm, tồn kho, khuyến mãi hoặc đơn hàng của khách, hãy ưu tiên dùng function phù hợp để lấy dữ liệu thật từ hệ thống trước khi trả lời.',
+    'Khi function trả về product_path cho sản phẩm phù hợp, hãy đưa kèm link/path đó trong câu trả lời để khách mở trang sản phẩm nhanh hơn.',
+    'Không tự chế URL sản phẩm. Nếu đã có product_path từ dữ liệu hệ thống thì dùng đúng giá trị đó.',
     'Không bịa ra giá, tồn kho, khuyến mãi, mã đơn, trạng thái giao hàng hoặc chính sách riêng của khách.',
     'Chỉ được nói một sản phẩm "hết hàng" khi function trả về stock_status = out_of_stock hoặc total_available = 0.',
     'Nếu stock_status = unknown hoặc không có total_available, phải nói chưa xác minh được tồn kho thay vì tự kết luận còn hàng hay hết hàng.',

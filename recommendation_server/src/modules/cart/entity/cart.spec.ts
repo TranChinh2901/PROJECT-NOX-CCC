@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { getMetadataArgsStorage } from 'typeorm';
 import { Cart } from './cart';
 import { CartItem } from './cart-item';
 import { User } from '@/modules/users/entity/user.entity';
@@ -81,11 +82,20 @@ describe('Cart Entity', () => {
   });
 
   describe('Decimal Field Precision', () => {
-    it('should store decimal values with precision 10, scale 2 for total_amount', () => {
+    it('should store decimal values with precision 12, scale 2 for total_amount', () => {
       const cart = new Cart();
       cart.total_amount = 1234.56;
 
       expect(cart.total_amount).toBe(1234.56);
+    });
+
+    it('should configure total_amount with precision 12 and scale 2', () => {
+      const totalAmountColumn = getMetadataArgsStorage().columns.find(
+        column => column.target === Cart && column.propertyName === 'total_amount'
+      );
+
+      expect(totalAmountColumn?.options.precision).toBe(12);
+      expect(totalAmountColumn?.options.scale).toBe(2);
     });
 
     it('should handle zero value for total_amount', () => {
@@ -97,9 +107,9 @@ describe('Cart Entity', () => {
 
     it('should handle large decimal values within precision limits', () => {
       const cart = new Cart();
-      cart.total_amount = 99999999.99;
+      cart.total_amount = 9999999999.99;
 
-      expect(cart.total_amount).toBe(99999999.99);
+      expect(cart.total_amount).toBe(9999999999.99);
     });
 
     it('should handle very small decimal values (cents)', () => {

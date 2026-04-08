@@ -4,10 +4,11 @@
   import Link from 'next/link';
   import Image from 'next/image';
   import { useRouter, useSearchParams } from 'next/navigation';
-  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart, ShieldCheck, Trash2 } from 'lucide-react';
+  import { Menu, X, Search, ShoppingCart, User, MapPin, LogOut, Package, MapPinIcon, UserCircle, Heart, ShieldCheck, Trash2, Bell } from 'lucide-react';
   import { useCart } from '@/contexts/CartContext';
   import { useAuth } from '@/contexts/AuthContext';
   import { useWishlist } from '@/contexts/WishlistContext';
+  import { NotificationBell } from '@/components/notifications';
   import { RoleType } from '@/types/auth.types';
   import { navigationApi, type NavigationItem } from '@/lib/api/navigation.api';
   import {
@@ -244,7 +245,7 @@
 
     const handleSearch = () => {
       const trimmedQuery = searchValue.trim();
-      const targetUrl = trimmedQuery.length >= 2 ? `/?q=${encodeURIComponent(trimmedQuery)}` : '/';
+      const targetUrl = trimmedQuery.length >= 2 ? `/search?q=${encodeURIComponent(trimmedQuery)}` : '/';
       router.push(targetUrl);
     };
 
@@ -473,7 +474,7 @@
                 )}
               </div>
 
-              <div className="flex-1 max-w-2xl mx-4">
+              <div className="hidden md:block flex-1 max-w-2xl mx-4">
                 <form
                   className="relative"
                   onSubmit={(event) => {
@@ -499,7 +500,7 @@
                 </form>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                 {isAuthenticated && user ? (
                   <div
                     ref={userMenuRef}
@@ -535,7 +536,7 @@
                             </span>
                           </div>
                         )}
-                        <div className="flex flex-col items-start">
+                        <div className="hidden sm:flex flex-col items-start">
                           <span className="text-xs">Xin chào</span>
                           <span className="font-medium text-gray-900 max-w-[100px] truncate">
                             {user?.fullname || user?.email?.split('@')[0]}
@@ -577,7 +578,16 @@
                           <Heart className="w-4 h-4" />
                           <span>Yêu thích</span>
                         </Link>
-                        <Link 
+                        <Link
+                          href="/account/notifications"
+                          role="menuitem"
+                          onClick={() => setShowUserDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Bell className="w-4 h-4" />
+                          <span>Thông báo</span>
+                        </Link>
+                        <Link
                           href="/account/addresses"
                           role="menuitem"
                           onClick={() => setShowUserDropdown(false)}
@@ -629,6 +639,14 @@
                       Đăng ký
                     </Link>
                   </div>
+                )}
+
+                {isAuthenticated && user && (
+                  <NotificationBell
+                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    settingsHref="/account/notifications/settings"
+                    listHref="/account/notifications"
+                  />
                 )}
 
                 <Link
@@ -705,6 +723,34 @@
                 </button>
               </div>
             </div>
+
+            {/* Mobile Search Bar */}
+            <div className="md:hidden mt-3 mb-1">
+              <form
+                className="relative"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSearch();
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm sản phẩm..."
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  aria-label="Tìm kiếm sản phẩm"
+                  className="w-full pl-4 pr-12 py-2.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-900 placeholder-gray-500 focus:border-[#CA8A04] focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/20 transition-all"
+                />
+                <button
+                  type="submit"
+                  aria-label="Tìm kiếm"
+                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md bg-[#CA8A04] hover:bg-[#B47B04] transition-colors"
+                >
+                  <Search className="h-3.5 w-3.5 text-white" />
+                </button>
+              </form>
+            </div>
+
           </div>
         </div>
 

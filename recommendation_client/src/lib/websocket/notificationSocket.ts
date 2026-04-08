@@ -5,7 +5,34 @@
  * heartbeat mechanism, and event handling.
  */
 
+import { mapNotificationFromBackend } from '@/lib/api/notification.api';
 import { Notification, SocketMessage } from '@/types/notification.types';
+
+type NotificationReadPayload =
+  | string
+  | number
+  | {
+      notificationId?: string | number;
+      notificationIds?: Array<string | number>;
+    };
+
+type UnreadCountPayload = number | { count?: number; unreadCount?: number };
+
+type BackendSocketNotificationPayload = {
+  id: number;
+  type: string;
+  priority: string;
+  title: string;
+  message: string;
+  data?: Record<string, unknown>;
+  actionUrl?: string;
+  imageUrl?: string;
+  isRead: boolean;
+  isArchived: boolean;
+  readAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+};
 
 export interface NotificationSocketOptions {
   url: string;
@@ -15,7 +42,7 @@ export interface NotificationSocketOptions {
   onReconnecting?: () => void;
   onError?: (error: Error) => void;
   onNotification?: (notification: Notification) => void;
-  onNotificationRead?: (notificationId: string) => void;
+  onNotificationRead?: (notificationIds: string[]) => void;
   onUnreadCount?: (count: number) => void;
 }
 
@@ -144,15 +171,26 @@ export class NotificationSocket {
 
       switch (message.type) {
         case 'notification':
-          this.options.onNotification?.(message.payload as Notification);
+          this.options.onNotification?.(
+            mapNotificationFromBackend(message.payload as BackendSocketNotificationPayload),
+          );
           break;
 
         case 'notification_read':
-          this.options.onNotificationRead?.(message.payload as string);
+        case 'notifications_read': {
+          const notificationIds = this.normalizeReadPayload(
+            message.payload as NotificationReadPayload,
+          );
+          if (notificationIds.length > 0) {
+            this.options.onNotificationRead?.(notificationIds);
+          }
           break;
+        }
 
         case 'unread_count':
-          this.options.onUnreadCount?.(message.payload as number);
+          this.options.onUnreadCount?.(
+            this.normalizeUnreadCount(message.payload as UnreadCountPayload),
+          );
           break;
 
         case 'pong':
@@ -234,5 +272,42 @@ export class NotificationSocket {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     }
+  }
+
+  private normalizeReadPayload(payload: NotificationReadPayload): string[] {
+    if (Array.isArray((payload as { notificationIds?: Array<string | number> }).notificationIds)) {
+      return ((payload as { notificationIds: Array<string | number> }).notificationIds).map(String);
+    }
+
+    if (
+      typeof payload === 'object' &&
+      payload !== null &&
+      'notificationId' in payload &&
+      payload.notificationId !== undefined
+    ) {
+      return [String(payload.notificationId)];
+    }
+
+    if (typeof payload === 'string' || typeof payload === 'number') {
+      return [String(payload)];
+    }
+
+    return [];
+  }
+
+  private normalizeUnreadCount(payload: UnreadCountPayload): number {
+    if (typeof payload === 'number') {
+      return payload;
+    }
+
+    if (typeof payload?.count === 'number') {
+      return payload.count;
+    }
+
+    if (typeof payload?.unreadCount === 'number') {
+      return payload.unreadCount;
+    }
+
+    return 0;
   }
 }

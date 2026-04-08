@@ -1,13 +1,16 @@
 import express from "express";
 import cors from "cors";
+import { createServer } from "http";
 import { initDatabase } from "@/database/connect-database";
 import router from "@/routes";
 import { exceptionHandler } from "@/middlewares/exception-filter";
 import { loadedEnv } from "@/config/load-env";
 import { requestLogger } from "@/middlewares/logger-filter";
 import { logger } from "@/utils/logger";
+import { attachNotificationWebSocketGateway } from "@/modules/notification/infrastructure/NotificationWebSocketGateway";
 
 const app = express();
+const server = createServer(app);
 const PORT = loadedEnv.port;
 
 const allowedOrigins = (process.env.CORS_ORIGIN || [
@@ -50,7 +53,8 @@ app.use(exceptionHandler);
 const startServer = async () => {
   try {
     await initDatabase();
-    app.listen(PORT, () => {
+    attachNotificationWebSocketGateway(server);
+    server.listen(PORT, () => {
       logger.success(`Server is running on port ${PORT}`);
     });
   } catch (error) {

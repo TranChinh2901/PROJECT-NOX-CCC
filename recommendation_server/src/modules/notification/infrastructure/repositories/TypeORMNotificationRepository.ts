@@ -2,7 +2,7 @@
  * Infrastructure: TypeORM Notification Repository
  * Implements INotificationRepository using TypeORM
  */
-import { Repository, LessThan, MoreThanOrEqual, In, And, Between } from 'typeorm';
+import { Repository, LessThan, MoreThanOrEqual, In, Between, Brackets } from 'typeorm';
 import { INotificationRepository, NotificationFilter, PaginatedNotifications } from '../../domain/repositories/INotificationRepository';
 import { NotificationDomain } from '../../domain/entities/NotificationDomain';
 import { Notification as NotificationEntity } from '../../entity/notification';
@@ -22,34 +22,54 @@ export class TypeORMNotificationRepository implements INotificationRepository {
   }
 
   async findByUserId(filter: NotificationFilter): Promise<PaginatedNotifications> {
-    const where: any = { user_id: filter.userId };
+    const query = this.repository
+      .createQueryBuilder('notification')
+      .where('notification.user_id = :userId', { userId: filter.userId });
 
-    if (filter.type !== undefined) {
-      where.type = filter.type;
+    if (filter.types?.length) {
+      query.andWhere('notification.type IN (:...types)', { types: filter.types });
+    } else if (filter.type !== undefined) {
+      query.andWhere('notification.type = :type', { type: filter.type });
     }
+
     if (filter.priority !== undefined) {
-      where.priority = filter.priority;
-    }
-    if (filter.isRead !== undefined) {
-      where.is_read = filter.isRead;
-    }
-    if (filter.isArchived !== undefined) {
-      where.is_archived = filter.isArchived;
-    }
-    if (filter.fromDate && filter.toDate) {
-      where.created_at = Between(filter.fromDate, filter.toDate);
-    } else if (filter.fromDate) {
-      where.created_at = MoreThanOrEqual(filter.fromDate);
-    } else if (filter.toDate) {
-      where.created_at = LessThan(filter.toDate);
+      query.andWhere('notification.priority = :priority', { priority: filter.priority });
     }
 
-    const [entities, total] = await this.repository.findAndCount({
-      where,
-      order: { created_at: 'DESC' },
-      skip: filter.offset || 0,
-      take: filter.limit || 20,
-    });
+    if (filter.isRead !== undefined) {
+      query.andWhere('notification.is_read = :isRead', { isRead: filter.isRead });
+    }
+
+    if (filter.isArchived !== undefined) {
+      query.andWhere('notification.is_archived = :isArchived', { isArchived: filter.isArchived });
+    }
+
+    if (filter.fromDate && filter.toDate) {
+      query.andWhere('notification.created_at BETWEEN :fromDate AND :toDate', {
+        fromDate: filter.fromDate,
+        toDate: filter.toDate,
+      });
+    } else if (filter.fromDate) {
+      query.andWhere('notification.created_at >= :fromDate', { fromDate: filter.fromDate });
+    } else if (filter.toDate) {
+      query.andWhere('notification.created_at <= :toDate', { toDate: filter.toDate });
+    }
+
+    if (filter.search) {
+      query.andWhere(
+        new Brackets((searchQuery) => {
+          searchQuery
+            .where('notification.title LIKE :search', { search: `%${filter.search}%` })
+            .orWhere('notification.message LIKE :search', { search: `%${filter.search}%` });
+        }),
+      );
+    }
+
+    const [entities, total] = await query
+      .orderBy('notification.created_at', 'DESC')
+      .skip(filter.offset || 0)
+      .take(filter.limit || 20)
+      .getManyAndCount();
 
     const unreadCount = await this.repository.count({
       where: { user_id: filter.userId, is_read: false, is_archived: false },

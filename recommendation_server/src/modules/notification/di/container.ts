@@ -18,6 +18,9 @@ import { SendNotificationUseCase } from '../application/use-cases/SendNotificati
 
 class NotificationContainer {
   private static instance: NotificationContainer;
+  private readonly webSocketService = new InMemoryWebSocketService();
+  private readonly emailService = new MockEmailService();
+  private readonly queueService = new InMemoryQueueService();
   
   private constructor() {}
   
@@ -42,11 +45,11 @@ class NotificationContainer {
   }
 
   getWebSocketService() {
-    return new InMemoryWebSocketService();
+    return this.webSocketService;
   }
 
   getEmailService() {
-    return new MockEmailService();
+    return this.emailService;
   }
 
   getDeliveryService() {
@@ -57,7 +60,7 @@ class NotificationContainer {
   }
 
   getQueueService() {
-    return new InMemoryQueueService();
+    return this.queueService;
   }
 
   getCreateNotificationUseCase() {

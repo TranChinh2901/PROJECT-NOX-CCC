@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+import { getMetadataArgsStorage } from 'typeorm';
 import { Order } from './order';
 import { OrderItem } from './order-item';
 import { User } from '@/modules/users/entity/user.entity';
@@ -6,6 +8,19 @@ import { OrderStatus, PaymentStatus, PaymentMethod } from '../enum/order.enum';
 
 describe('Order Entity', () => {
   describe('Schema Validation', () => {
+    it('should configure order amount columns with precision 12 and scale 2', () => {
+      const amountColumns = ['subtotal', 'discount_amount', 'shipping_amount', 'tax_amount', 'total_amount'];
+
+      for (const propertyName of amountColumns) {
+        const column = getMetadataArgsStorage().columns.find(
+          metadata => metadata.target === Order && metadata.propertyName === propertyName
+        );
+
+        expect(column?.options.precision).toBe(12);
+        expect(column?.options.scale).toBe(2);
+      }
+    });
+
     it('should create an Order with all required fields', () => {
       const order = new Order();
       order.id = 1;
@@ -618,11 +633,11 @@ describe('Order Entity', () => {
 
     it('should handle very large order amounts', () => {
       const order = new Order();
-      order.subtotal = 99999.99;
-      order.total_amount = 99999.99;
+      order.subtotal = 123456789.12;
+      order.total_amount = 135802467.03;
       
-      expect(order.subtotal).toBe(99999.99);
-      expect(order.total_amount).toBe(99999.99);
+      expect(order.subtotal).toBe(123456789.12);
+      expect(order.total_amount).toBe(135802467.03);
     });
   });
 });

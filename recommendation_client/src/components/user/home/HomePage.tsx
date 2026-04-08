@@ -88,8 +88,8 @@ function FlyToCartAnimation({
   imageUrl: string; 
   onComplete: () => void;
 }) {
-  const [position, setPosition] = useState({ x: 0, y: 0, scale: 1, opacity: 1 });
-  
+  const elementRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const cartIcon = document.querySelector('[data-cart-icon]');
     const endRect = cartIcon?.getBoundingClientRect();
@@ -108,6 +108,8 @@ function FlyToCartAnimation({
     const startTime = performance.now();
     
     const animate = (currentTime: number) => {
+      if (!elementRef.current) return;
+
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
@@ -115,15 +117,15 @@ function FlyToCartAnimation({
       
       const currentX = startX + (endX - startX) * easeOut;
       const currentY = startY + (endY - startY) * easeOut;
-      const scale = 1 - (0.7 * easeOut);
-      const opacity = 1 - (0.3 * progress);
+      const targetScale = 40 / startRect.width;
+      const scale = 1 - ((1 - targetScale) * easeOut);
+      const opacity = Math.max(0, 1 - (0.5 * progress));
       
-      setPosition({ 
-        x: currentX - startX, 
-        y: currentY - startY, 
-        scale, 
-        opacity 
-      });
+      const x = currentX - startX;
+      const y = currentY - startY;
+
+      elementRef.current.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${scale})`;
+      elementRef.current.style.opacity = opacity.toString();
       
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -137,15 +139,17 @@ function FlyToCartAnimation({
   
   return (
     <div
-      className="fixed z-50 pointer-events-none relative"
+      ref={elementRef}
+      className="fixed z-50 pointer-events-none"
       style={{
         left: startRect.left + startRect.width / 2,
         top: startRect.top + startRect.height / 2,
         width: startRect.width,
         height: startRect.height,
-        transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%) scale(${position.scale})`,
-        opacity: position.opacity,
+        transform: `translate(0px, 0px) translate(-50%, -50%) scale(1)`,
+        opacity: 1,
         transition: 'none',
+        willChange: 'transform, opacity',
       }}
     >
       <Image
@@ -437,7 +441,7 @@ function HomePageContent() {
           <div className="animate-drift-reverse absolute bottom-0 left-10 h-56 w-56 rounded-full bg-[#CA8A04]/[0.08] blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="max-w-2xl">
               <h1 className="max-w-xl text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
@@ -481,52 +485,84 @@ function HomePageContent() {
               </div>
             </div>
 
-            <div className="relative">
-              <div className="relative mx-auto max-w-xl">
-                <div className="absolute -inset-4 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.14),_transparent_55%)]" />
-                <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[#0f172a] p-4 shadow-[0_36px_90px_rgba(15,23,42,0.22)]">
-                  <div className="animate-banner-pan relative aspect-[1.1/0.86] overflow-hidden rounded-[1.5rem]">
-                    <Image
-                      src={featuredDeals[activeDealIndex].image}
-                      alt={featuredDeals[activeDealIndex].title}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 40vw"
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#CA8A04]/28 via-transparent to-black/72" />
+            <div className="relative group perspective-1000">
+              <div className="relative mx-auto max-w-xl transition-transform duration-700 ease-out group-hover:scale-[1.02] z-10 w-full mb-8 lg:mb-0">
+                <div className="absolute -inset-4 rounded-[2.5rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.18),_transparent_65%)] opacity-70 blur-2xl transition-opacity duration-700 group-hover:opacity-100" />
+                
+                <div className="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-[#0f172a] shadow-[0_36px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/10">
+                  <div className="relative aspect-[1.1/0.95] overflow-hidden bg-slate-900">
+                    {featuredDeals.map((deal, index) => (
+                      <div
+                        key={deal.title}
+                        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                          index === activeDealIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                        }`}
+                      >
+                        <Image
+                          src={deal.image}
+                          alt={deal.title}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 40vw"
+                          className={`object-cover transition-transform duration-[8s] ease-linear ${
+                            index === activeDealIndex ? 'scale-110' : 'scale-100'
+                          }`}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/95 via-[#0f172a]/40 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent opacity-60" />
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="absolute left-8 top-8 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
-                    <BadgeCheck className="h-3.5 w-3.5 text-[#fbbf24]" />
-                    Chọn lọc bởi đội ngũ tư vấn
+                  <div className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur-md shadow-lg">
+                    <BadgeCheck className="h-4 w-4 text-[#fbbf24]" />
+                    Featured Deal
                   </div>
 
-                  <div className="absolute right-8 top-8 text-xs font-medium uppercase tracking-[0.2em] text-white/65">
-                    0{activeDealIndex + 1} / 0{featuredDeals.length}
+                  <div className="absolute right-6 top-6 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-bold tracking-[0.2em] text-white/90 backdrop-blur-md">
+                    <span>0{activeDealIndex + 1}</span>
+                    <span className="text-white/40">/</span>
+                    <span className="text-white/40">0{featuredDeals.length}</span>
                   </div>
 
-                  <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
-                      Animated Banner
-                    </p>
-                    <h2 className="max-w-sm text-3xl font-heading font-bold leading-tight">
-                      {featuredDeals[activeDealIndex].title}
-                    </h2>
-                    <p className="mt-3 max-w-md text-sm leading-6 text-white/78">
-                      {featuredDeals[activeDealIndex].subtitle}. Thay vì banner tĩnh, mỗi khung hình nhấn
-                      vào một ngữ cảnh mua hàng khác nhau để trang chủ có nhịp và có chủ đích.
-                    </p>
+                  <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 z-20">
+                    <div className="transform transition-all duration-700">
+                      <p className="mb-4 inline-block rounded-full bg-[#CA8A04]/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#fde047] border border-[#CA8A04]/30 backdrop-blur-sm">
+                        TechNova Pick
+                      </p>
+                      
+                      <div className="relative h-[110px]">
+                        {featuredDeals.map((deal, index) => (
+                          <div 
+                            key={`text-${deal.title}`}
+                            className={`absolute inset-0 transition-all duration-700 ease-out flex flex-col justify-end ${
+                              index === activeDealIndex 
+                                ? 'opacity-100 translate-y-0' 
+                                : 'opacity-0 translate-y-4 pointer-events-none'
+                            }`}
+                          >
+                            <h2 className="text-3xl font-heading font-bold leading-tight text-white drop-shadow-lg sm:text-4xl">
+                              {deal.title}
+                            </h2>
+                            <p className="mt-3 text-sm leading-relaxed text-slate-200 drop-shadow-md line-clamp-2">
+                              {deal.subtitle}. Thay vì banner tĩnh, mỗi khung hình nhấn vào một ngữ cảnh mua hàng khác nhau để trang chủ có nhịp và có chủ đích.
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex gap-2">
+                <div className="absolute -bottom-5 left-1/2 z-30 flex -translate-x-1/2 gap-2.5 rounded-full border border-white/60 bg-white/90 px-4 py-2.5 shadow-xl backdrop-blur-xl">
                   {featuredDeals.map((deal, index) => (
                     <button
-                      key={deal.title}
+                      key={`btn-${deal.title}`}
                       type="button"
                       onClick={() => setActiveDealIndex(index)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        index === activeDealIndex ? 'w-12 bg-[#fbbf24]' : 'w-6 bg-slate-300 hover:bg-slate-400'
+                      className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                        index === activeDealIndex 
+                          ? 'w-10 bg-[#CA8A04]' 
+                          : 'w-2 bg-slate-300 hover:bg-slate-400 hover:w-4'
                       }`}
                       aria-label={`Xem ưu đãi ${index + 1}`}
                     />
@@ -559,7 +595,7 @@ function HomePageContent() {
       </section>
 
       <section className="sticky top-28 z-40 border-b border-gray-200 bg-white/95 py-4 shadow-sm backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setSelectedCategory(null)}
@@ -589,7 +625,7 @@ function HomePageContent() {
       </section>
 
       <section id="catalog" className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1800px] mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-heading font-bold text-gray-900">
@@ -625,7 +661,7 @@ function HomePageContent() {
               Array.from({ length: 8 }).map((_, index) => (
                 <div
                   key={`product-skeleton-${index}`}
-                  className="overflow-hidden rounded-3xl border border-gray-200 bg-white"
+                  className="overflow-hidden rounded-none border border-gray-200 bg-white"
                 >
                   <Skeleton className="aspect-[4/3.65] w-full" rounded="none" />
                   <div className="space-y-2.5 p-3 sm:p-4">
@@ -713,7 +749,7 @@ function ProductCard({
   const soldCount = product.sold_count ?? 0;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#ece4d7] bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d8c6a3] hover:shadow-[0_18px_52px_rgba(15,23,42,0.11)] sm:rounded-[28px]">
+    <article className="group flex h-full flex-col overflow-hidden rounded-none border border-[#ece4d7] bg-white shadow-[0_12px_36px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d8c6a3] hover:shadow-[0_18px_52px_rgba(15,23,42,0.11)]">
       <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top,#fff7e6_0%,#f8f5ef_46%,#f3efe6_100%)]">
         {product.is_featured && (
           <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#171717] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-lg shadow-black/10 sm:left-4 sm:top-4 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">

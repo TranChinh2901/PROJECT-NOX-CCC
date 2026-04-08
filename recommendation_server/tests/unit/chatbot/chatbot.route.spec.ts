@@ -160,7 +160,7 @@ describe('chatbotMessageHandler', () => {
           configured: true,
           reply:
             'Chatbot đang phản hồi chậm từ phía Gemini. Bạn vui lòng thử lại sau ít phút hoặc gửi câu hỏi ngắn hơn.',
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-3-flash',
           historyContents: [],
         }),
       }),

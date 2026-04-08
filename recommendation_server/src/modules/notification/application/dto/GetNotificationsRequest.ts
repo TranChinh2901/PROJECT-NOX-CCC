@@ -6,12 +6,14 @@ import { NotificationType, NotificationPriority } from '../../enum/notification.
 
 export interface GetNotificationsRequestDTO {
   userId: number;
-  type?: NotificationType;
+  type?: NotificationType | string;
+  types?: NotificationType[];
   priority?: NotificationPriority;
   isRead?: boolean;
   isArchived?: boolean;
   fromDate?: string; // ISO date string
   toDate?: string; // ISO date string
+  search?: string;
   page?: number;
   limit?: number;
 }

@@ -10,7 +10,8 @@ import adminUserController from '@/modules/admin/admin-user.controller';
 import adminReviewController from '@/modules/admin/admin-review.controller';
 import adminOrderController from '@/modules/admin/admin-order.controller';
 import analyticsController from '@/modules/admin/analytics.controller';
-import { createProductSchema, updateProductSchema } from '@/modules/admin/schema/admin-product.schema';
+import AdminNotificationController from '@/modules/notification/presentation/AdminNotificationController';
+import { createProductSchema, listProductsQuerySchema, updateProductSchema } from '@/modules/admin/schema/admin-product.schema';
 import { createCategorySchema, updateCategorySchema } from '@/modules/admin/schema/admin-category.schema';
 import { createBrandSchema, updateBrandSchema } from '@/modules/admin/schema/admin-brand.schema';
 import { updateUserSchema, bulkDeactivateSchema } from '@/modules/admin/schema/admin-user.schema';
@@ -20,6 +21,13 @@ import { dateRangeQuerySchema, topProductsQuerySchema } from '@/modules/admin/sc
 import { paginationQuerySchema } from '@/modules/admin/schema/pagination-query.schema';
 import { bulkOperationSchema } from '@/modules/admin/schema/bulk-operation.schema';
 import { idParamSchema } from '@/modules/admin/schema/id-param.schema';
+import {
+  adminSendNotificationSchema,
+  adminSendBulkNotificationSchema,
+  adminBroadcastNotificationSchema,
+  createTemplateSchema,
+  updateTemplateSchema,
+} from '@/modules/notification/presentation/validation.schema';
 
 const router = Router();
 
@@ -31,7 +39,7 @@ router.get('/health', (req, res) => {
 
 router.get(
   '/products',
-  validateQuery(paginationQuerySchema),
+  validateQuery(listProductsQuerySchema),
   asyncHandle(adminProductController.listProducts)
 );
 
@@ -216,6 +224,53 @@ router.post(
   '/reviews/bulk-approve',
   validateBody(bulkApproveSchema),
   asyncHandle(adminReviewController.bulkApprove)
+);
+
+router.post(
+  '/notifications/send',
+  validateBody(adminSendNotificationSchema),
+  asyncHandle(AdminNotificationController.sendNotification.bind(AdminNotificationController))
+);
+
+router.post(
+  '/notifications/send-bulk',
+  validateBody(adminSendBulkNotificationSchema),
+  asyncHandle(AdminNotificationController.sendBulkNotification.bind(AdminNotificationController))
+);
+
+router.post(
+  '/notifications/broadcast',
+  validateBody(adminBroadcastNotificationSchema),
+  asyncHandle(AdminNotificationController.broadcastNotification.bind(AdminNotificationController))
+);
+
+router.get(
+  '/notifications/templates',
+  asyncHandle(AdminNotificationController.getTemplates.bind(AdminNotificationController))
+);
+
+router.post(
+  '/notifications/templates',
+  validateBody(createTemplateSchema),
+  asyncHandle(AdminNotificationController.createTemplate.bind(AdminNotificationController))
+);
+
+router.put(
+  '/notifications/templates/:id',
+  validateParams(idParamSchema),
+  validateBody(updateTemplateSchema),
+  asyncHandle(AdminNotificationController.updateTemplate.bind(AdminNotificationController))
+);
+
+router.delete(
+  '/notifications/templates/:id',
+  validateParams(idParamSchema),
+  asyncHandle(AdminNotificationController.deleteTemplate.bind(AdminNotificationController))
+);
+
+router.get(
+  '/notifications/stats',
+  asyncHandle(AdminNotificationController.getStats.bind(AdminNotificationController))
 );
 
 router.get(

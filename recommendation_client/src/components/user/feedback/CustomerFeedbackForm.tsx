@@ -46,7 +46,7 @@ export function CustomerFeedbackForm() {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+    <section className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pb-16">
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-7">
         <div className="mb-5">
           <p className="text-xs uppercase tracking-wide text-[#B47B04] font-semibold">Ý kiến khách hàng</p>

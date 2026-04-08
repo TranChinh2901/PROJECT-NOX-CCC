@@ -129,6 +129,16 @@ export interface AdminUsersResponse<T> {
   };
 }
 
+export interface AdminProductsResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+}
+
 interface PaginatedAdminEntityResponse<T> {
   data: T[];
   pagination: {
@@ -227,6 +237,19 @@ export const adminApi = {
   // Product management
   async getProductStats(): Promise<AdminProductStats> {
     return await apiClient.get<AdminProductStats>('/admin/products/stats');
+  },
+
+  async getAllProducts(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    category_id?: number;
+    brand_id?: number;
+    is_active?: boolean;
+  }): Promise<AdminProductsResponse<Product>> {
+    return await apiClient.get<AdminProductsResponse<Product>>('/admin/products', { params });
   },
 
   async getProductById(productId: number): Promise<Product> {

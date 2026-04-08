@@ -19,6 +19,8 @@ export interface NotificationDropdownProps {
   onClose: () => void;
   maxHeight?: number;
   width?: number;
+  settingsHref?: string;
+  listHref?: string;
 }
 
 export function NotificationDropdown({
@@ -26,6 +28,8 @@ export function NotificationDropdown({
   onClose,
   maxHeight = 400,
   width = 380,
+  settingsHref = '/admin/notifications/settings',
+  listHref = '/admin/notifications',
 }: NotificationDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const {
@@ -157,7 +161,7 @@ export function NotificationDropdown({
             </button>
             {/* Settings */}
             <Link
-              href="/admin/notifications/settings"
+              href={settingsHref}
               onClick={onClose}
               className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               aria-label="Notification settings"
@@ -232,7 +236,7 @@ export function NotificationDropdown({
         {/* Footer */}
         <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
           <Link
-            href="/admin/notifications"
+            href={listHref}
             onClick={onClose}
             className={cn(
               'block w-full text-center text-sm font-medium',

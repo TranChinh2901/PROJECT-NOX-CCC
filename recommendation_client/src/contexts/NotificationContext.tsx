@@ -68,18 +68,25 @@ export function NotificationProvider({
 
   // WebSocket Event Handlers
   const handleNewNotification = useCallback((notification: Notification) => {
+    let inserted = false;
+
     setNotifications((prev) => {
       // Prevent duplicates
       if (prev.some((n) => n.id === notification.id)) {
         return prev;
       }
+      inserted = true;
       // Prepend new notification and cap at max cache size
       const updated = [notification, ...prev].slice(0, MAX_CACHED_NOTIFICATIONS);
       return updated;
     });
 
-    if (notification.status === 'unread') {
+    if (inserted && notification.status === 'unread') {
       setUnreadCount((prev) => prev + 1);
+    }
+
+    if (inserted) {
+      setTotalCount((prev) => prev + 1);
     }
 
     // Show toast for new notifications
@@ -119,15 +126,30 @@ export function NotificationProvider({
     }
   }, [enableToasts]);
 
-  const handleNotificationRead = useCallback((notificationId: string) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notificationId
-          ? { ...n, status: 'read' as const, readAt: new Date() }
-          : n
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+  const handleNotificationRead = useCallback((notificationIds: string[]) => {
+    const notificationIdSet = new Set(notificationIds);
+
+    setNotifications((prev) => {
+      let unreadChanged = 0;
+      const updated = prev.map((notification) => {
+        if (!notificationIdSet.has(notification.id) || notification.status !== 'unread') {
+          return notification;
+        }
+
+        unreadChanged += 1;
+        return {
+          ...notification,
+          status: 'read' as const,
+          readAt: new Date(),
+        };
+      });
+
+      if (unreadChanged > 0) {
+        setUnreadCount((prevUnread) => Math.max(0, prevUnread - unreadChanged));
+      }
+
+      return updated;
+    });
   }, []);
 
   const handleUnreadCountUpdate = useCallback((count: number) => {
@@ -448,6 +470,11 @@ export function NotificationProvider({
       setNotifications([]);
       setUnreadCount(0);
       setPreferences(null);
+      setTotalCount(0);
+      setHasMore(true);
+      setCurrentPage(1);
+      setCurrentFilters({});
+      setError(null);
     }
   }, [isAuthenticated, fetchNotifications]);
 

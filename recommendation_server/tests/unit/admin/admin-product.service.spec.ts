@@ -8,6 +8,7 @@ import { Category } from '../../../src/modules/products/entity/category';
 import { Brand } from '../../../src/modules/products/entity/brand';
 import { Inventory } from '../../../src/modules/inventory/entity/inventory';
 import { AppError } from '../../../src/common/error.response';
+import cloudinaryProductImageService from '../../../src/services/cloudinary-product-image.service';
 import supabaseStorageService from '../../../src/services/supabase-storage.service';
 import { createMockProduct } from '../../helpers/mock-factory';
 import { createMockRepository } from '../../setup/repository.mock';
@@ -23,6 +24,15 @@ jest.mock('../../../src/services/supabase-storage.service', () => ({
   default: {
     uploadProductImage: jest.fn(),
     deleteProductImageByPublicUrl: jest.fn(),
+  },
+}));
+
+jest.mock('../../../src/services/cloudinary-product-image.service', () => ({
+  __esModule: true,
+  default: {
+    uploadProductImage: jest.fn(),
+    deleteProductImageByUrl: jest.fn(),
+    isCloudinaryUrl: jest.fn(),
   },
 }));
 
@@ -55,7 +65,8 @@ describe('AdminProductService', () => {
   let categoryRepository: ReturnType<typeof createMockRepository>;
   let brandRepository: ReturnType<typeof createMockRepository>;
   let inventoryRepository: ReturnType<typeof createMockRepository>;
-  const mockedStorageService = jest.mocked(supabaseStorageService);
+  const mockedSupabaseStorageService = jest.mocked(supabaseStorageService);
+  const mockedCloudinaryProductImageService = jest.mocked(cloudinaryProductImageService);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -100,6 +111,32 @@ describe('AdminProductService', () => {
     });
   });
 
+  it('applies category, brand, and active filters to admin product listings', async () => {
+    const product = createMockProduct({ id: 902, images: [], variants: [] });
+    const queryBuilder = createListQueryBuilder([product], 1);
+
+    productRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+    inventoryRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+
+    await service.listProducts({
+      page: 1,
+      limit: 10,
+      category_id: 11,
+      brand_id: 22,
+      is_active: false,
+    });
+
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith('product.category_id = :category_id', {
+      category_id: 11,
+    });
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith('product.brand_id = :brand_id', {
+      brand_id: 22,
+    });
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith('product.is_active = :is_active', {
+      is_active: false,
+    });
+  });
+
   it('stores provider URLs unchanged when uploading product images and mirrors them to thumbnails', async () => {
     const productId = 44;
     const uploadedUrl = 'https://res.cloudinary.com/demo/image/upload/v1744098725/products/44/front-view.jpg';
@@ -124,9 +161,9 @@ describe('AdminProductService', () => {
       updated_at: new Date('2026-04-08T02:00:00.000Z'),
       ...payload,
     }));
-    mockedStorageService.uploadProductImage.mockResolvedValue({
-      path: 'products/44/front-view.jpg',
-      publicUrl: uploadedUrl,
+    mockedCloudinaryProductImageService.uploadProductImage.mockResolvedValue({
+      publicId: 'products/44/front-view',
+      secureUrl: uploadedUrl,
     });
 
     const file = {
@@ -143,7 +180,7 @@ describe('AdminProductService', () => {
       { product_id: productId },
       { is_primary: false },
     );
-    expect(mockedStorageService.uploadProductImage).toHaveBeenCalledWith(productId, file);
+    expect(mockedCloudinaryProductImageService.uploadProductImage).toHaveBeenCalledWith(productId, file);
     expect(productImageRepository.create).toHaveBeenCalledWith(expect.objectContaining({
       product_id: productId,
       image_url: uploadedUrl,
@@ -183,14 +220,14 @@ describe('AdminProductService', () => {
       updated_at: new Date('2026-04-08T02:00:00.000Z'),
       ...payload,
     }));
-    mockedStorageService.uploadProductImage
+    mockedCloudinaryProductImageService.uploadProductImage
       .mockResolvedValueOnce({
-        path: 'products/55/gallery-1.jpg',
-        publicUrl: 'https://res.cloudinary.com/demo/image/upload/v1/products/55/gallery-1.jpg',
+        publicId: 'products/55/gallery-1',
+        secureUrl: 'https://res.cloudinary.com/demo/image/upload/v1/products/55/gallery-1.jpg',
       })
       .mockResolvedValueOnce({
-        path: 'products/55/gallery-2.jpg',
-        publicUrl: 'https://res.cloudinary.com/demo/image/upload/v1/products/55/gallery-2.jpg',
+        publicId: 'products/55/gallery-2',
+        secureUrl: 'https://res.cloudinary.com/demo/image/upload/v1/products/55/gallery-2.jpg',
       });
 
     const files = [
@@ -239,7 +276,7 @@ describe('AdminProductService', () => {
     ]);
   });
 
-  it('deletes the product image row after removing the stored asset by URL', async () => {
+  it('deletes Cloudinary-hosted product images via the Cloudinary service', async () => {
     const productId = 70;
     const imageId = 88;
     const productImage = {
@@ -249,14 +286,37 @@ describe('AdminProductService', () => {
     } as ProductImage;
 
     productImageRepository.findOne.mockResolvedValue(productImage);
-    mockedStorageService.deleteProductImageByPublicUrl.mockResolvedValue(undefined);
+    mockedCloudinaryProductImageService.isCloudinaryUrl.mockReturnValue(true);
+    mockedCloudinaryProductImageService.deleteProductImageByUrl.mockResolvedValue(undefined);
     productImageRepository.delete.mockResolvedValue({ affected: 1 });
 
     await service.deleteProductImage(productId, imageId);
 
-    expect(mockedStorageService.deleteProductImageByPublicUrl).toHaveBeenCalledWith(
-      productImage.image_url,
-    );
+    expect(mockedCloudinaryProductImageService.isCloudinaryUrl).toHaveBeenCalledWith(productImage.image_url);
+    expect(mockedCloudinaryProductImageService.deleteProductImageByUrl).toHaveBeenCalledWith(productImage.image_url);
+    expect(mockedSupabaseStorageService.deleteProductImageByPublicUrl).not.toHaveBeenCalled();
+    expect(productImageRepository.delete).toHaveBeenCalledWith({ id: imageId });
+  });
+
+  it('falls back to Supabase deletion for legacy non-Cloudinary product image URLs', async () => {
+    const productId = 71;
+    const imageId = 89;
+    const productImage = {
+      id: imageId,
+      product_id: productId,
+      image_url: 'https://legacy.example.com/products/71/primary.jpg',
+    } as ProductImage;
+
+    productImageRepository.findOne.mockResolvedValue(productImage);
+    mockedCloudinaryProductImageService.isCloudinaryUrl.mockReturnValue(false);
+    mockedSupabaseStorageService.deleteProductImageByPublicUrl.mockResolvedValue(undefined);
+    productImageRepository.delete.mockResolvedValue({ affected: 1 });
+
+    await service.deleteProductImage(productId, imageId);
+
+    expect(mockedCloudinaryProductImageService.isCloudinaryUrl).toHaveBeenCalledWith(productImage.image_url);
+    expect(mockedSupabaseStorageService.deleteProductImageByPublicUrl).toHaveBeenCalledWith(productImage.image_url);
+    expect(mockedCloudinaryProductImageService.deleteProductImageByUrl).not.toHaveBeenCalled();
     expect(productImageRepository.delete).toHaveBeenCalledWith({ id: imageId });
   });
 
@@ -266,6 +326,6 @@ describe('AdminProductService', () => {
     ).rejects.toBeInstanceOf(AppError);
 
     expect(productRepository.findOne).not.toHaveBeenCalled();
-    expect(mockedStorageService.uploadProductImage).not.toHaveBeenCalled();
+    expect(mockedCloudinaryProductImageService.uploadProductImage).not.toHaveBeenCalled();
   });
 });

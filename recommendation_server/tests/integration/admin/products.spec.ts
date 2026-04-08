@@ -222,6 +222,81 @@ describe('Admin Product Integration Tests', () => {
       expect(response.body.data.data).toHaveLength(1);
       expect(response.body.data.data[0].name).toBe('Red Shirt');
     });
+
+    it('should filter products by category, brand, and active status', async () => {
+      const categoryRepository = dataSource.getRepository(Category);
+      const brandRepository = dataSource.getRepository(Brand);
+      const productRepository = dataSource.getRepository(Product);
+
+      const secondCategory = await categoryRepository.save(
+        categoryRepository.create({
+          name: 'Filtered Category',
+          slug: 'filtered-category',
+          description: 'Extra category for filters',
+          is_active: true,
+        }),
+      );
+
+      const secondBrand = await brandRepository.save(
+        brandRepository.create({
+          name: 'Filtered Brand',
+          slug: 'filtered-brand',
+          description: 'Extra brand for filters',
+          is_active: true,
+        }),
+      );
+
+      await productRepository.save([
+        productRepository.create({
+          category_id: categoryId,
+          brand_id: brandId,
+          name: 'Included Product',
+          slug: 'included-product',
+          sku: 'SKU-INCLUDED',
+          description: 'Should match all filters',
+          base_price: 120,
+          is_active: true,
+        }),
+        productRepository.create({
+          category_id: secondCategory.id,
+          brand_id: brandId,
+          name: 'Wrong Category',
+          slug: 'wrong-category',
+          sku: 'SKU-WRONG-CATEGORY',
+          description: 'Wrong category',
+          base_price: 120,
+          is_active: true,
+        }),
+        productRepository.create({
+          category_id: categoryId,
+          brand_id: secondBrand.id,
+          name: 'Wrong Brand',
+          slug: 'wrong-brand',
+          sku: 'SKU-WRONG-BRAND',
+          description: 'Wrong brand',
+          base_price: 120,
+          is_active: true,
+        }),
+        productRepository.create({
+          category_id: categoryId,
+          brand_id: brandId,
+          name: 'Inactive Product',
+          slug: 'inactive-product',
+          sku: 'SKU-INACTIVE',
+          description: 'Wrong status',
+          base_price: 120,
+          is_active: false,
+        }),
+      ]);
+
+      const response = await request(app)
+        .get(`/api/v1/admin/products?category_id=${categoryId}&brand_id=${brandId}&is_active=true`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatusCode.OK);
+
+      expect(response.body.data.data).toHaveLength(1);
+      expect(response.body.data.data[0].name).toBe('Included Product');
+    });
   });
 
   describe('GET /api/v1/admin/products/:id', () => {

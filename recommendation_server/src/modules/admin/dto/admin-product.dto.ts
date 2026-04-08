@@ -16,6 +16,17 @@ export interface CreateProductDto {
   meta_description?: string;
 }
 
+export interface AdminProductListQueryDto {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  search?: string;
+  category_id?: number;
+  brand_id?: number;
+  is_active?: boolean;
+}
+
 export interface UpdateProductDto {
   category_id?: number;
   brand_id?: number;

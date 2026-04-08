@@ -9,6 +9,14 @@ import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
 import { OrderFilterQueryDto, UpdateOrderStatusDto, AddInternalNoteDto } from "@/modules/admin/dto/order.dto";
+import {
+  OrderNotifications,
+  publishNotification,
+} from "@/modules/notification/infrastructure/NotificationEventPublisher";
+import {
+  NotificationPriority,
+  NotificationType,
+} from "@/modules/notification/enum/notification.enum";
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
@@ -126,7 +134,7 @@ export class AdminOrderService {
   }
 
   async updateOrderStatus(id: number, dto: UpdateOrderStatusDto, adminEmail: string) {
-    return this.dataSource.transaction(async manager => {
+    const order = await this.dataSource.transaction(async manager => {
       const order = await manager
         .getRepository(Order)
         .createQueryBuilder('order')
@@ -167,10 +175,14 @@ export class AdminOrderService {
 
       return order;
     });
+
+    await this.notifyStatusChange(order.user_id, order.id, dto.status);
+
+    return order;
   }
 
   async cancelOrder(id: number, adminEmail: string): Promise<void> {
-    return this.dataSource.transaction(async manager => {
+    const cancelledOrder = await this.dataSource.transaction(async manager => {
       const order = await manager
         .getRepository(Order)
         .createQueryBuilder('order')
@@ -232,7 +244,14 @@ export class AdminOrderService {
       });
 
       await manager.save(statusHistory);
+
+      return {
+        id: order.id,
+        user_id: order.user_id,
+      };
     });
+
+    await OrderNotifications.orderCancelled(cancelledOrder.user_id, cancelledOrder.id, 'Cancelled by admin');
   }
 
   private async resolveInventoryForOrderItem(
@@ -299,6 +318,40 @@ export class AdminOrderService {
       : newNote;
 
     return this.orderRepository.save(order);
+  }
+
+  private async notifyStatusChange(
+    userId: number,
+    orderId: number,
+    status: OrderStatus,
+  ): Promise<void> {
+    switch (status) {
+      case OrderStatus.CONFIRMED:
+        await OrderNotifications.orderConfirmed(userId, orderId);
+        return;
+      case OrderStatus.SHIPPED:
+        await OrderNotifications.orderShipped(userId, orderId);
+        return;
+      case OrderStatus.DELIVERED:
+        await OrderNotifications.orderDelivered(userId, orderId);
+        return;
+      case OrderStatus.CANCELLED:
+        await OrderNotifications.orderCancelled(userId, orderId, 'Cancelled by admin');
+        return;
+      case OrderStatus.REFUNDED:
+        await publishNotification({
+          userId,
+          type: NotificationType.ORDER_REFUNDED,
+          priority: NotificationPriority.HIGH,
+          data: { orderId },
+          actionUrl: `/account/orders/${orderId}`,
+          referenceId: orderId,
+          referenceType: 'order',
+        });
+        return;
+      default:
+        return;
+    }
   }
 }
 

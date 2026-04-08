@@ -36,6 +36,7 @@ export class NotificationController {
         isArchived: req.query.isArchived !== undefined ? req.query.isArchived === 'true' : undefined,
         fromDate: req.query.fromDate as string,
         toDate: req.query.toDate as string,
+        search: req.query.search as string,
         page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
       });

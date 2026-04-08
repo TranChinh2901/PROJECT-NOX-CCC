@@ -27,7 +27,7 @@ export default function WishlistPage() {
       <>
         <Header />
         <div className="min-h-screen bg-gray-50 pt-32 pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="animate-pulse space-y-4">
               <div className="h-10 w-48 bg-gray-200 rounded" />
               <div className="grid grid-cols-1 gap-6 mt-8">
@@ -52,7 +52,7 @@ export default function WishlistPage() {
       <>
         <Header />
         <div className="min-h-screen bg-gray-50 pt-32 pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="animate-pulse space-y-4">
               <div className="h-10 w-48 bg-gray-200 rounded" />
               <div className="grid grid-cols-1 gap-6 mt-8">
@@ -72,12 +72,12 @@ export default function WishlistPage() {
     <>
       <Header />
       <div className="min-h-screen bg-gray-50 pt-32 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 mb-2">My Wishlist</h1>
+              <h1 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 mb-2">Danh sách yêu thích</h1>
               <p className="text-gray-600">
-                {items.length} {items.length === 1 ? 'item' : 'items'} saved for later
+                {items.length} sản phẩm đã được lưu
               </p>
             </div>
 
@@ -91,7 +91,7 @@ export default function WishlistPage() {
                 }}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 self-start md:self-auto"
               >
-                Clear Wishlist
+                Xóa danh sách
               </Button>
             )}
           </div>
@@ -101,13 +101,13 @@ export default function WishlistPage() {
               <div className="w-20 h-20 bg-[#CA8A04]/10 rounded-full flex items-center justify-center mb-6">
                 <Heart className="w-10 h-10 text-[#CA8A04]" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Your wishlist is empty</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Danh sách yêu thích trống</h2>
               <p className="text-gray-600 mb-8 max-w-md">
-                Save items you love to your wishlist to revisit them later.
-                They will be waiting for you right here.
+                Hãy lưu những sản phẩm bạn yêu thích vào danh sách để xem lại sau.
+                Chúng sẽ luôn ở đây chờ bạn.
               </p>
               <Link href="/">
-                <Button variant="primary">Start Shopping</Button>
+                <Button variant="primary">Bắt đầu mua sắm</Button>
               </Link>
             </div>
           ) : (
