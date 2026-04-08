@@ -33,9 +33,7 @@ export class ContentBasedEngine implements IRecommendationEngine {
     userPreference: UserPreference,
     productFeatures: ProductFeature[]
   ): Promise<Recommendation[]> {
-    // Filter products based on user preferences
     const filteredProducts = productFeatures.filter((product) => {
-      // Exclude products in exclusion list
       if (request.excludeProductIds?.includes(product.productId)) {
         return false;
       }

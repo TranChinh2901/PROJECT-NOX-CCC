@@ -7,6 +7,14 @@ export interface ProductRecommendation {
   createdAt: string;
 }
 
+export interface PersonalizedRecommendationsResponse {
+  userId: number;
+  recommendations: ProductRecommendation[];
+  strategy: string;
+  fromCache: boolean;
+  generatedAt: string;
+}
+
 export interface TrackRecommendationBehaviorPayload {
   userId: number;
   behaviorType: 'view' | 'add_to_cart' | 'purchase' | 'review' | 'wishlist' | 'search';
@@ -16,6 +24,19 @@ export interface TrackRecommendationBehaviorPayload {
 }
 
 export const recommendationApi = {
+  async getRecommendations(
+    userId: number,
+    params?: { limit?: number; strategy?: 'collaborative' | 'content' | 'hybrid' | 'popularity'; categoryId?: number }
+  ): Promise<PersonalizedRecommendationsResponse> {
+    return await apiClient.get<PersonalizedRecommendationsResponse>(`/recommendations/${userId}`, {
+      params: {
+        limit: params?.limit,
+        strategy: params?.strategy,
+        categoryId: params?.categoryId,
+      },
+    });
+  },
+
   async getSimilarProducts(
     productId: number,
     limit?: number

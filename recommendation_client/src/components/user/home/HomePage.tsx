@@ -7,7 +7,8 @@ import { GlassCard } from '../../ui/GlassCard';
 import { Header } from '../../layout/Header';
 import { Footer } from '../../layout/Footer';
 import { Skeleton } from '../../common/Skeleton';
-import { productApi, categoryApi } from '@/lib/api';
+import { productApi, categoryApi, recommendationApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Product, Category } from '@/types';
 import { buildProductPath } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -183,12 +184,16 @@ function HomeSearchParamsSync({
 
 function HomePageContent() {
   const INITIAL_VISIBLE_PRODUCTS = 10;
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilterSlug, setCategoryFilterSlug] = useState('');
   const [sortBy, setSortBy] = useState('featured');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PRODUCTS);
   const [products, setProducts] = useState<Product[]>([]);
+  const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
+  const [personalizedReasons, setPersonalizedReasons] = useState<Record<number, string>>({});
+  const [personalizedLoading, setPersonalizedLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -220,6 +225,68 @@ function HomePageContent() {
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPersonalizedRecommendations = async () => {
+      if (!user?.id) {
+        setPersonalizedProducts([]);
+        setPersonalizedReasons({});
+        return;
+      }
+
+      try {
+        setPersonalizedLoading(true);
+        const response = await recommendationApi.getRecommendations(user.id, {
+          limit: 5,
+          strategy: 'hybrid',
+        });
+
+        if (!response.recommendations.length) {
+          if (isActive) {
+            setPersonalizedProducts([]);
+            setPersonalizedReasons({});
+          }
+          return;
+        }
+
+        const products = await Promise.all(
+          response.recommendations.map((recommendation) =>
+            productApi.getProductById(recommendation.productId).catch(() => null)
+          )
+        );
+
+        if (!isActive) {
+          return;
+        }
+
+        setPersonalizedProducts(products.filter((product): product is Product => Boolean(product)));
+        setPersonalizedReasons(
+          response.recommendations.reduce<Record<number, string>>((accumulator, recommendation) => {
+            accumulator[recommendation.productId] = recommendation.reason;
+            return accumulator;
+          }, {})
+        );
+      } catch (error) {
+        if (isActive) {
+          console.error('Error loading personalized recommendations:', error);
+          setPersonalizedProducts([]);
+          setPersonalizedReasons({});
+        }
+      } finally {
+        if (isActive) {
+          setPersonalizedLoading(false);
+        }
+      }
+    };
+
+    void loadPersonalizedRecommendations();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!categoryFilterSlug) {
@@ -623,6 +690,52 @@ function HomePageContent() {
           </div>
         </div>
       </section>
+
+      {(personalizedLoading || personalizedProducts.length > 0) && (
+        <section className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="max-w-[1800px] mx-auto">
+            <div className="mb-6">
+              <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#8a5a00]">
+                Dành cho bạn
+              </p>
+              <h2 className="mt-2 text-2xl font-heading font-bold text-gray-900">
+                Gợi ý theo hành vi mua sắm
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Các sản phẩm được sắp theo lượt xem, tìm kiếm và tương tác gần đây của bạn.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+              {personalizedLoading
+                ? Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      key={`personalized-skeleton-${index}`}
+                      className="overflow-hidden rounded-none border border-gray-200 bg-white"
+                    >
+                      <Skeleton className="aspect-[4/3.65] w-full" rounded="none" />
+                      <div className="space-y-2.5 p-3 sm:p-4">
+                        <Skeleton height="14px" className="w-2/3" />
+                        <Skeleton height="20px" className="w-3/4" />
+                        <Skeleton height="14px" className="w-full" />
+                        <Skeleton height="24px" className="w-1/2" />
+                      </div>
+                    </div>
+                  ))
+                : personalizedProducts.map((product) => (
+                    <div key={product.id} className="space-y-2">
+                      <ProductCard product={product} />
+                      {personalizedReasons[product.id] ? (
+                        <p className="px-1 text-xs font-medium uppercase tracking-[0.14em] text-[#8a5a00]">
+                          {personalizedReasons[product.id]}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section id="catalog" className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1800px] mx-auto">
