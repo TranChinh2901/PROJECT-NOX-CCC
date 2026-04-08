@@ -7,6 +7,14 @@ export interface ProductRecommendation {
   createdAt: string;
 }
 
+export interface TrackRecommendationBehaviorPayload {
+  userId: number;
+  behaviorType: 'view' | 'add_to_cart' | 'purchase' | 'review' | 'wishlist' | 'search';
+  productId?: number;
+  categoryId?: number;
+  metadata?: Record<string, unknown>;
+}
+
 export const recommendationApi = {
   async getSimilarProducts(
     productId: number,
@@ -18,5 +26,9 @@ export const recommendationApi = {
         params: { limit },
       }
     );
+  },
+
+  async trackBehavior(payload: TrackRecommendationBehaviorPayload): Promise<void> {
+    await apiClient.post<void>('/recommendations/track', payload);
   },
 };

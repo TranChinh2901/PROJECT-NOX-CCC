@@ -9,6 +9,7 @@ import { Footer } from '../../../../components/layout/Footer';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { ProductImage } from '../../../../components/common/ProductImage';
 import { productApi, recommendationApi, reviewApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { Product, ProductReviewsSummary, ProductVariant, Review } from '@/types';
@@ -166,6 +167,7 @@ function FlyToCartAnimation({
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const productSlug = typeof slugParam === 'string' ? decodeURIComponent(slugParam) : '';
   const [quantity, setQuantity] = useState(1);
@@ -180,6 +182,7 @@ export default function ProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
   const productImageRef = useRef<HTMLImageElement>(null);
+  const trackedProductViewRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -272,6 +275,32 @@ export default function ProductPage() {
     setSelectedVariantId(defaultVariant?.id ?? null);
     setQuantity(1);
   }, [product]);
+
+  useEffect(() => {
+    if (!user?.id || !product?.id) {
+      return;
+    }
+
+    if (trackedProductViewRef.current === product.id) {
+      return;
+    }
+
+    trackedProductViewRef.current = product.id;
+
+    recommendationApi.trackBehavior({
+      userId: user.id,
+      behaviorType: 'view',
+      productId: product.id,
+      categoryId: product.category?.id,
+      metadata: {
+        page: 'product_detail',
+        slug: product.slug,
+      },
+    }).catch((error: unknown) => {
+      trackedProductViewRef.current = null;
+      console.error('Failed to track product view:', error);
+    });
+  }, [user?.id, product?.id, product?.category?.id, product?.slug]);
 
   const { addToCart: addToCartContext } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
