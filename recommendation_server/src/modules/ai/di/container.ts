@@ -98,7 +98,9 @@ class AIModuleContainer {
     if (!this._recommendationEngine) {
       // Default to content-based engine
       // TODO: Make this configurable via environment variables
-      this._recommendationEngine = new ContentBasedEngine();
+      this._recommendationEngine = new ContentBasedEngine(
+        this.getProductFeatureRepository()
+      );
     }
     return this._recommendationEngine;
   }

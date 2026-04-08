@@ -5,7 +5,10 @@ import {
 } from '../../domain/services/IRecommendationEngine';
 import { Recommendation } from '../../domain/entities/Recommendation';
 import { UserPreference } from '../../domain/entities/UserPreference';
-import { ProductFeature } from '../../domain/repositories/IProductFeatureRepository';
+import {
+  IProductFeatureRepository,
+  ProductFeature,
+} from '../../domain/repositories/IProductFeatureRepository';
 
 /**
  * Adapter: Content-Based Recommendation Engine
@@ -17,6 +20,10 @@ import { ProductFeature } from '../../domain/repositories/IProductFeatureReposit
  * implementations (collaborative filtering, neural networks, etc.)
  */
 export class ContentBasedEngine implements IRecommendationEngine {
+  constructor(
+    private readonly productFeatureRepository: IProductFeatureRepository
+  ) {}
+
   getStrategy(): RecommendationStrategy {
     return RecommendationStrategy.CONTENT_BASED;
   }
@@ -60,9 +67,27 @@ export class ContentBasedEngine implements IRecommendationEngine {
     productId: number,
     limit: number
   ): Promise<Recommendation[]> {
-    // Simplified: would use feature vector similarity in production
-    // For now, return empty (to be implemented with actual product features)
-    return [];
+    const targetProduct = await this.productFeatureRepository.getById(productId);
+
+    if (!targetProduct) {
+      return [];
+    }
+
+    const similarProducts = await this.productFeatureRepository.findSimilar(
+      productId,
+      Math.max(limit * 3, limit)
+    );
+
+    const scoredProducts = similarProducts
+      .map((product) => {
+        const score = this.calculateSimilarityScore(targetProduct, product);
+        const reason = this.generateSimilarityReason(targetProduct, product);
+
+        return Recommendation.create(product.productId, score, reason);
+      })
+      .sort((a, b) => b.score.toNumber() - a.score.toNumber());
+
+    return scoredProducts.slice(0, limit);
   }
 
   /**
@@ -136,5 +161,75 @@ export class ContentBasedEngine implements IRecommendationEngine {
     return reasons.length > 0
       ? reasons.join(', ')
       : 'recommended for you';
+  }
+
+  private calculateSimilarityScore(
+    targetProduct: ProductFeature,
+    candidateProduct: ProductFeature
+  ): number {
+    let score = 0;
+
+    if (targetProduct.categoryId === candidateProduct.categoryId) {
+      score += 0.45;
+    }
+
+    if (
+      targetProduct.brandId &&
+      candidateProduct.brandId &&
+      targetProduct.brandId === candidateProduct.brandId
+    ) {
+      score += 0.2;
+    }
+
+    score += this.calculatePriceSimilarity(targetProduct.price, candidateProduct.price) * 0.2;
+
+    if (candidateProduct.avgRating > 0) {
+      score += Math.min(candidateProduct.avgRating / 5, 1) * 0.1;
+    }
+
+    if (candidateProduct.reviewCount > 0) {
+      score += Math.min(candidateProduct.reviewCount / 50, 1) * 0.05;
+    }
+
+    return Math.min(score, 1);
+  }
+
+  private calculatePriceSimilarity(targetPrice: number, candidatePrice: number): number {
+    if (targetPrice <= 0 || candidatePrice <= 0) {
+      return 0;
+    }
+
+    const differenceRatio =
+      Math.abs(targetPrice - candidatePrice) / Math.max(targetPrice, candidatePrice);
+    return Math.max(0, 1 - differenceRatio);
+  }
+
+  private generateSimilarityReason(
+    targetProduct: ProductFeature,
+    candidateProduct: ProductFeature
+  ): string {
+    const reasons: string[] = [];
+
+    if (targetProduct.categoryId === candidateProduct.categoryId) {
+      reasons.push('same category');
+    }
+
+    if (
+      targetProduct.brandId &&
+      candidateProduct.brandId &&
+      targetProduct.brandId === candidateProduct.brandId
+    ) {
+      reasons.push('same brand');
+    }
+
+    if (this.calculatePriceSimilarity(targetProduct.price, candidateProduct.price) >= 0.85) {
+      reasons.push('similar price range');
+    }
+
+    if (candidateProduct.avgRating >= 4) {
+      reasons.push('highly rated');
+    }
+
+    return reasons.length > 0 ? reasons.join(', ') : 'similar product';
   }
 }
