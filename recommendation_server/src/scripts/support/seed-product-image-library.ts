@@ -1,7 +1,15 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-import { loadedEnv } from "@/config/load-env";
 import { DEFAULT_PRODUCT_IMAGE_ALIASES } from "@/scripts/support/product-image-aliases";
+import {
+  buildCloudinaryAssetIndex,
+  buildCloudinaryAssetUrl,
+  buildCloudinarySeedAssetPublicId,
+  getCloudinaryProductImageLibraryPrefix,
+  getCloudinaryProductImageSeedPrefix,
+  isCloudinarySeedUrl,
+  isCloudinaryUrl,
+  listCloudinaryAssetsByPrefix,
+  uploadSvgToCloudinary,
+} from "@/scripts/support/cloudinary-product-image-assets";
 import { normalizeProductImageKey } from "@/scripts/support/supabase-product-image-sync";
 
 type DeviceFamily =
@@ -34,9 +42,6 @@ type FamilyDefinition = {
 };
 
 const VIEW_COUNT = 3;
-const STORAGE_LIST_PAGE_SIZE = 1000;
-const USER_IMAGE_ROOT = "images";
-
 const FAMILY_DEFINITIONS: Record<DeviceFamily, FamilyDefinition> = {
   "phone": {
     title: "Flagship Phone",
@@ -185,18 +190,6 @@ const FAMILY_DEFINITIONS: Record<DeviceFamily, FamilyDefinition> = {
 
 let uploadedFamilyAssetsPromise: Promise<Map<DeviceFamily, string[]>> | null = null;
 let uploadedProductAssetsPromise: Promise<Map<string, string[]>> | null = null;
-
-function assertSupabaseStorageConfig(): { url: string; serviceRoleKey: string; bucket: string } {
-  if (!loadedEnv.supabase.url || !loadedEnv.supabase.serviceRoleKey) {
-    throw new Error("Supabase storage env vars are required to seed real product images.");
-  }
-
-  return {
-    url: loadedEnv.supabase.url.replace(/\/+$/, ""),
-    serviceRoleKey: loadedEnv.supabase.serviceRoleKey,
-    bucket: loadedEnv.supabase.productImagesBucket,
-  };
-}
 
 function getLeafCategoryName(categoryName: string): string {
   const parts = categoryName.split(" - ");
@@ -450,74 +443,25 @@ function renderSvg(family: DeviceFamily, view: number): string {
     <rect x="120" y="468" width="180" height="14" rx="7" fill="${definition.palette.foreground}" opacity="0.24" />
     <rect x="120" y="904" width="286" height="106" rx="28" fill="${definition.palette.surface}" opacity="0.92" />
     <text x="156" y="958" fill="${definition.palette.foreground}" font-size="32" font-family="Arial, Helvetica, sans-serif" font-weight="700">View ${view + 1}</text>
-    <text x="156" y="998" fill="${definition.palette.foreground}" fill-opacity="0.72" font-size="24" font-family="Arial, Helvetica, sans-serif" font-weight="500">Supabase hosted product image</text>
+    <text x="156" y="998" fill="${definition.palette.foreground}" fill-opacity="0.72" font-size="24" font-family="Arial, Helvetica, sans-serif" font-weight="500">Cloudinary hosted product image</text>
   </g>
   ${renderDeviceArtwork(family, definition, view)}
 </svg>`;
 }
 
-function createStorageClient(): SupabaseClient {
-  const { url, serviceRoleKey } = assertSupabaseStorageConfig();
-
-  return createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-function buildPublicUrl(path: string): string {
-  const { url, bucket } = assertSupabaseStorageConfig();
-  return `${url}/storage/v1/object/public/${bucket}/${path}`;
-}
-
-async function listUploadedAssetsForFamily(client: SupabaseClient, family: DeviceFamily): Promise<string[]> {
-  const { bucket } = assertSupabaseStorageConfig();
-  const prefix = `${USER_IMAGE_ROOT}/${family}`;
-  const paths: string[] = [];
-  let offset = 0;
-
-  while (true) {
-    const { data, error } = await client.storage.from(bucket).list(prefix, {
-      limit: STORAGE_LIST_PAGE_SIZE,
-      offset,
-      sortBy: { column: "name", order: "asc" },
-    });
-
-    if (error) {
-      throw new Error(`Failed to list uploaded assets for ${family}: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      break;
-    }
-
-    for (const item of data) {
-      if (!item.id || !item.name) {
-        continue;
-      }
-
-      paths.push(`${prefix}/${item.name}`);
-    }
-
-    if (data.length < STORAGE_LIST_PAGE_SIZE) {
-      break;
-    }
-
-    offset += STORAGE_LIST_PAGE_SIZE;
-  }
-
-  return paths;
-}
-
 async function loadUploadedFamilyAssets(): Promise<Map<DeviceFamily, string[]>> {
   if (!uploadedFamilyAssetsPromise) {
     uploadedFamilyAssetsPromise = (async () => {
-      const client = createStorageClient();
       const families = Object.keys(FAMILY_DEFINITIONS) as DeviceFamily[];
       const entries = await Promise.all(
-        families.map(async (family) => [family, await listUploadedAssetsForFamily(client, family)] as const),
+        families.map(async (family) => {
+          const assets = await listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageSeedPrefix()}/${family}/`);
+          const urls = assets
+            .map((asset) => asset.secureUrl)
+            .sort((left, right) => left.localeCompare(right));
+
+          return [family, urls] as const;
+        }),
       );
 
       return new Map(entries);
@@ -525,10 +469,6 @@ async function loadUploadedFamilyAssets(): Promise<Map<DeviceFamily, string[]>> 
   }
 
   return uploadedFamilyAssetsPromise;
-}
-
-function normalizeStorageObjectName(fileName: string): string {
-  return normalizeProductImageKey(fileName.replace(/\.[^.]+$/, ""));
 }
 
 function toNormalizedTokens(value: string): string[] {
@@ -631,93 +571,38 @@ export function selectClosestProductImageUrl(input: {
   return bestCandidate.url;
 }
 
-async function listUploadedProductAssets(client: SupabaseClient): Promise<string[]> {
-  const { bucket } = assertSupabaseStorageConfig();
-  const paths: string[] = [];
-  let offset = 0;
-
-  while (true) {
-    const { data, error } = await client.storage.from(bucket).list(USER_IMAGE_ROOT, {
-      limit: STORAGE_LIST_PAGE_SIZE,
-      offset,
-      sortBy: { column: "name", order: "asc" },
-    });
-
-    if (error) {
-      throw new Error(`Failed to list uploaded product assets: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      break;
-    }
-
-    for (const item of data) {
-      if (!item.id || !item.name) {
-        continue;
-      }
-
-      paths.push(`${USER_IMAGE_ROOT}/${item.name}`);
-    }
-
-    if (data.length < STORAGE_LIST_PAGE_SIZE) {
-      break;
-    }
-
-    offset += STORAGE_LIST_PAGE_SIZE;
-  }
-
-  return paths;
-}
-
 async function loadUploadedProductAssets(): Promise<Map<string, string[]>> {
   if (!uploadedProductAssetsPromise) {
     uploadedProductAssetsPromise = (async () => {
-      const client = createStorageClient();
-      const uploadedAssets = await listUploadedProductAssets(client);
-      const uploadedAssetsByNormalizedName = new Map<string, string[]>();
-
-      for (const assetPath of uploadedAssets) {
-        const fileName = assetPath.split("/").pop() ?? assetPath;
-        const normalizedName = normalizeStorageObjectName(fileName);
-        const existingAssets = uploadedAssetsByNormalizedName.get(normalizedName) ?? [];
-
-        existingAssets.push(buildPublicUrl(assetPath));
-        existingAssets.sort((left, right) => left.localeCompare(right));
-        uploadedAssetsByNormalizedName.set(normalizedName, existingAssets);
-      }
-
-      return uploadedAssetsByNormalizedName;
+      const uploadedAssets = await listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageLibraryPrefix()}/`);
+      return buildCloudinaryAssetIndex(uploadedAssets);
     })();
   }
 
   return uploadedProductAssetsPromise;
 }
 
-async function uploadSeedAsset(client: SupabaseClient, family: DeviceFamily, view: number): Promise<void> {
-  const { bucket } = assertSupabaseStorageConfig();
-  const path = getAssetPath(family, view);
+async function uploadSeedAsset(family: DeviceFamily, view: number): Promise<void> {
+  const publicId = buildCloudinarySeedAssetPublicId(family, view);
   const svg = renderSvg(family, view);
 
-  const { error } = await client.storage.from(bucket).upload(path, Buffer.from(svg, "utf-8"), {
-    contentType: "image/svg+xml",
-    cacheControl: "31536000",
-    upsert: true,
+  await uploadSvgToCloudinary({
+    publicId,
+    svg,
+    overwrite: true,
+    tags: ["product-image", "seed-product-image"],
   });
-
-  if (error) {
-    throw new Error(`Failed to upload seed asset ${path}: ${error.message}`);
-  }
 }
 
 export async function ensureSeedProductAssets(): Promise<void> {
-  const client = createStorageClient();
   const families = Object.keys(FAMILY_DEFINITIONS) as DeviceFamily[];
 
   for (const family of families) {
-    let existingAssets: string[] = [];
+    let existingAssets = new Set<string>();
 
     try {
-      existingAssets = await listUploadedAssetsForFamily(client, family);
+      const assets = await listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageSeedPrefix()}/${family}/`);
+      existingAssets = new Set(assets.map((asset) => asset.publicId));
     } catch (error) {
       console.warn(
         `[seed-product-image-library] Failed to inspect fallback assets for ${family}: ${
@@ -727,16 +612,16 @@ export async function ensureSeedProductAssets(): Promise<void> {
     }
 
     for (let view = 0; view < VIEW_COUNT; view += 1) {
-      const expectedPath = getAssetPath(family, view);
-      if (existingAssets.includes(expectedPath)) {
+      const expectedPublicId = buildCloudinarySeedAssetPublicId(family, view);
+      if (existingAssets.has(expectedPublicId)) {
         continue;
       }
 
       try {
-        await uploadSeedAsset(client, family, view);
+        await uploadSeedAsset(family, view);
       } catch (error) {
         console.warn(
-          `[seed-product-image-library] Skipping fallback asset ${expectedPath}: ${
+          `[seed-product-image-library] Skipping fallback asset ${expectedPublicId}: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
@@ -747,7 +632,7 @@ export async function ensureSeedProductAssets(): Promise<void> {
 
 export function getSeedProductImageUrl(categoryName: string, sortOrder: number): string {
   const family = resolveFamily(categoryName);
-  return buildPublicUrl(getAssetPath(family, sortOrder));
+  return buildCloudinaryAssetUrl(buildCloudinarySeedAssetPublicId(family, sortOrder % VIEW_COUNT), "svg");
 }
 
 export async function getPreferredProductImageUrl(
@@ -787,20 +672,16 @@ export async function getPreferredProductImageUrl(
   const uploadedAssets = (await loadUploadedFamilyAssets()).get(family) ?? [];
 
   if (uploadedAssets.length > 0) {
-    return buildPublicUrl(uploadedAssets[((sortOrder % uploadedAssets.length) + uploadedAssets.length) % uploadedAssets.length]);
+    return uploadedAssets[((sortOrder % uploadedAssets.length) + uploadedAssets.length) % uploadedAssets.length];
   }
 
-  return buildPublicUrl(getAssetPath(family, sortOrder));
+  return buildCloudinaryAssetUrl(buildCloudinarySeedAssetPublicId(family, sortOrder % VIEW_COUNT), "svg");
 }
 
 export function isSupabaseStorageUrl(url: string | null | undefined): boolean {
-  if (!url || !loadedEnv.supabase.url) {
-    return false;
-  }
-
-  return url.startsWith(loadedEnv.supabase.url.replace(/\/+$/, ""));
+  return Boolean(url) && !isCloudinaryUrl(url);
 }
 
 export function isSeedProductImageUrl(url: string | null | undefined): boolean {
-  return (url ?? "").includes(`/storage/v1/object/public/${loadedEnv.supabase.productImagesBucket}/seed/products/`);
+  return isCloudinarySeedUrl(url);
 }
