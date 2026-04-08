@@ -8,6 +8,7 @@ import { Category } from '../../../src/modules/products/entity/category';
 import { Brand } from '../../../src/modules/products/entity/brand';
 import { Inventory } from '../../../src/modules/inventory/entity/inventory';
 import { AppError } from '../../../src/common/error.response';
+import supabaseStorageService from '../../../src/services/supabase-storage.service';
 import { createMockProduct } from '../../helpers/mock-factory';
 import { createMockRepository } from '../../setup/repository.mock';
 
@@ -17,14 +18,12 @@ jest.mock('../../../src/config/database.config', () => ({
   },
 }));
 
-const mockSupabaseStorageService = {
-  uploadProductImage: jest.fn(),
-  deleteProductImageByPublicUrl: jest.fn(),
-};
-
 jest.mock('../../../src/services/supabase-storage.service', () => ({
   __esModule: true,
-  default: mockSupabaseStorageService,
+  default: {
+    uploadProductImage: jest.fn(),
+    deleteProductImageByPublicUrl: jest.fn(),
+  },
 }));
 
 const createListQueryBuilder = (products: Product[], total: number) => ({
@@ -56,6 +55,7 @@ describe('AdminProductService', () => {
   let categoryRepository: ReturnType<typeof createMockRepository>;
   let brandRepository: ReturnType<typeof createMockRepository>;
   let inventoryRepository: ReturnType<typeof createMockRepository>;
+  const mockedStorageService = jest.mocked(supabaseStorageService);
 
   beforeEach(() => {
     jest.clearAllMocks();
