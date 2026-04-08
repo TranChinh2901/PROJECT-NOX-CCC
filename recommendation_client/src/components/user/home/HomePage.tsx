@@ -448,6 +448,25 @@ function HomePageContent() {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
   }, []);
 
+  const trackPersonalizedRecommendationClick = useCallback((product: Product) => {
+    if (!user?.id) {
+      return;
+    }
+
+    recommendationApi.trackBehavior({
+      userId: user.id,
+      behaviorType: 'view',
+      productId: product.id,
+      categoryId: product.category?.id,
+      metadata: {
+        source: 'homepage_personalized',
+        recommendationReason: personalizedReasons[product.id],
+      },
+    }).catch((error: unknown) => {
+      console.error('Failed to track personalized recommendation click:', error);
+    });
+  }, [user?.id, personalizedReasons]);
+
   if (loading && isInitialLoad) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -724,7 +743,10 @@ function HomePageContent() {
                   ))
                 : personalizedProducts.map((product) => (
                     <div key={product.id} className="space-y-2">
-                      <ProductCard product={product} />
+                      <ProductCard
+                        product={product}
+                        onProductClick={() => trackPersonalizedRecommendationClick(product)}
+                      />
                       {personalizedReasons[product.id] ? (
                         <p className="px-1 text-xs font-medium uppercase tracking-[0.14em] text-[#8a5a00]">
                           {personalizedReasons[product.id]}
@@ -843,10 +865,12 @@ export default function HomePage() {
 
 function ProductCard({ 
   product, 
-  imageRef
+  imageRef,
+  onProductClick,
 }: { 
   product: Product; 
   imageRef?: (el: HTMLImageElement | null) => void;
+  onProductClick?: () => void;
 }) {
   const localImageRef = useRef<HTMLImageElement>(null);
   const discount = product.compare_at_price 
@@ -877,7 +901,11 @@ function ProductCard({
           </div>
         )}
 
-        <Link href={destinationHref} className="relative block aspect-[4/3.65] overflow-hidden sm:aspect-[4/3.85]">
+        <Link
+          href={destinationHref}
+          className="relative block aspect-[4/3.65] overflow-hidden sm:aspect-[4/3.85]"
+          onClick={onProductClick}
+        >
           <Image
             src={primaryImage}
             alt={product.name}
@@ -903,7 +931,7 @@ function ProductCard({
           </span>
         </div>
 
-        <Link href={destinationHref} className="group/title">
+        <Link href={destinationHref} className="group/title" onClick={onProductClick}>
           <h3 className="min-h-[2.5rem] line-clamp-2 font-heading text-base font-bold leading-snug text-[#111827] transition-colors group-hover/title:text-[#a16207] sm:min-h-[3rem] sm:text-[1.05rem]">
             {product.name}
           </h3>
