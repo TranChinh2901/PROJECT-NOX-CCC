@@ -527,7 +527,7 @@ function HomePageContent() {
           <div className="animate-drift-reverse absolute bottom-0 left-10 h-56 w-56 rounded-full bg-[#CA8A04]/[0.08] blur-3xl" />
         </div>
 
-        <div className="relative max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="max-w-2xl">
               <h1 className="max-w-xl text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
@@ -681,7 +681,7 @@ function HomePageContent() {
       </section>
 
       <section className="sticky top-28 z-40 border-b border-gray-200 bg-white/95 py-4 shadow-sm backdrop-blur-lg">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setSelectedCategory(null)}
@@ -711,8 +711,8 @@ function HomePageContent() {
       </section>
 
       {(personalizedLoading || personalizedProducts.length > 0) && (
-        <section className="px-4 py-10 sm:px-6 lg:px-8">
-          <div className="max-w-[1800px] mx-auto">
+        <section className="py-10">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-6">
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#8a5a00]">
                 Dành cho bạn
@@ -759,8 +759,8 @@ function HomePageContent() {
         </section>
       )}
 
-      <section id="catalog" className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-[1800px] mx-auto">
+      <section id="catalog" className="py-12">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-heading font-bold text-gray-900">

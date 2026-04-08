@@ -37,7 +37,7 @@ export function NavigationLandingPage({
   return (
     <main className="min-h-screen bg-stone-50 pt-36 text-slate-900">
       <section className="border-b border-stone-200 bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.16),_transparent_40%),linear-gradient(180deg,_#fffef7_0%,_#f8f5ef_100%)]">
-        <div className="mx-auto max-w-[1800px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_420px] lg:items-end">
             <div className="max-w-3xl">
               <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
@@ -86,7 +86,7 @@ export function NavigationLandingPage({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1800px] px-4 py-14 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-5 md:grid-cols-3">
           {highlights.map((highlight) => {
             const Icon = highlight.icon;
@@ -111,7 +111,7 @@ export function NavigationLandingPage({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1800px] px-4 pb-20 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-[1200px] px-4 pb-20 sm:px-6 lg:px-8">
         <div className="rounded-[32px] border border-slate-900/10 bg-slate-950 px-6 py-10 text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.65)] sm:px-8">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-300">
             TechNova cam kết

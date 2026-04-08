@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { IncomingMessage, Server } from 'http';
 import { URL } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
+import type { RawData } from 'ws';
 import authService from '@/modules/auth/auth.service';
 import { container } from '../di/container';
 import { logger } from '@/utils/logger';
@@ -137,7 +138,7 @@ export const attachNotificationWebSocketGateway = (server: Server): void => {
       );
     }
 
-    socket.on('message', async (rawData) => {
+    socket.on('message', async (rawData: RawData) => {
       try {
         const message = JSON.parse(rawData.toString()) as ClientMessage;
 
@@ -189,7 +190,7 @@ export const attachNotificationWebSocketGateway = (server: Server): void => {
       logger.log(`WebSocket disconnected for user ${user.id} (${socketId})`);
     });
 
-    socket.on('error', (error) => {
+    socket.on('error', (error: Error) => {
       logger.error(
         `WebSocket error for user ${user.id} (${socketId}): ${
           error instanceof Error ? error.message : String(error)
@@ -230,7 +231,7 @@ export const attachNotificationWebSocketGateway = (server: Server): void => {
       : 'missing-token';
     logger.log(`WebSocket upgrade accepted for user ${decoded.id} (${maskedToken})`);
 
-    wss.handleUpgrade(request, socket, head, (websocket) => {
+    wss.handleUpgrade(request, socket, head, (websocket: WebSocket) => {
       wss.emit('connection', websocket, request);
     });
   });

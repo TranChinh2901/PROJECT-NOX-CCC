@@ -200,7 +200,7 @@ export default function OrderDetailPage() {
     <>
       <Header />
       <div className="min-h-screen bg-[#fcfcfb] py-12 pt-32">
-        <div className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <button

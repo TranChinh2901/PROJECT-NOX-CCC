@@ -436,7 +436,7 @@ export default function ProductPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <main className="pt-28 pb-16">
-          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#CA8A04] mb-4"></div>
@@ -455,7 +455,7 @@ export default function ProductPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <main className="pt-36 pb-16">
-          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
                 <p className="text-xl text-gray-900 mb-4">{error || 'Không tìm thấy sản phẩm'}</p>
@@ -488,7 +488,7 @@ export default function ProductPage() {
       ))}
 
       <main className="pt-36 pb-16">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
             <Link href="/" className="transition-colors hover:text-gray-900">
               Trang Chủ

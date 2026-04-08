@@ -154,7 +154,7 @@ export default function CartPage() {
       <>
         <Header />
         <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="animate-pulse">
               <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -216,7 +216,7 @@ export default function CartPage() {
     <>
       <Header />
       <div className="min-h-screen bg-gray-50 py-8 mt-24">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Giỏ Hàng</h1>
             <p className="text-gray-600 mt-1">
@@ -443,7 +443,7 @@ export default function CartPage() {
       {/* Bulk Action Bar */}
       {hasSelection && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-40 transform transition-transform duration-300 ease-out">
-          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <span className="text-gray-900 font-semibold text-lg">

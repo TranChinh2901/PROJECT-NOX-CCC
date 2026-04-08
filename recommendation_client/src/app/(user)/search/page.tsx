@@ -265,7 +265,7 @@ function SearchPageContent() {
       </Suspense>
       <Header />
 
-      <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-8 items-start">
+      <main className="flex-1 w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-8 items-start">
         {/* Left Sidebar Filter */}
         <aside className="w-full md:w-64 flex-shrink-0 lg:w-72 space-y-6">
           <div className="flex items-center gap-2 pb-4 border-b border-gray-200">

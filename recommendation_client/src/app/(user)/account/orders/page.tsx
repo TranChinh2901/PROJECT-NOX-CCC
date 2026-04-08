@@ -101,7 +101,7 @@ const OrdersPage = () => {
     <>
       <Header />
       <div className="min-h-screen bg-white py-12 pt-32">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Lịch sử đơn hàng</h1>
             <p className="mt-2 text-gray-600">Xem và quản lý đơn hàng của bạn</p>
