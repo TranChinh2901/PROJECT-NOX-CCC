@@ -124,7 +124,7 @@ describe('AdminProductService', () => {
       updated_at: new Date('2026-04-08T02:00:00.000Z'),
       ...payload,
     }));
-    mockSupabaseStorageService.uploadProductImage.mockResolvedValue({
+    mockedStorageService.uploadProductImage.mockResolvedValue({
       path: 'products/44/front-view.jpg',
       publicUrl: uploadedUrl,
     });
@@ -143,7 +143,7 @@ describe('AdminProductService', () => {
       { product_id: productId },
       { is_primary: false },
     );
-    expect(mockSupabaseStorageService.uploadProductImage).toHaveBeenCalledWith(productId, file);
+    expect(mockedStorageService.uploadProductImage).toHaveBeenCalledWith(productId, file);
     expect(productImageRepository.create).toHaveBeenCalledWith(expect.objectContaining({
       product_id: productId,
       image_url: uploadedUrl,
@@ -183,7 +183,7 @@ describe('AdminProductService', () => {
       updated_at: new Date('2026-04-08T02:00:00.000Z'),
       ...payload,
     }));
-    mockSupabaseStorageService.uploadProductImage
+    mockedStorageService.uploadProductImage
       .mockResolvedValueOnce({
         path: 'products/55/gallery-1.jpg',
         publicUrl: 'https://res.cloudinary.com/demo/image/upload/v1/products/55/gallery-1.jpg',
@@ -249,12 +249,12 @@ describe('AdminProductService', () => {
     } as ProductImage;
 
     productImageRepository.findOne.mockResolvedValue(productImage);
-    mockSupabaseStorageService.deleteProductImageByPublicUrl.mockResolvedValue(undefined);
+    mockedStorageService.deleteProductImageByPublicUrl.mockResolvedValue(undefined);
     productImageRepository.delete.mockResolvedValue({ affected: 1 });
 
     await service.deleteProductImage(productId, imageId);
 
-    expect(mockSupabaseStorageService.deleteProductImageByPublicUrl).toHaveBeenCalledWith(
+    expect(mockedStorageService.deleteProductImageByPublicUrl).toHaveBeenCalledWith(
       productImage.image_url,
     );
     expect(productImageRepository.delete).toHaveBeenCalledWith({ id: imageId });
@@ -266,6 +266,6 @@ describe('AdminProductService', () => {
     ).rejects.toBeInstanceOf(AppError);
 
     expect(productRepository.findOne).not.toHaveBeenCalled();
-    expect(mockSupabaseStorageService.uploadProductImage).not.toHaveBeenCalled();
+    expect(mockedStorageService.uploadProductImage).not.toHaveBeenCalled();
   });
 });
