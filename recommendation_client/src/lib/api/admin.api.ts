@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { Brand, Category, Product, User } from '@/types';
+import { Brand, Category, Product, ProductImage, ProductVariant, User } from '@/types';
 
 // Types for admin API responses
 export interface DashboardStats {
@@ -168,6 +168,26 @@ export interface UpdateAdminProductDto {
   meta_description?: string | null;
 }
 
+export interface UploadAdminProductImagesDto {
+  variant_id?: number;
+  alt_text?: string;
+  is_primary?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateAdminProductVariantDto {
+  sku?: string;
+  size?: string | null;
+  color?: string | null;
+  color_code?: string | null;
+  material?: string | null;
+  price_adjustment?: number;
+  weight_kg?: number | null;
+  barcode?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
 export const adminApi = {
   // Dashboard statistics
   async getDashboardStats(): Promise<DashboardStats> {
@@ -258,6 +278,59 @@ export const adminApi = {
 
   async updateProduct(productId: number, data: UpdateAdminProductDto): Promise<Product> {
     return await apiClient.patch<Product>(`/admin/products/${productId}`, data);
+  },
+
+  async updateProductVariant(
+    productId: number,
+    variantId: number,
+    data: UpdateAdminProductVariantDto,
+  ): Promise<ProductVariant> {
+    return await apiClient.patch<ProductVariant>(
+      `/admin/products/${productId}/variants/${variantId}`,
+      data,
+    );
+  },
+
+  async uploadProductImages(
+    productId: number,
+    files: File[],
+    options?: UploadAdminProductImagesDto,
+  ): Promise<ProductImage[]> {
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    if (typeof options?.variant_id === 'number') {
+      formData.append('variant_id', String(options.variant_id));
+    }
+
+    if (options?.alt_text) {
+      formData.append('alt_text', options.alt_text);
+    }
+
+    if (typeof options?.sort_order === 'number') {
+      formData.append('sort_order', String(options.sort_order));
+    }
+
+    if (typeof options?.is_primary === 'boolean') {
+      formData.append('is_primary', String(options.is_primary));
+    }
+
+    return await apiClient.post<ProductImage[]>(
+      `/admin/products/${productId}/images`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    );
+  },
+
+  async deleteProductImage(productId: number, imageId: number): Promise<void> {
+    return await apiClient.delete(`/admin/products/${productId}/images/${imageId}`);
   },
 
   async deleteProduct(productId: number): Promise<void> {

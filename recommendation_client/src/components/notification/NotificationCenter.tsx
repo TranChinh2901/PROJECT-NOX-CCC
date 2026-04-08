@@ -18,6 +18,7 @@ import { NotificationType, NotificationPriority, NotificationStatus } from '@/ty
 import { Button } from '@/components/common/Button';
 import { LiquidButton } from '../ui/LiquidButton';
 import Link from 'next/link';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 // Status options for filtering
 const statusOptions: { value: NotificationStatus | 'all'; label: string; icon: React.ReactNode }[] = [
@@ -55,6 +56,8 @@ export function NotificationCenter({
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useBodyScrollLock(isOpen && variant === 'modal');
 
   const {
     notifications,
@@ -206,7 +209,7 @@ export function NotificationCenter({
           ),
           // Modal variant
           variant === 'modal' && cn(
-            'fixed inset-0 z-50',
+            'fixed inset-0 z-50 overscroll-none',
             isOpen ? 'pointer-events-auto' : 'pointer-events-none'
           ),
           className
@@ -225,7 +228,7 @@ export function NotificationCenter({
         <div
           ref={containerRef}
           className={cn(
-            'flex flex-col h-full',
+            'flex h-full flex-col',
             variant === 'sidebar' ? 'w-full' : 'w-full md:w-[400px] lg:w-[450px]'
           )}
           role="dialog"
@@ -397,7 +400,7 @@ export function NotificationCenter({
           </div>
 
           {/* Notifications List */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-3">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-3">
             {isLoading && filteredNotifications.length === 0 ? (
               // Loading State
               Array.from({ length: 5 }).map((_, i) => (

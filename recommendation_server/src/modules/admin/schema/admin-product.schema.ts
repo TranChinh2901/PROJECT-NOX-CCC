@@ -173,3 +173,47 @@ export const updateProductSchema = Joi.object({
 }).min(1).messages({
   "object.min": "At least one field must be provided for update",
 });
+
+export const updateProductVariantSchema = Joi.object({
+  sku: Joi.string().min(1).max(100).optional().messages({
+    "string.base": "Variant SKU must be a string",
+    "string.min": "Variant SKU must be at least 1 character",
+    "string.max": "Variant SKU must not exceed 100 characters",
+  }),
+  size: Joi.string().max(50).optional().allow('', null).messages({
+    "string.base": "Size must be a string",
+    "string.max": "Size must not exceed 50 characters",
+  }),
+  color: Joi.string().max(50).optional().allow('', null).messages({
+    "string.base": "Color must be a string",
+    "string.max": "Color must not exceed 50 characters",
+  }),
+  color_code: Joi.string().pattern(/^#(?:[0-9a-fA-F]{6})$/).optional().allow('', null).messages({
+    "string.base": "Color code must be a string",
+    "string.pattern.base": "Color code must be a valid hex color like #FFFFFF",
+  }),
+  material: Joi.string().max(50).optional().allow('', null).messages({
+    "string.base": "Material must be a string",
+    "string.max": "Material must not exceed 50 characters",
+  }),
+  price_adjustment: Joi.number().precision(2).optional().messages({
+    "number.base": "Price adjustment must be a number",
+  }),
+  weight_kg: Joi.number().positive().precision(3).optional().allow(null).messages({
+    "number.base": "Variant weight must be a number",
+    "number.positive": "Variant weight must be positive",
+  }),
+  barcode: Joi.string().max(100).optional().allow('', null).messages({
+    "string.base": "Barcode must be a string",
+    "string.max": "Barcode must not exceed 100 characters",
+  }),
+  is_active: Joi.boolean().optional().messages({
+    "boolean.base": "Is active must be a boolean",
+  }),
+  sort_order: Joi.number().integer().optional().messages({
+    "number.base": "Sort order must be a number",
+    "number.integer": "Sort order must be an integer",
+  }),
+}).min(1).messages({
+  "object.min": "At least one variant field must be provided for update",
+});

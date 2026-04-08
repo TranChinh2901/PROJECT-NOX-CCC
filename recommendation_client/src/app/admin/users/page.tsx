@@ -6,6 +6,7 @@ import { User } from '@/types';
 import { RoleType } from '@/types/auth.types';
 import { adminApi } from '@/lib/api/admin.api';
 import { AdminPagination } from '@/components/admin/AdminPagination';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +23,8 @@ export default function UserManagement() {
   const [userForm, setUserForm] = useState<Partial<User>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const deferredSearchTerm = useDeferredValue(searchTerm.trim());
+
+  useBodyScrollLock(Boolean(editingUser || showDeleteConfirm));
 
   const { deleteUserById, updateUserById, isLoading } = useAuth();
 
@@ -254,8 +257,8 @@ export default function UserManagement() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <div className="glass-card max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
             <h3 className="text-xl font-bold mb-4">Chỉnh sửa người dùng</h3>
             <div className="space-y-4">
               <div>
@@ -317,8 +320,8 @@ export default function UserManagement() {
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <div className="glass-card max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
             <h3 className="text-xl font-bold mb-4 text-red-500">Xóa người dùng</h3>
             <p className="text-slate-500 mb-6">
               Bạn có chắc chắn muốn xóa người dùng này không? Hành động này không thể hoàn tác.

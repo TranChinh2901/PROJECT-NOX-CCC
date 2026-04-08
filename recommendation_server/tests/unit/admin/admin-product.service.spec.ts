@@ -137,6 +137,18 @@ describe('AdminProductService', () => {
     });
   });
 
+  it('excludes soft-deleted products from admin listings', async () => {
+    const product = createMockProduct({ id: 903, images: [], variants: [] });
+    const queryBuilder = createListQueryBuilder([product], 1);
+
+    productRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+    inventoryRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+
+    await service.listProducts({ page: 1, limit: 10 });
+
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith('product.deleted_at IS NULL');
+  });
+
   it('stores provider URLs unchanged when uploading product images and mirrors them to thumbnails', async () => {
     const productId = 44;
     const uploadedUrl = 'https://res.cloudinary.com/demo/image/upload/v1744098725/products/44/front-view.jpg';

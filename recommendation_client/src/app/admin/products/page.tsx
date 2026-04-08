@@ -1,11 +1,13 @@
 'use client';
 
-import { useDeferredValue, useEffect, useState } from 'react';
-import { Search, Plus, Edit, Trash2, SlidersHorizontal, Package, TrendingUp, AlertCircle, CheckCircle, Grid3x3, LayoutList } from 'lucide-react';
-import { Brand, Category, Product } from '@/types';
+import Image from 'next/image';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { Search, Plus, Edit, Trash2, SlidersHorizontal, Package, TrendingUp, AlertCircle, CheckCircle, Grid3x3, LayoutList, ImagePlus, Star, LoaderCircle, X } from 'lucide-react';
+import { Brand, Category, Product, ProductImage, ProductVariant } from '@/types';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { adminApi } from '@/lib/api/admin.api';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 type ViewMode = 'grid' | 'list';
 
@@ -23,6 +25,19 @@ interface ProductEditForm {
   weight_kg: string;
   is_active: boolean;
   is_featured: boolean;
+}
+
+interface VariantEditForm {
+  sku: string;
+  size: string;
+  color: string;
+  color_code: string;
+  material: string;
+  price_adjustment: string;
+  weight_kg: string;
+  barcode: string;
+  is_active: boolean;
+  sort_order: string;
 }
 
 const emptyProductForm: ProductEditForm = {
@@ -44,11 +59,48 @@ const emptyProductForm: ProductEditForm = {
 const toOptionalNumber = (value: string): number | null =>
   value.trim() === '' ? null : Number(value);
 
+const toOptionalString = (value: string): string | null =>
+  value.trim() === '' ? null : value.trim();
+
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Đang hoạt động' },
   { value: 'inactive', label: 'Không hoạt động' },
 ] as const;
+
+const sortProductImages = (images: ProductImage[] = []): ProductImage[] =>
+  [...images].sort((firstImage, secondImage) => {
+    if (firstImage.is_primary !== secondImage.is_primary) {
+      return Number(secondImage.is_primary) - Number(firstImage.is_primary);
+    }
+
+    if (firstImage.sort_order !== secondImage.sort_order) {
+      return firstImage.sort_order - secondImage.sort_order;
+    }
+
+    return firstImage.id - secondImage.id;
+  });
+
+const getVariantFormLabel = (variantForm: VariantEditForm) => {
+  const parts = [variantForm.size, variantForm.color, variantForm.material]
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return parts.length > 0 ? parts.join(' • ') : variantForm.sku.trim() || 'Phiên bản';
+};
+
+const mapVariantToForm = (variant: ProductVariant): VariantEditForm => ({
+  sku: variant.sku ?? '',
+  size: variant.size ?? '',
+  color: variant.color ?? '',
+  color_code: variant.color_code ?? '',
+  material: variant.material ?? '',
+  price_adjustment: String(variant.price_adjustment ?? 0),
+  weight_kg: variant.weight_kg === undefined || variant.weight_kg === null ? '' : String(variant.weight_kg),
+  barcode: variant.barcode ?? '',
+  is_active: Boolean(variant.is_active),
+  sort_order: String(variant.sort_order ?? 0),
+});
 
 export default function ProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,10 +117,18 @@ export default function ProductManagement() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductEditForm>(emptyProductForm);
+  const [variantForms, setVariantForms] = useState<Record<number, VariantEditForm>>({});
+  const [productImages, setProductImages] = useState<ProductImage[]>([]);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [savingVariantId, setSavingVariantId] = useState<number | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isDeletingImageId, setIsDeletingImageId] = useState<number | null>(null);
   const [productModalError, setProductModalError] = useState('');
+  const [productImageActionError, setProductImageActionError] = useState('');
+  const [variantErrors, setVariantErrors] = useState<Record<number, string>>({});
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
   const [deleteProductError, setDeleteProductError] = useState('');
   const [stats, setStats] = useState({
@@ -78,6 +138,10 @@ export default function ProductManagement() {
     outOfStock: 0,
   });
   const deferredSearchTerm = useDeferredValue(searchTerm.trim());
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const primaryImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  useBodyScrollLock(Boolean(editingProduct || showDeleteConfirm));
 
   useEffect(() => {
     setCurrentPage(1);
@@ -154,16 +218,36 @@ export default function ProductManagement() {
   });
 
   const openEditModal = (product: Product) => {
+    const sortedImages = sortProductImages(product.images ?? []);
     setEditingProduct(product);
     setProductForm(mapProductToForm(product));
+    setVariantForms(
+      Object.fromEntries((product.variants ?? []).map((variant) => [variant.id, mapVariantToForm(variant)])),
+    );
+    setProductImages(sortedImages);
+    setSelectedImageId(sortedImages[0]?.id ?? null);
     setProductModalError('');
+    setProductImageActionError('');
+    setVariantErrors({});
   };
 
   const closeEditModal = () => {
-    if (isSavingProduct) return;
+    if (isSavingProduct || isUploadingImages || isDeletingImageId !== null) return;
     setEditingProduct(null);
     setProductForm(emptyProductForm);
+    setVariantForms({});
+    setProductImages([]);
+    setSelectedImageId(null);
     setProductModalError('');
+    setProductImageActionError('');
+    setVariantErrors({});
+    setSavingVariantId(null);
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
+    }
+    if (primaryImageInputRef.current) {
+      primaryImageInputRef.current.value = '';
+    }
   };
 
   const recalculateStats = (nextProducts: Product[]) => {
@@ -263,6 +347,262 @@ export default function ProductManagement() {
     }
   };
 
+  const syncProductImages = (productId: number, nextImages: ProductImage[]) => {
+    const sortedImages = sortProductImages(nextImages);
+    setProductImages(sortedImages);
+    setSelectedImageId((currentImageId) => {
+      if (currentImageId && sortedImages.some((image) => image.id === currentImageId)) {
+        return currentImageId;
+      }
+
+      return sortedImages[0]?.id ?? null;
+    });
+    setEditingProduct((currentProduct) =>
+      currentProduct?.id === productId
+        ? {
+            ...currentProduct,
+            images: sortedImages,
+          }
+        : currentProduct,
+    );
+    setProducts((currentProducts) =>
+      currentProducts.map((product) =>
+        product.id === productId
+          ? {
+              ...product,
+              images: sortedImages,
+            }
+          : product,
+      ),
+    );
+  };
+
+  const syncProductVariant = (productId: number, nextVariant: ProductVariant) => {
+    const updateVariants = (variants: ProductVariant[] = []) =>
+      variants.map((variant) => (variant.id === nextVariant.id ? nextVariant : variant));
+
+    setVariantForms((currentForms) => ({
+      ...currentForms,
+      [nextVariant.id]: mapVariantToForm(nextVariant),
+    }));
+
+    setEditingProduct((currentProduct) =>
+      currentProduct?.id === productId
+        ? {
+            ...currentProduct,
+            variants: updateVariants(currentProduct.variants ?? []),
+          }
+        : currentProduct,
+    );
+
+    setProducts((currentProducts) =>
+      currentProducts.map((product) =>
+        product.id === productId
+          ? {
+              ...product,
+              variants: updateVariants(product.variants ?? []),
+            }
+          : product,
+      ),
+    );
+  };
+
+  const handleVariantFieldChange = (
+    variantId: number,
+    field: keyof VariantEditForm,
+    value: string | boolean,
+  ) => {
+    setVariantForms((currentForms) => ({
+      ...currentForms,
+      [variantId]: {
+        ...currentForms[variantId],
+        [field]: value,
+      },
+    }));
+    setVariantErrors((currentErrors) => ({
+      ...currentErrors,
+      [variantId]: '',
+    }));
+  };
+
+  const resetVariantForm = (variant: ProductVariant) => {
+    setVariantForms((currentForms) => ({
+      ...currentForms,
+      [variant.id]: mapVariantToForm(variant),
+    }));
+    setVariantErrors((currentErrors) => ({
+      ...currentErrors,
+      [variant.id]: '',
+    }));
+  };
+
+  const handleSaveVariant = async (variant: ProductVariant) => {
+    if (!editingProduct) {
+      return;
+    }
+
+    const variantForm = variantForms[variant.id];
+    if (!variantForm) {
+      return;
+    }
+
+    if (!variantForm.sku.trim()) {
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: 'SKU phiên bản là bắt buộc.',
+      }));
+      return;
+    }
+
+    if (variantForm.color_code.trim() && !/^#(?:[0-9a-fA-F]{6})$/.test(variantForm.color_code.trim())) {
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: 'Mã màu phải theo định dạng #RRGGBB.',
+      }));
+      return;
+    }
+
+    if (variantForm.price_adjustment.trim() === '' || Number.isNaN(Number(variantForm.price_adjustment))) {
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: 'Điều chỉnh giá phải là một số hợp lệ.',
+      }));
+      return;
+    }
+
+    if (
+      variantForm.sort_order.trim() === '' ||
+      Number.isNaN(Number(variantForm.sort_order)) ||
+      !Number.isInteger(Number(variantForm.sort_order))
+    ) {
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: 'Thứ tự hiển thị phải là một số nguyên.',
+      }));
+      return;
+    }
+
+    try {
+      setSavingVariantId(variant.id);
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]: '',
+      }));
+
+      const updatedVariant = await adminApi.updateProductVariant(editingProduct.id, variant.id, {
+        sku: variantForm.sku.trim(),
+        size: toOptionalString(variantForm.size),
+        color: toOptionalString(variantForm.color),
+        color_code: toOptionalString(variantForm.color_code),
+        material: toOptionalString(variantForm.material),
+        price_adjustment: Number(variantForm.price_adjustment),
+        weight_kg: toOptionalNumber(variantForm.weight_kg),
+        barcode: toOptionalString(variantForm.barcode),
+        is_active: variantForm.is_active,
+        sort_order: Number(variantForm.sort_order),
+      });
+
+      syncProductVariant(editingProduct.id, updatedVariant);
+    } catch (error) {
+      console.error('Failed to update product variant:', error);
+      setVariantErrors((currentErrors) => ({
+        ...currentErrors,
+        [variant.id]:
+          error instanceof Error ? error.message : 'Không thể cập nhật phiên bản. Vui lòng thử lại.',
+      }));
+    } finally {
+      setSavingVariantId(null);
+    }
+  };
+
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    options: { makePrimary: boolean },
+  ) => {
+    if (!editingProduct) {
+      return;
+    }
+
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) {
+      return;
+    }
+
+    const invalidFile = files.find((file) => !file.type.startsWith('image/'));
+    if (invalidFile) {
+      setProductImageActionError('Chỉ chấp nhận tệp hình ảnh.');
+      event.target.value = '';
+      return;
+    }
+
+    const oversizedFile = files.find((file) => file.size > 8 * 1024 * 1024);
+    if (oversizedFile) {
+      setProductImageActionError('Mỗi ảnh phải nhỏ hơn hoặc bằng 8MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const shouldMakePrimary = options.makePrimary || productImages.length === 0;
+
+    try {
+      setIsUploadingImages(true);
+      setProductImageActionError('');
+
+      const uploadedImages = await adminApi.uploadProductImages(editingProduct.id, files, {
+        is_primary: shouldMakePrimary,
+      });
+
+      const nextImages = sortProductImages([
+        ...(shouldMakePrimary
+          ? productImages.map((image) => ({
+              ...image,
+              is_primary: false,
+            }))
+          : productImages),
+        ...uploadedImages,
+      ]);
+
+      syncProductImages(editingProduct.id, nextImages);
+      setSelectedImageId(
+        uploadedImages.find((image) => image.is_primary)?.id ??
+          uploadedImages[0]?.id ??
+          nextImages[0]?.id ??
+          null,
+      );
+    } catch (error) {
+      console.error('Failed to upload product images:', error);
+      setProductImageActionError(
+        error instanceof Error ? error.message : 'Không thể tải ảnh lên. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsUploadingImages(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (imageId: number) => {
+    if (!editingProduct) {
+      return;
+    }
+
+    try {
+      setIsDeletingImageId(imageId);
+      setProductImageActionError('');
+      await adminApi.deleteProductImage(editingProduct.id, imageId);
+      syncProductImages(
+        editingProduct.id,
+        productImages.filter((image) => image.id !== imageId),
+      );
+    } catch (error) {
+      console.error('Failed to delete product image:', error);
+      setProductImageActionError(
+        error instanceof Error ? error.message : 'Không thể xóa ảnh. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsDeletingImageId(null);
+    }
+  };
+
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -287,6 +627,10 @@ export default function ProductManagement() {
     };
     return labels[status] || status;
   };
+
+  const selectedProductImage =
+    productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
+  const editingProductVariants = editingProduct?.variants ?? [];
 
   if (initialLoading) {
     return (
@@ -469,22 +813,29 @@ export default function ProductManagement() {
             const statusLabel = product.is_active ? 'active' : 'inactive';
             const showComparePrice = typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
             const stockStatus = (product.stock_quantity || 0) === 0 ? 'out' : (product.stock_quantity || 0) < 10 ? 'low' : 'normal';
+            const displayImages = sortProductImages(product.images ?? []);
+            const primaryImage = displayImages[0];
 
             return (
               <GlassCard key={product.id} hover className="overflow-hidden group cursor-pointer">
                 {/* Product Image */}
-                <div className="relative">
-                  {product.images && product.images.length > 0 ? (
-                    <img
-                      src={product.images[0].image_url}
-                      alt={product.name}
-                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                      <Package className="w-12 h-12 text-slate-400" />
-                    </div>
-                  )}
+                <div className="relative overflow-hidden border-b border-slate-100 bg-slate-50/80">
+                  <div className="relative aspect-[4/3] w-full">
+                    {primaryImage ? (
+                      <Image
+                        src={primaryImage.image_url}
+                        alt={product.name}
+                        fill
+                        sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 100vw"
+                        className="object-contain p-5 transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-center">
+                        <Package className="h-12 w-12 text-slate-400" />
+                        <span className="text-xs font-medium text-slate-500">Chưa có ảnh</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="absolute top-2 right-2 flex gap-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${getStatusColor(statusLabel)}`}>
                       {getStatusLabel(statusLabel)}
@@ -494,6 +845,16 @@ export default function ProductManagement() {
                         stockStatus === 'out' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
                       }`}>
                         {stockStatus === 'out' ? 'Hết hàng' : 'Sắp hết hàng'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                    <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur">
+                      {primaryImage ? 'Ảnh chính' : 'Ảnh sản phẩm'}
+                    </span>
+                    {displayImages.length > 1 && (
+                      <span className="rounded-full bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                        +{displayImages.length - 1} ảnh
                       </span>
                     )}
                   </div>
@@ -556,20 +917,33 @@ export default function ProductManagement() {
           {products.map((product) => {
             const statusLabel = product.is_active ? 'active' : 'inactive';
             const showComparePrice = typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
+            const displayImages = sortProductImages(product.images ?? []);
+            const primaryImage = displayImages[0];
 
             return (
               <GlassCard key={product.id} hover className="p-6 cursor-pointer">
                 <div className="flex items-center gap-6">
                   {/* Product Image */}
                   <div className="flex-shrink-0">
-                    {product.images && product.images.length > 0 ? (
-                      <img
-                        src={product.images[0].image_url}
-                        alt={product.name}
-                        className="w-24 h-24 object-cover rounded-lg"
-                      />
+                    {primaryImage ? (
+                      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 shadow-sm">
+                        <div className="relative h-20 w-20">
+                          <Image
+                            src={primaryImage.image_url}
+                            alt={product.name}
+                            fill
+                            sizes="80px"
+                            className="object-contain"
+                          />
+                        </div>
+                        {displayImages.length > 1 && (
+                          <span className="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                            +{displayImages.length - 1}
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                      <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
                         <Package className="w-8 h-8 text-slate-400" />
                       </div>
                     )}
@@ -657,11 +1031,444 @@ export default function ProductManagement() {
 
       {/* Edit Product Modal */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="glass-card max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
-            <h3 className="mb-4 text-xl font-bold">Chỉnh sửa sản phẩm</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <div className="glass-card max-h-[90vh] w-full max-w-5xl overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold">Chỉnh sửa sản phẩm</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Tối ưu thông tin hiển thị và quản lý bộ ảnh ngay trong một màn hình.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                disabled={isSavingProduct || isUploadingImages || isDeletingImageId !== null}
+                className="rounded-full border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Đóng hộp thoại chỉnh sửa sản phẩm"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Ảnh sản phẩm</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {productImages.length > 0
+                        ? `${productImages.length} ảnh đã được liên kết với sản phẩm này.`
+                        : 'Chưa có ảnh nào, hãy thêm ảnh để thẻ sản phẩm cân đối hơn.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleImageUpload(event, { makePrimary: false });
+                      }}
+                    />
+                    <input
+                      ref={primaryImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleImageUpload(event, { makePrimary: true });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      disabled={isUploadingImages || isDeletingImageId !== null}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isUploadingImages ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      Tải thêm ảnh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => primaryImageInputRef.current?.click()}
+                      disabled={isUploadingImages || isDeletingImageId !== null}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#7366ff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Star className="h-4 w-4" />
+                      Thay ảnh chính
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="relative aspect-[4/3]">
+                      {selectedProductImage ? (
+                        <>
+                          <Image
+                            src={selectedProductImage.image_url}
+                            alt={selectedProductImage.alt_text || editingProduct.name}
+                            fill
+                            sizes="(min-width: 1024px) 45vw, 100vw"
+                            className="object-contain p-6"
+                          />
+                          <div className="absolute left-4 top-4 flex items-center gap-2">
+                            {selectedProductImage.is_primary && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                                <Star className="h-3.5 w-3.5 fill-current" />
+                                Ảnh chính
+                              </span>
+                            )}
+                            <span className="rounded-full bg-slate-900/75 px-3 py-1 text-xs font-medium text-white">
+                              #{selectedProductImage.sort_order + 1}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-slate-100 to-slate-200 text-center">
+                          <Package className="h-12 w-12 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">Chưa có ảnh hiển thị</p>
+                            <p className="mt-1 text-xs text-slate-500">Tải ảnh lên để hoàn thiện thẻ sản phẩm.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+                      {productImages.map((image) => {
+                        const isSelected = image.id === selectedProductImage?.id;
+                        const isDeletingThisImage = isDeletingImageId === image.id;
+
+                        return (
+                          <div
+                            key={image.id}
+                            className={`group relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-all ${
+                              isSelected
+                                ? 'border-[#7366ff] ring-2 ring-[#7366ff]/20'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setSelectedImageId(image.id)}
+                              className="block w-full"
+                            >
+                              <div className="relative aspect-square bg-slate-50 p-3">
+                                <Image
+                                  src={image.thumbnail_url || image.image_url}
+                                  alt={image.alt_text || editingProduct.name}
+                                  fill
+                                  sizes="(min-width: 1024px) 10vw, (min-width: 640px) 18vw, 40vw"
+                                  className="object-contain"
+                                />
+                              </div>
+                            </button>
+
+                            <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1">
+                              {image.is_primary && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                                  Chính
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleDeleteImage(image.id);
+                              }}
+                              disabled={isDeletingThisImage || isUploadingImages}
+                              className="absolute right-2 top-2 rounded-full bg-white/95 p-1.5 text-red-500 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                              aria-label={`Xóa ảnh ${image.alt_text || editingProduct.name}`}
+                            >
+                              {isDeletingThisImage ? (
+                                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {productImages.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                        Bộ ảnh trống. Thêm ảnh để xem trước ngay tại đây.
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-500">
+                      Hỗ trợ JPG, PNG, GIF, WEBP · tối đa 8MB mỗi ảnh. Nút “Thay ảnh chính” sẽ gán ảnh mới làm ảnh đại diện.
+                    </p>
+                  </div>
+                </div>
+
+                {productImageActionError && (
+                  <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {productImageActionError}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Phiên bản sản phẩm</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {editingProductVariants.length > 0
+                        ? `${editingProductVariants.length} phiên bản đang được dùng ở trang chi tiết sản phẩm.`
+                        : 'Sản phẩm này hiện chưa có phiên bản riêng và sẽ dùng giá cơ bản.'}
+                    </p>
+                  </div>
+                  {editingProductVariants.length > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+                      SKU gốc: {editingProduct.sku}
+                    </span>
+                  )}
+                </div>
+
+                {editingProductVariants.length > 0 ? (
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {editingProductVariants.map((variant) => {
+                      const variantForm = variantForms[variant.id] ?? mapVariantToForm(variant);
+                      const adjustment = Number(variantForm.price_adjustment || 0);
+                      const isAdjusted = adjustment !== 0;
+                      const basePriceForPreview =
+                        productForm.base_price.trim() !== '' && !Number.isNaN(Number(productForm.base_price))
+                          ? Number(productForm.base_price)
+                          : Number(editingProduct.base_price || 0);
+                      const previewFinalPrice = Number.isNaN(adjustment)
+                        ? Number(variant.final_price)
+                        : basePriceForPreview + adjustment;
+                      const variantError = variantErrors[variant.id];
+                      const isSavingThisVariant = savingVariantId === variant.id;
+
+                      return (
+                        <div
+                          key={variant.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-slate-900">
+                                  {getVariantFormLabel(variantForm)}
+                                </p>
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                    variantForm.is_active
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-slate-200 text-slate-600'
+                                  }`}
+                                >
+                                  {variantForm.is_active ? 'Đang bán' : 'Tạm ẩn'}
+                                </span>
+                              </div>
+                            </div>
+                            {variantForm.color_code && /^#(?:[0-9a-fA-F]{6})$/.test(variantForm.color_code) && (
+                              <span
+                                className="mt-1 h-4 w-4 rounded-full border border-slate-200"
+                                style={{ backgroundColor: variantForm.color_code }}
+                                aria-label={`Màu ${variantForm.color || 'phiên bản'}`}
+                              />
+                            )}
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                SKU phiên bản
+                              </label>
+                              <input
+                                type="text"
+                                value={variantForm.sku}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'sku', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Thứ tự hiển thị
+                              </label>
+                              <input
+                                type="number"
+                                value={variantForm.sort_order}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'sort_order', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Kích cỡ
+                              </label>
+                              <input
+                                type="text"
+                                value={variantForm.size}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'size', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Màu sắc
+                              </label>
+                              <input
+                                type="text"
+                                value={variantForm.color}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'color', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Mã màu
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="#FFFFFF"
+                                value={variantForm.color_code}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'color_code', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Chất liệu
+                              </label>
+                              <input
+                                type="text"
+                                value={variantForm.material}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'material', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Barcode
+                              </label>
+                              <input
+                                type="text"
+                                value={variantForm.barcode}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'barcode', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Điều chỉnh giá
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={variantForm.price_adjustment}
+                                onChange={(e) =>
+                                  handleVariantFieldChange(variant.id, 'price_adjustment', e.target.value)
+                                }
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                                Khối lượng (kg)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                value={variantForm.weight_kg}
+                                onChange={(e) => handleVariantFieldChange(variant.id, 'weight_kg', e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#7366ff]"
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3">
+                              <div>
+                                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                                  Giá bán sau điều chỉnh
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                  {formatPrice(previewFinalPrice)}
+                                </p>
+                              </div>
+                              <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                                <input
+                                  type="checkbox"
+                                  checked={variantForm.is_active}
+                                  onChange={(e) =>
+                                    handleVariantFieldChange(variant.id, 'is_active', e.target.checked)
+                                  }
+                                  className="h-4 w-4 rounded border-slate-300 text-[#7366ff] focus:ring-[#7366ff]"
+                                />
+                                Kích hoạt phiên bản
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                            <p
+                              className={`text-sm font-semibold ${
+                                !isAdjusted
+                                  ? 'text-slate-700'
+                                  : adjustment > 0
+                                    ? 'text-amber-700'
+                                    : 'text-emerald-700'
+                              }`}
+                            >
+                              {!isAdjusted
+                                ? 'Phiên bản này đang dùng đúng giá cơ bản.'
+                                : adjustment > 0
+                                  ? `Đang cộng thêm ${formatPrice(adjustment)} so với giá cơ bản.`
+                                  : `Đang giảm ${formatPrice(Math.abs(adjustment))} so với giá cơ bản.`}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => resetVariantForm(variant)}
+                                disabled={isSavingThisVariant}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Hoàn tác
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void handleSaveVariant(variant);
+                                }}
+                                disabled={isSavingThisVariant}
+                                className="inline-flex items-center gap-2 rounded-lg bg-[#7366ff] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isSavingThisVariant && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                                {isSavingThisVariant ? 'Đang lưu...' : 'Lưu phiên bản'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {variantError && (
+                            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                              {variantError}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                    Chưa có dữ liệu phiên bản cho sản phẩm này.
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium">Tên sản phẩm</label>
                 <input
@@ -850,8 +1657,8 @@ export default function ProductManagement() {
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card backdrop-blur-sm bg-white border border-slate-200 rounded-xl p-6 max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <div className="glass-card max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
             <h3 className="text-xl font-bold mb-4 text-red-500">Xóa sản phẩm</h3>
             <p className="text-slate-500 mb-6">
               Bạn có chắc chắn muốn xóa sản phẩm này không? Hành động này không thể hoàn tác.

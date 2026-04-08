@@ -13,6 +13,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { NotificationItem } from './NotificationItem';
 import { NotificationItemSkeleton } from './NotificationItemSkeleton';
 import { cn } from '@/lib/utils';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 export interface NotificationDropdownProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export function NotificationDropdown({
   listHref = '/admin/notifications',
 }: NotificationDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  useBodyScrollLock(isOpen);
   const {
     notifications,
     unreadCount,
@@ -116,7 +118,7 @@ export function NotificationDropdown({
         aria-label="Notifications"
         className={cn(
           'bg-white shadow-xl ring-1 ring-black ring-opacity-5',
-          'z-50 flex flex-col',
+          'z-50 flex flex-col overscroll-none',
           // Mobile: Full screen
           'fixed inset-0',
           // Desktop: Dropdown
@@ -194,7 +196,7 @@ export function NotificationDropdown({
 
         {/* Notification list */}
         <div
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto overscroll-contain"
           role="list"
           aria-label="Notification list"
         >

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AppResponse } from '@/common/success.response';
 import { HttpStatusCode } from '@/constants/status-code';
 import adminProductService from './admin-product.service';
-import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto } from './dto/admin-product.dto';
+import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto, UpdateProductVariantDto } from './dto/admin-product.dto';
 import { BulkOperationDto } from './dto/bulk-operation.dto';
 import { AppError } from '@/common/error.response';
 import { ErrorCode } from '@/constants/error-code';
@@ -78,6 +78,20 @@ class AdminProductController {
       message: 'Product deleted successfully',
       statusCode: HttpStatusCode.OK,
       data: null
+    }).sendResponse(res);
+  }
+
+  async updateProductVariant(req: Request, res: Response) {
+    const productId = parseInt(req.params.id);
+    const variantId = parseInt(req.params.variantId);
+    const data: UpdateProductVariantDto = req.body;
+
+    const variant = await adminProductService.updateProductVariant(productId, variantId, data);
+
+    return new AppResponse({
+      message: 'Product variant updated successfully',
+      statusCode: HttpStatusCode.OK,
+      data: variant
     }).sendResponse(res);
   }
 

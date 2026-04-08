@@ -44,3 +44,16 @@ export interface UpdateProductDto {
   meta_title?: string;
   meta_description?: string;
 }
+
+export interface UpdateProductVariantDto {
+  sku?: string;
+  size?: string | null;
+  color?: string | null;
+  color_code?: string | null;
+  material?: string | null;
+  price_adjustment?: number;
+  weight_kg?: number | null;
+  barcode?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}

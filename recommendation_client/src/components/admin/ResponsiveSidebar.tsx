@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface NavItem {
   href: string;
@@ -52,6 +53,8 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileDrawerPath, setMobileDrawerPath] = useState(pathname);
   const isMobileDrawerOpen = mobileOpen && mobileDrawerPath === pathname;
+
+  useBodyScrollLock(isMobileDrawerOpen);
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -171,7 +174,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
       {/* Mobile Drawer */}
       <div
         className={cn(
-          'lg:hidden fixed top-0 left-0 h-full w-72 bg-white border-r border-[rgb(var(--admin-border))] z-50 shadow-2xl',
+          'lg:hidden fixed top-0 left-0 h-full w-72 bg-white border-r border-[rgb(var(--admin-border))] z-50 shadow-2xl overscroll-none',
           'transform transition-transform duration-300 ease-out',
           isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -190,7 +193,7 @@ export default function ResponsiveSidebar({ onToggle }: ResponsiveSidebarProps) 
           </div>
 
           {/* Mobile Navigation */}
-          <nav className="flex-1 p-4 overflow-y-auto">
+          <nav className="flex-1 overflow-y-auto overscroll-contain p-4">
             {renderNavItems(true)}
           </nav>
 

@@ -1,4 +1,4 @@
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, Not } from "typeorm";
 import { AppDataSource } from "@/config/database.config";
 import { Product } from "@/modules/products/entity/product";
 import { ProductVariant } from "@/modules/products/entity/product-variant";
@@ -9,7 +9,7 @@ import { Inventory } from "@/modules/inventory/entity/inventory";
 import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
-import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto } from "@/modules/admin/dto/admin-product.dto";
+import { AdminProductListQueryDto, CreateProductDto, UpdateProductDto, UpdateProductVariantDto } from "@/modules/admin/dto/admin-product.dto";
 import cloudinaryProductImageService from "@/services/cloudinary-product-image.service";
 import supabaseStorageService from "@/services/supabase-storage.service";
 
@@ -57,7 +57,8 @@ export class AdminProductService {
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.variants', 'variants')
       .leftJoinAndSelect('product.images', 'images')
-      .withDeleted(); // Include soft-deleted items for admin
+      .withDeleted()
+      .andWhere('product.deleted_at IS NULL');
 
     // Search filter
     if (search) {
@@ -228,11 +229,120 @@ export class AdminProductService {
       }
     }
 
+    const shouldRecalculateVariantPrices =
+      data.base_price !== undefined && Number(data.base_price) !== Number(product.base_price);
+
     // Update product
     Object.assign(product, data);
     const updatedProduct = await this.productRepository.save(product);
 
+    if (shouldRecalculateVariantPrices) {
+      const productVariants = await this.productVariantRepository.find({
+        where: { product_id: id },
+      });
+
+      if (productVariants.length > 0) {
+        await this.productVariantRepository.save(
+          productVariants.map((variant) => ({
+            ...variant,
+            final_price: Number(updatedProduct.base_price) + Number(variant.price_adjustment),
+          })),
+        );
+      }
+    }
+
     return this.getProduct(updatedProduct.id);
+  }
+
+  async updateProductVariant(productId: number, variantId: number, data: UpdateProductVariantDto) {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new AppError(
+        'Product not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_NOT_FOUND
+      );
+    }
+
+    const variant = await this.productVariantRepository.findOne({
+      where: {
+        id: variantId,
+        product_id: productId,
+      },
+    });
+
+    if (!variant) {
+      throw new AppError(
+        'Product variant not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.PRODUCT_NOT_FOUND
+      );
+    }
+
+    if (data.sku && data.sku !== variant.sku) {
+      const existingSKU = await this.productVariantRepository.findOne({
+        where: {
+          sku: data.sku,
+          id: Not(variantId),
+        },
+      });
+
+      if (existingSKU) {
+        throw new AppError(
+          'Product variant SKU already exists',
+          HttpStatusCode.BAD_REQUEST,
+          ErrorCode.DUPLICATE_SKU
+        );
+      }
+    }
+
+    if (data.sku !== undefined) {
+      variant.sku = data.sku;
+    }
+
+    if (data.size !== undefined) {
+      variant.size = data.size || undefined;
+    }
+
+    if (data.color !== undefined) {
+      variant.color = data.color || undefined;
+    }
+
+    if (data.color_code !== undefined) {
+      variant.color_code = data.color_code || undefined;
+    }
+
+    if (data.material !== undefined) {
+      variant.material = data.material || undefined;
+    }
+
+    if (data.weight_kg !== undefined) {
+      variant.weight_kg = data.weight_kg ?? undefined;
+    }
+
+    if (data.barcode !== undefined) {
+      variant.barcode = data.barcode || undefined;
+    }
+
+    if (data.is_active !== undefined) {
+      variant.is_active = data.is_active;
+    }
+
+    if (data.sort_order !== undefined) {
+      variant.sort_order = data.sort_order;
+    }
+
+    if (data.price_adjustment !== undefined) {
+      variant.price_adjustment = data.price_adjustment;
+      variant.final_price = Number(product.base_price) + Number(data.price_adjustment);
+    }
+
+    const updatedVariant = await this.productVariantRepository.save(variant);
+
+    return this.formatProductVariantResponse(updatedVariant);
   }
 
   async deleteProduct(id: number): Promise<void> {
@@ -472,20 +582,31 @@ export class AdminProductService {
         is_primary: img.is_primary,
         sort_order: img.sort_order
       })) || [],
-      variants: product.variants?.map(variant => ({
-        id: variant.id,
-        sku: variant.sku,
-        size: variant.size,
-        color: variant.color,
-        color_code: variant.color_code,
-        material: variant.material,
-        price_adjustment: variant.price_adjustment,
-        final_price: variant.final_price,
-        is_active: variant.is_active
-      })) || [],
+      variants: product.variants?.map((variant) => this.formatProductVariantResponse(variant)) || [],
       deleted_at: product.deleted_at,
       created_at: product.created_at,
       updated_at: product.updated_at
+    };
+  }
+
+  private formatProductVariantResponse(variant: ProductVariant) {
+    return {
+      id: variant.id,
+      product_id: variant.product_id,
+      sku: variant.sku,
+      size: variant.size ?? null,
+      color: variant.color ?? null,
+      color_code: variant.color_code ?? null,
+      material: variant.material ?? null,
+      price_adjustment: variant.price_adjustment,
+      final_price: variant.final_price,
+      weight_kg: variant.weight_kg ?? null,
+      barcode: variant.barcode ?? null,
+      is_active: variant.is_active,
+      sort_order: variant.sort_order,
+      created_at: variant.created_at,
+      updated_at: variant.updated_at,
+      deleted_at: variant.deleted_at ?? null,
     };
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -64,6 +64,19 @@ const getVariantLabel = (variant?: ProductVariant) => {
   const parts = [variant.size, variant.color, variant.material].filter(Boolean);
   return parts.length > 0 ? parts.join(' • ') : variant.sku;
 };
+
+const sortProductImages = (images: Product['images'] = []) =>
+  [...(images ?? [])].sort((firstImage, secondImage) => {
+    if (firstImage.is_primary !== secondImage.is_primary) {
+      return Number(secondImage.is_primary) - Number(firstImage.is_primary);
+    }
+
+    if (firstImage.sort_order !== secondImage.sort_order) {
+      return firstImage.sort_order - secondImage.sort_order;
+    }
+
+    return firstImage.id - secondImage.id;
+  });
 
 function FlyToCartAnimation({
   startRect,
@@ -157,6 +170,7 @@ export default function ProductPage() {
   const productSlug = typeof slugParam === 'string' ? decodeURIComponent(slugParam) : '';
   const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -319,6 +333,7 @@ export default function ProductPage() {
   const selectedVariant = product?.variants?.find((variant) => variant.id === selectedVariantId)
     ?? product?.variants?.[0]
     ?? null;
+  const productImages = useMemo(() => sortProductImages(product?.images), [product?.images]);
   const selectedVariantPrice = selectedVariant?.final_price ?? product?.base_price ?? 0;
   const discount = product?.compare_at_price && selectedVariantPrice
     ? Math.round(((product.compare_at_price - selectedVariantPrice) / product.compare_at_price) * 100)
@@ -333,9 +348,11 @@ export default function ProductPage() {
     (reviewsSummary?.rating_distribution || []).map((item) => [Number(item.rating), Number(item.count)])
   );
 
-  const primaryImage = product?.images?.find(img => img.is_primary)?.image_url 
-    || product?.images?.[0]?.image_url 
-    || '/placeholder.png';
+  const selectedImage =
+    productImages.find((image) => image.id === selectedImageId)
+    ?? productImages[0]
+    ?? null;
+  const primaryImage = selectedImage?.image_url || '/placeholder.png';
 
   const isWishlisted = selectedVariantId ? isInWishlist(selectedVariantId) : false;
   const selectedVariantStock = selectedVariant
@@ -354,6 +371,10 @@ export default function ProductPage() {
 
     setQuantity((currentQuantity) => Math.min(currentQuantity, stockQuantity));
   }, [isOutOfStock, stockQuantity, selectedVariantId]);
+
+  useEffect(() => {
+    setSelectedImageId(productImages[0]?.id ?? null);
+  }, [product?.id, productImages]);
 
   if (loading) {
     return (
@@ -437,12 +458,47 @@ export default function ProductPage() {
                   alt={product.name}
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
+                  className="object-contain bg-white"
                   onLoad={(event) => {
                     productImageRef.current = event.currentTarget as HTMLImageElement;
                   }}
                 />
               </GlassCard>
+
+              {productImages.length > 1 && (
+                <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
+                  {productImages.map((image, index) => {
+                    const isSelected = image.id === selectedImage?.id;
+
+                    return (
+                      <button
+                        key={image.id}
+                        type="button"
+                        onClick={() => setSelectedImageId(image.id)}
+                        className={`group relative aspect-square overflow-hidden rounded-2xl border bg-white transition-all ${
+                          isSelected
+                            ? 'border-[#CA8A04] ring-2 ring-[#CA8A04]/20'
+                            : 'border-gray-200 hover:border-[#d8b15b]'
+                        }`}
+                        aria-label={`Xem ảnh sản phẩm ${index + 1}`}
+                      >
+                        <Image
+                          src={image.thumbnail_url || image.image_url}
+                          alt={image.alt_text || `${product.name} ${index + 1}`}
+                          fill
+                          sizes="120px"
+                          className="object-contain bg-white p-2"
+                        />
+                        {image.is_primary && (
+                          <span className="absolute left-2 top-2 rounded-full bg-[#CA8A04] px-2 py-0.5 text-[10px] font-semibold text-white">
+                            Chính
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               
               {product.is_featured && (
                 <div className="absolute top-4 left-4 z-20 px-4 py-2 rounded-full bg-[#CA8A04] text-white text-sm font-semibold shadow-md">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Search, Plus, Edit, Trash2, FolderTree, Package, ChevronRight } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { adminApi } from '@/lib/api/admin.api';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface Category {
   id: number;
@@ -25,6 +26,8 @@ export default function CategoriesManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
+
+  useBodyScrollLock(Boolean(isCreating || editingCategory || showDeleteConfirm));
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -275,8 +278,8 @@ export default function CategoriesManagement() {
 
       {/* Create/Edit Modal */}
       {(isCreating || editingCategory) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <GlassCard className="p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <GlassCard className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain p-6">
             <h3 className="text-xl font-bold mb-4">
               {isCreating ? 'Tạo danh mục' : 'Chỉnh sửa danh mục'}
             </h3>
@@ -323,8 +326,8 @@ export default function CategoriesManagement() {
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <GlassCard className="p-6 max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
+          <GlassCard className="max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain p-6">
             <h3 className="text-xl font-bold mb-4 text-red-500">Xóa danh mục</h3>
             <p className="text-slate-500 mb-6">
               Bạn có chắc chắn muốn xóa danh mục này không? Sản phẩm trong danh mục này sẽ trở thành chưa phân loại.

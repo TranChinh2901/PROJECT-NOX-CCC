@@ -11,7 +11,7 @@ import adminReviewController from '@/modules/admin/admin-review.controller';
 import adminOrderController from '@/modules/admin/admin-order.controller';
 import analyticsController from '@/modules/admin/analytics.controller';
 import AdminNotificationController from '@/modules/notification/presentation/AdminNotificationController';
-import { createProductSchema, listProductsQuerySchema, updateProductSchema } from '@/modules/admin/schema/admin-product.schema';
+import { createProductSchema, listProductsQuerySchema, updateProductSchema, updateProductVariantSchema } from '@/modules/admin/schema/admin-product.schema';
 import { createCategorySchema, updateCategorySchema } from '@/modules/admin/schema/admin-category.schema';
 import { createBrandSchema, updateBrandSchema } from '@/modules/admin/schema/admin-brand.schema';
 import { updateUserSchema, bulkDeactivateSchema } from '@/modules/admin/schema/admin-user.schema';
@@ -67,6 +67,12 @@ router.patch(
   validateParams(idParamSchema),
   validateBody(updateProductSchema),
   asyncHandle(adminProductController.updateProduct)
+);
+
+router.patch(
+  '/products/:id/variants/:variantId',
+  validateBody(updateProductVariantSchema),
+  asyncHandle(adminProductController.updateProductVariant)
 );
 
 router.delete(

@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { formatPrice } from '@/lib/utils';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,8 @@ export default function CartPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  useBodyScrollLock(showConfirmDialog);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,18 +112,6 @@ export default function CartPage() {
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showConfirmDialog, isBulkDeleting]);
-
-  // Prevent body scroll when dialog open
-  useEffect(() => {
-    if (showConfirmDialog) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showConfirmDialog]);
 
   const handleIncreaseQuantity = async (itemId: number, currentQuantity: number) => {
     try {
@@ -485,7 +476,7 @@ export default function CartPage() {
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="dialog-title"
@@ -499,7 +490,7 @@ export default function CartPage() {
           />
 
           {/* Dialog */}
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
+          <div className="relative mx-4 w-full max-w-md overscroll-contain rounded-2xl bg-white shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
             <div className="p-6">
               <div className="flex flex-col items-center text-center">
                 {/* Warning Icon */}
