@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -216,6 +216,25 @@ export default function CartPage() {
       isActive = false;
     };
   }, [user?.id, cart?.items, cartProductIds]);
+
+  const trackCartRecommendationClick = useCallback((product: Product) => {
+    if (!user?.id) {
+      return;
+    }
+
+    recommendationApi.trackBehavior({
+      userId: user.id,
+      behaviorType: 'view',
+      productId: product.id,
+      categoryId: product.category?.id,
+      metadata: {
+        source: 'cart_recommendation',
+        recommendationReason: recommendationReasons[product.id],
+      },
+    }).catch((error: unknown) => {
+      console.error('Failed to track cart recommendation click:', error);
+    });
+  }, [user?.id, recommendationReasons]);
 
   const handleIncreaseQuantity = async (itemId: number, currentQuantity: number) => {
     try {
@@ -568,6 +587,7 @@ export default function CartPage() {
                       <Link
                         key={product.id}
                         href={buildProductPath(product)}
+                        onClick={() => trackCartRecommendationClick(product)}
                         className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:shadow-md"
                       >
                         <div className="border-b border-gray-100 bg-gray-50 p-4">

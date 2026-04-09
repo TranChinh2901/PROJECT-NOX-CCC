@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWishlist } from '../../../../contexts/WishlistContext';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -117,6 +117,25 @@ export default function WishlistPage() {
       isActive = false;
     };
   }, [user?.id, wishlistProductIds]);
+
+  const trackWishlistRecommendationClick = useCallback((product: Product) => {
+    if (!user?.id) {
+      return;
+    }
+
+    recommendationApi.trackBehavior({
+      userId: user.id,
+      behaviorType: 'view',
+      productId: product.id,
+      categoryId: product.category?.id,
+      metadata: {
+        source: 'wishlist_recommendation',
+        recommendationReason: recommendationReasons[product.id],
+      },
+    }).catch((error: unknown) => {
+      console.error('Failed to track wishlist recommendation click:', error);
+    });
+  }, [user?.id, recommendationReasons]);
 
   if (authLoading) {
     return (
@@ -240,6 +259,7 @@ export default function WishlistPage() {
                           <Link
                             key={product.id}
                             href={buildProductPath(product)}
+                            onClick={() => trackWishlistRecommendationClick(product)}
                             className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:shadow-md"
                           >
                             <div className="border-b border-gray-100 bg-gray-50 p-4">
