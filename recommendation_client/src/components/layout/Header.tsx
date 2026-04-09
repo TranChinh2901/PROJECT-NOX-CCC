@@ -340,7 +340,11 @@
                   <MapPin className="w-4 h-4 flex-shrink-0" />
                   <div className="flex flex-col min-w-0 text-left">
                     <span className="text-xs">Giao đến</span>
-                    <span className="font-medium text-gray-900 truncate">{selectedDeliveryText}</span>
+                    <span className="font-medium text-gray-900 truncate">
+  {selectedDeliveryText.length > 20
+    ? selectedDeliveryText.slice(0, 15) + "..."
+    : selectedDeliveryText}
+</span>
                   </div>
                 </button>
 

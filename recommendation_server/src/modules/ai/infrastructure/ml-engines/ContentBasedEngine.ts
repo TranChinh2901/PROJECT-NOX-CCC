@@ -37,8 +37,6 @@ export class ContentBasedEngine implements IRecommendationEngine {
       if (request.excludeProductIds?.includes(product.productId)) {
         return false;
       }
-
-      // Apply category filter if specified
       if (request.categoryFilter && product.categoryId !== request.categoryFilter) {
         return false;
       }
@@ -46,7 +44,6 @@ export class ContentBasedEngine implements IRecommendationEngine {
       return true;
     });
 
-    // Score products based on user preferences
     const scoredProducts = filteredProducts.map((product) => {
       const score = this.calculateContentScore(product, userPreference);
       const reason = this.generateReason(product, userPreference);
@@ -54,10 +51,8 @@ export class ContentBasedEngine implements IRecommendationEngine {
       return Recommendation.create(product.productId, score, reason);
     });
 
-    // Sort by score descending
     scoredProducts.sort((a, b) => b.score.toNumber() - a.score.toNumber());
 
-    // Return top N
     return scoredProducts.slice(0, request.limit);
   }
 
