@@ -194,6 +194,13 @@ function HomePageContent() {
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
   const [personalizedReasons, setPersonalizedReasons] = useState<Record<number, string>>({});
   const [personalizedLoading, setPersonalizedLoading] = useState(false);
+  const [recommendationBlockTitle, setRecommendationBlockTitle] = useState('Dành cho bạn');
+  const [recommendationBlockSubtitle, setRecommendationBlockSubtitle] = useState(
+    'Gợi ý theo hành vi mua sắm'
+  );
+  const [recommendationBlockDescription, setRecommendationBlockDescription] = useState(
+    'Các sản phẩm được sắp theo lượt xem, tìm kiếm và tương tác gần đây của bạn.'
+  );
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -229,10 +236,32 @@ function HomePageContent() {
   useEffect(() => {
     let isActive = true;
 
+    const applyFallbackRecommendations = async () => {
+      const fallbackProducts = await productApi.getFeaturedProducts(4).catch(() => []);
+
+      if (!isActive) {
+        return;
+      }
+
+      setPersonalizedProducts(fallbackProducts);
+      setPersonalizedReasons(
+        fallbackProducts.reduce<Record<number, string>>((accumulator, product) => {
+          accumulator[product.id] = product.is_featured
+            ? 'sản phẩm nổi bật'
+            : 'được nhiều khách hàng quan tâm';
+          return accumulator;
+        }, {})
+      );
+      setRecommendationBlockTitle('Xu hướng nổi bật');
+      setRecommendationBlockSubtitle('Gợi ý nhanh cho mọi khách hàng');
+      setRecommendationBlockDescription(
+        'Các sản phẩm nổi bật và đang được quan tâm nhiều, dùng làm fallback khi chưa có dữ liệu cá nhân hóa.'
+      );
+    };
+
     const loadPersonalizedRecommendations = async () => {
       if (!user?.id) {
-        setPersonalizedProducts([]);
-        setPersonalizedReasons({});
+        await applyFallbackRecommendations();
         return;
       }
 
@@ -244,10 +273,7 @@ function HomePageContent() {
         });
 
         if (!response.recommendations.length) {
-          if (isActive) {
-            setPersonalizedProducts([]);
-            setPersonalizedReasons({});
-          }
+          await applyFallbackRecommendations();
           return;
         }
 
@@ -268,11 +294,15 @@ function HomePageContent() {
             return accumulator;
           }, {})
         );
+        setRecommendationBlockTitle('Dành cho bạn');
+        setRecommendationBlockSubtitle('Gợi ý theo hành vi mua sắm');
+        setRecommendationBlockDescription(
+          'Các sản phẩm được sắp theo lượt xem, tìm kiếm và tương tác gần đây của bạn.'
+        );
       } catch (error) {
         if (isActive) {
           console.error('Error loading personalized recommendations:', error);
-          setPersonalizedProducts([]);
-          setPersonalizedReasons({});
+          await applyFallbackRecommendations();
         }
       } finally {
         if (isActive) {
@@ -519,7 +549,7 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)]  sm:pt-24 pb-7">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pb-8 pt-4 sm:pt-16">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
           <div className="hero-grid absolute inset-0 opacity-50" />
@@ -528,21 +558,21 @@ function HomePageContent() {
         </div>
 
         <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-8 lg:grid-cols-2 xl:gap-12">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] xl:gap-10">
             <div className="w-full">
-              <h1 className="text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              <h1 className="text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-[3.35rem]">
                 Chọn đúng thiết bị dễ hơn.
                 <span className="block text-[#8a5a00]">
                   Mọi thứ cần xem đã được sắp sẵn cho bạn.
                 </span>
               </h1>
 
-              <p className="mt-5 text-base leading-7 text-gray-600 sm:text-lg">
+              <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
                 Từ laptop, audio đến phụ kiện gaming, TechNova gom sẵn những mẫu đáng mua,
                 trình bày rõ thông số và ưu đãi để bạn đi nhanh tới lựa chọn phù hợp.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap gap-3">
                 <a
                   href="#catalog"
                   className="inline-flex items-center gap-2 rounded-full bg-[#111827] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-transform hover:-translate-y-0.5"
@@ -558,7 +588,7 @@ function HomePageContent() {
                 </a>
               </div>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <div className="mt-7 grid gap-3 sm:grid-cols-3">
                 {bannerMetrics.map((metric) => (
                   <GlassCard
                     key={metric.label}
@@ -572,11 +602,11 @@ function HomePageContent() {
             </div>
 
             <div className="relative group perspective-1000 w-full">
-              <div className="relative transition-transform duration-700 ease-out group-hover:scale-[1.02] z-10 w-full mb-8 lg:mb-0">
+              <div className="relative z-10 mb-8 w-full transition-transform duration-700 ease-out group-hover:scale-[1.01] lg:mb-0">
                 <div className="absolute -inset-4 rounded-[2.5rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.18),_transparent_65%)] opacity-70 blur-2xl transition-opacity duration-700 group-hover:opacity-100" />
                 
-                <div className="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-[#0f172a] shadow-[0_36px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/10">
-                  <div className="relative aspect-[1.1/0.95] overflow-hidden bg-slate-900">
+                <div className="relative overflow-hidden rounded-[2.2rem] border border-white/20 bg-[#0f172a] shadow-[0_30px_80px_rgba(15,23,42,0.22)] ring-1 ring-white/10">
+                  <div className="relative aspect-[1.08/0.9] overflow-hidden bg-slate-900">
                     {featuredDeals.map((deal, index) => (
                       <div
                         key={deal.title}
@@ -610,7 +640,7 @@ function HomePageContent() {
                     <span className="text-white/40">0{featuredDeals.length}</span>
                   </div>
 
-                  <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 z-20">
+                  <div className="absolute inset-x-0 bottom-0 z-20 p-7 sm:p-8">
                     <div className="transform transition-all duration-700">
                       <p className="mb-4 inline-block rounded-full bg-[#CA8A04]/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#fde047] border border-[#CA8A04]/30 backdrop-blur-sm">
                         TechNova Pick
@@ -626,7 +656,7 @@ function HomePageContent() {
                                 : 'opacity-0 translate-y-4 pointer-events-none'
                             }`}
                           >
-                            <h2 className="text-3xl font-heading font-bold leading-tight text-white drop-shadow-lg sm:text-4xl">
+                            <h2 className="text-[1.9rem] font-heading font-bold leading-tight text-white drop-shadow-lg sm:text-[2.35rem]">
                               {deal.title}
                             </h2>
                             <p className="mt-3 text-sm leading-relaxed text-slate-200 drop-shadow-md line-clamp-2">
@@ -658,7 +688,7 @@ function HomePageContent() {
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
             {expertiseSignals.map((signal, index) => {
               const Icon = signal.icon;
 
@@ -715,17 +745,17 @@ function HomePageContent() {
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-6">
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#8a5a00]">
-                Dành cho bạn
+                {recommendationBlockTitle}
               </p>
               <h2 className="mt-2 text-2xl font-heading font-bold text-gray-900">
-                Gợi ý theo hành vi mua sắm
+                {recommendationBlockSubtitle}
               </h2>
               <p className="mt-2 text-sm text-gray-600">
-                Các sản phẩm được sắp theo lượt xem, tìm kiếm và tương tác gần đây của bạn.
+                {recommendationBlockDescription}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
               {personalizedLoading
                 ? Array.from({ length: 5 }).map((_, index) => (
                     <div
@@ -791,7 +821,7 @@ function HomePageContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
             {loading ? (
               Array.from({ length: 8 }).map((_, index) => (
                 <div
