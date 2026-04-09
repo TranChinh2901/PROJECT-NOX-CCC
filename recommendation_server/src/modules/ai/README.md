@@ -10,6 +10,7 @@ This module implements a recommendation system following **Clean Architecture** 
 - [Dependency Flow](#dependency-flow)
 - [Key Design Patterns](#key-design-patterns)
 - [API Endpoints](#api-endpoints)
+- [ML Pipeline](#ml-pipeline)
 - [Testing Strategy](#testing-strategy)
 - [Future Enhancements](#future-enhancements)
 
@@ -258,6 +259,72 @@ Application Layer (Use Cases)
 Domain Layer (Interfaces)
        ↑ implemented by
 Infrastructure Layer
+
+---
+
+## ML Pipeline
+
+The project now supports an end-to-end offline recommendation pipeline:
+
+1. Export interaction data from `user_behavior_logs`
+2. Train an offline baseline model from CSV
+3. Precompute personalized recommendations into `recommendation_cache`
+4. Serve recommendations through the existing API
+
+### Commands
+
+Export training dataset:
+
+```bash
+npm run export:recommendation-dataset
+```
+
+Train the baseline model:
+
+```bash
+npm run train:recommendation-baseline
+```
+
+Precompute cache into the database:
+
+```bash
+npm run precompute:recommendation-cache
+```
+
+Run the full refresh pipeline in one command:
+
+```bash
+npm run refresh:recommendation-pipeline
+```
+
+### Useful Flags
+
+```bash
+npm run refresh:recommendation-pipeline -- --days=90 --top-k=30 --top-n=12 --ttl-hours=12
+```
+
+- `--days`: dataset lookback window
+- `--dataset-out`: custom CSV output path
+- `--model-out`: custom model JSON output path
+- `--summary-out`: custom cache summary output path
+- `--top-k`: number of similar items per product
+- `--top-n`: number of recommendations per user
+- `--ttl-hours`: recommendation cache lifetime
+- `--algorithm`: cache algorithm tag, default `offline_model`
+
+### Serving From the Offline Model
+
+To serve recommendations directly from the offline model artifact instead of the content-based engine:
+
+```bash
+RECOMMENDATION_ENGINE=offline_model
+RECOMMENDATION_MODEL_PATH=exports/recommendation-baseline-model.json
+```
+
+This gives the project two valid runtime modes:
+
+- `content_based`: heuristic/content-based fallback
+- `offline_model`: ML-style offline artifact inference
 ```
 
 ### Dependency Injection

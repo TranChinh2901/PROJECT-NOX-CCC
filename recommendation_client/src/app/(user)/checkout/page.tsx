@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
-import { orderApi, paymentApi } from '@/lib/api';
+import { orderApi, paymentApi, recommendationApi } from '@/lib/api';
 import { PaymentMethod } from '@/types/product.types';
 import type { Address } from '@/types';
 import { formatPrice } from '@/lib/utils';
@@ -79,6 +79,33 @@ export default function CheckoutPage() {
   });
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.COD);
+
+  const trackPurchasedCartItems = async () => {
+    if (!user?.id || !cart?.items?.length) {
+      return;
+    }
+
+    await Promise.all(
+      cart.items.map((item) =>
+        recommendationApi.trackBehavior({
+          userId: user.id,
+          behaviorType: 'purchase',
+          productId: item.variant?.product?.id ?? item.variant?.product_id,
+          categoryId: item.variant?.product?.category?.id,
+          metadata: {
+            source: 'checkout',
+            cartId: cart.id,
+            variantId: item.variant_id,
+            quantity: item.quantity,
+            paymentMethod,
+          },
+        }).catch((error: unknown) => {
+          console.error('Failed to track purchase from checkout:', error);
+        })
+      )
+    );
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/account/login?redirect=/checkout');
@@ -235,6 +262,7 @@ export default function CheckoutPage() {
         }
       }
 
+      await trackPurchasedCartItems();
       setOrderNumber(order.order_number);
       setOrderSuccess(true);
 

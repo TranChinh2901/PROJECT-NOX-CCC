@@ -1,10 +1,15 @@
 import { IRecommendationRepository } from '../../domain/repositories/IRecommendationRepository';
-import { IUserBehaviorRepository } from '../../domain/repositories/IUserBehaviorRepository';
+import {
+  BehaviorType,
+  IUserBehaviorRepository,
+  UserBehaviorLog,
+} from '../../domain/repositories/IUserBehaviorRepository';
 import { IProductFeatureRepository } from '../../domain/repositories/IProductFeatureRepository';
 import { IRecommendationEngine } from '../../domain/services/IRecommendationEngine';
 import { RecommendationStrategy } from '../../domain/services/IRecommendationEngine';
 import { GetRecommendationsRequestDTO } from '../dto/GetRecommendationsRequest';
 import { GetRecommendationsResponseDTO } from '../dto/GetRecommendationsResponse';
+import { Recommendation } from '../../domain/entities/Recommendation';
 
 /**
  * Use Case: Get Recommendations
@@ -33,6 +38,10 @@ export class GetRecommendationsUseCase {
     const strategy = this.mapStrategy(request.strategy || 'hybrid');
     const limit = request.limit || 10;
     const cacheMaxAgeMinutes = 60;
+    const excludedProductIds = await this.getExcludedProductIds(
+      userId,
+      request.excludeProductIds || []
+    );
 
     // 1. Check cache first
     const hasFreshCache = await this.recommendationRepository.hasFreshRecommendations(
@@ -42,14 +51,22 @@ export class GetRecommendationsUseCase {
 
     if (hasFreshCache) {
       const cachedRecommendations = await this.recommendationRepository.findByUserId(userId);
+      const filteredCachedRecommendations = this.filterRecommendations(
+        cachedRecommendations,
+        excludedProductIds,
+        limit
+      );
 
-      return {
-        userId,
-        recommendations: cachedRecommendations.map((r) => r.toJSON()),
-        strategy: this.recommendationEngine.getStrategy(),
-        fromCache: true,
-        generatedAt: cachedRecommendations[0]?.createdAt.toISOString() || new Date().toISOString(),
-      };
+      if (filteredCachedRecommendations.length > 0) {
+        return {
+          userId,
+          recommendations: filteredCachedRecommendations.map((r) => r.toJSON()),
+          strategy: this.recommendationEngine.getStrategy(),
+          fromCache: true,
+          generatedAt:
+            filteredCachedRecommendations[0]?.createdAt.toISOString() || new Date().toISOString(),
+        };
+      }
     }
 
     // 2. Get user preferences from behavior history
@@ -63,16 +80,21 @@ export class GetRecommendationsUseCase {
     const productFeatures = await this.productFeatureRepository.getByIds(candidateProductIds);
 
     // 4. Generate recommendations using ML engine
-    const recommendations = await this.recommendationEngine.generateRecommendations(
+    const generatedRecommendations = await this.recommendationEngine.generateRecommendations(
       {
         userId,
         strategy,
         limit,
-        excludeProductIds: request.excludeProductIds || [],
+        excludeProductIds: excludedProductIds,
         categoryFilter: request.categoryFilter,
       },
       userPreference,
       productFeatures
+    );
+    const recommendations = this.filterRecommendations(
+      generatedRecommendations,
+      excludedProductIds,
+      limit
     );
 
     // 5. Cache the results
@@ -111,6 +133,61 @@ export class GetRecommendationsUseCase {
     const combined = [...new Set([...popularProducts, ...userViewedProducts])];
 
     return combined.slice(0, 200); // Limit candidates
+  }
+
+  private async getExcludedProductIds(
+    userId: number,
+    requestExcludedProductIds: number[]
+  ): Promise<number[]> {
+    const [strongSignalHistory, recentViewHistory] = await Promise.all([
+      this.userBehaviorRepository.getBehaviorHistory(userId, 100, [
+        BehaviorType.PURCHASE,
+        BehaviorType.ADD_TO_CART,
+        BehaviorType.WISHLIST,
+      ]),
+      this.userBehaviorRepository.getBehaviorHistory(userId, 30, [BehaviorType.VIEW]),
+    ]);
+
+    const repeatedViewProductIds = this.getRepeatedViewProductIds(recentViewHistory, 2);
+    const strongSignalProductIds = strongSignalHistory
+      .filter((log) => log.productId)
+      .map((log) => log.productId!);
+
+    return [
+      ...new Set([
+        ...requestExcludedProductIds,
+        ...strongSignalProductIds,
+        ...repeatedViewProductIds,
+      ]),
+    ];
+  }
+
+  private getRepeatedViewProductIds(logs: UserBehaviorLog[], threshold: number): number[] {
+    const productViewCounts = new Map<number, number>();
+
+    for (const log of logs) {
+      if (!log.productId) {
+        continue;
+      }
+
+      productViewCounts.set(log.productId, (productViewCounts.get(log.productId) || 0) + 1);
+    }
+
+    return Array.from(productViewCounts.entries())
+      .filter(([, count]) => count >= threshold)
+      .map(([productId]) => productId);
+  }
+
+  private filterRecommendations(
+    recommendations: Recommendation[],
+    excludedProductIds: number[],
+    limit: number
+  ): Recommendation[] {
+    const excludedProductIdSet = new Set(excludedProductIds);
+
+    return recommendations
+      .filter((recommendation) => !excludedProductIdSet.has(recommendation.productId))
+      .slice(0, limit);
   }
 
   /**

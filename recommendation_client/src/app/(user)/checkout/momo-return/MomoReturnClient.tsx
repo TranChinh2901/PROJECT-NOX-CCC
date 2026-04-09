@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/common/Button';
-import { orderApi, paymentApi } from '@/lib/api';
+import { orderApi, paymentApi, recommendationApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { PaymentStatus } from '@/types';
 import type { MomoCallbackPayload } from '@/lib/api/payment.api';
 
@@ -47,6 +48,7 @@ const getOrderIdFromExtraData = (extraData: string | null): number | null => {
 export default function MomoReturnClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
@@ -59,6 +61,7 @@ export default function MomoReturnClient() {
   const [trace, setTrace] = useState<MomoSessionTrace | null>(null);
   const [copyStatus, setCopyStatus] = useState<string>('');
   const [isRetrying, setIsRetrying] = useState(false);
+  const trackedPurchaseOrderIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const rawCallbackOrderId = searchParams.get('orderId') || '';
@@ -112,6 +115,33 @@ export default function MomoReturnClient() {
         const order = await orderApi.getOrderById(resolvedOrderId);
         setOrderNumber(order.order_number);
         setPaymentStatus(order.payment_status);
+
+        if (
+          user?.id &&
+          order.payment_status === PaymentStatus.PAID &&
+          !trackedPurchaseOrderIdsRef.current.has(order.id)
+        ) {
+          trackedPurchaseOrderIdsRef.current.add(order.id);
+
+          await Promise.all(
+            order.items.map((item) =>
+              recommendationApi.trackBehavior({
+                userId: user.id,
+                behaviorType: 'purchase',
+                productId: item.product?.id,
+                metadata: {
+                  source: 'momo_return',
+                  orderId: order.id,
+                  orderNumber: order.order_number,
+                  variantId: item.variant_id,
+                  quantity: item.quantity,
+                },
+              }).catch((trackingError: unknown) => {
+                console.error('Failed to track purchase from MoMo return:', trackingError);
+              })
+            )
+          );
+        }
       } catch (loadError) {
         console.error('Failed to load order after MoMo callback:', loadError);
         setError(loadError instanceof Error ? loadError.message : 'Unable to verify payment status.');
@@ -121,7 +151,7 @@ export default function MomoReturnClient() {
     };
 
     loadOrderStatus();
-  }, [searchParams]);
+  }, [searchParams, user?.id]);
 
   const statusText = useMemo(() => {
     if (paymentStatus === PaymentStatus.PAID) {

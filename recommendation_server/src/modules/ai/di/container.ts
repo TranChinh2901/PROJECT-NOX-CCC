@@ -22,6 +22,7 @@ import { TypeORMRecommendationRepository } from '../infrastructure/repositories/
 import { TypeORMUserBehaviorRepository } from '../infrastructure/repositories/TypeORMUserBehaviorRepository';
 import { TypeORMProductFeatureRepository } from '../infrastructure/repositories/TypeORMProductFeatureRepository';
 import { ContentBasedEngine } from '../infrastructure/ml-engines/ContentBasedEngine';
+import { OfflineModelRecommendationEngine } from '../infrastructure/ml-engines/OfflineModelRecommendationEngine';
 
 import { GetRecommendationsUseCase } from '../application/use-cases/GetRecommendationsUseCase';
 import { TrackUserBehaviorUseCase } from '../application/use-cases/TrackUserBehaviorUseCase';
@@ -96,11 +97,17 @@ class AIModuleContainer {
    */
   getRecommendationEngine(): IRecommendationEngine {
     if (!this._recommendationEngine) {
-      // Default to content-based engine
-      // TODO: Make this configurable via environment variables
-      this._recommendationEngine = new ContentBasedEngine(
-        this.getProductFeatureRepository()
-      );
+      const engineMode = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase();
+
+      if (engineMode === 'offline_model') {
+        this._recommendationEngine = new OfflineModelRecommendationEngine(
+          process.env.RECOMMENDATION_MODEL_PATH || 'exports/recommendation-baseline-model.json'
+        );
+      } else {
+        this._recommendationEngine = new ContentBasedEngine(
+          this.getProductFeatureRepository()
+        );
+      }
     }
     return this._recommendationEngine;
   }
