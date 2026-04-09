@@ -528,16 +528,16 @@ function HomePageContent() {
         </div>
 
         <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
-            <div className="max-w-2xl">
-              <h1 className="max-w-xl text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
+          <div className="grid items-center gap-8 lg:grid-cols-2 xl:gap-12">
+            <div className="w-full">
+              <h1 className="text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
                 Chọn đúng thiết bị dễ hơn.
                 <span className="block text-[#8a5a00]">
                   Mọi thứ cần xem đã được sắp sẵn cho bạn.
                 </span>
               </h1>
 
-              <p className="mt-5 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">
+              <p className="mt-5 text-base leading-7 text-gray-600 sm:text-lg">
                 Từ laptop, audio đến phụ kiện gaming, TechNova gom sẵn những mẫu đáng mua,
                 trình bày rõ thông số và ưu đãi để bạn đi nhanh tới lựa chọn phù hợp.
               </p>
@@ -558,7 +558,7 @@ function HomePageContent() {
                 </a>
               </div>
 
-              <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {bannerMetrics.map((metric) => (
                   <GlassCard
                     key={metric.label}
@@ -571,8 +571,8 @@ function HomePageContent() {
               </div>
             </div>
 
-            <div className="relative group perspective-1000">
-              <div className="relative mx-auto max-w-xl transition-transform duration-700 ease-out group-hover:scale-[1.02] z-10 w-full mb-8 lg:mb-0">
+            <div className="relative group perspective-1000 w-full">
+              <div className="relative transition-transform duration-700 ease-out group-hover:scale-[1.02] z-10 w-full mb-8 lg:mb-0">
                 <div className="absolute -inset-4 rounded-[2.5rem] bg-[radial-gradient(circle_at_top,_rgba(202,138,4,0.18),_transparent_65%)] opacity-70 blur-2xl transition-opacity duration-700 group-hover:opacity-100" />
                 
                 <div className="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-[#0f172a] shadow-[0_36px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/10">
