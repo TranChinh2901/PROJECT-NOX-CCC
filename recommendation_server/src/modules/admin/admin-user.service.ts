@@ -129,6 +129,25 @@ export class AdminUserService {
     return this.formatUserResponse(updatedUser);
   }
 
+  async uploadAvatar(id: number, avatarUrl: string) {
+    const user = await this.userRepository.findOne({
+      where: { id }
+    });
+
+    if (!user) {
+      throw new AppError(
+        'User not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.USER_NOT_FOUND
+      );
+    }
+
+    user.avatar = avatarUrl;
+    const updatedUser = await this.userRepository.save(user);
+
+    return this.formatUserResponse(updatedUser);
+  }
+
   async deactivateUser(id: number): Promise<void> {
     const user = await this.userRepository.findOne({
       where: { id }

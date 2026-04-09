@@ -8,7 +8,6 @@ import ResponsiveSidebar from '@/components/admin/ResponsiveSidebar';
 import ResponsiveHeader from '@/components/admin/ResponsiveHeader';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
 import { RoleType } from '@/types/auth.types';
 
@@ -70,37 +69,32 @@ export default function AdminLayout({
         } as CSSProperties
       }
     >
-      <NotificationProvider
-        wsEndpoint={process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000'}
-        enableToasts={true}
-      >
-        <AdminLayoutContent>
-          {children}
-        </AdminLayoutContent>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 5000,
-            style: {
-              background: '#fff',
-              color: '#1e293b',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+      <AdminLayoutContent>
+        {children}
+      </AdminLayoutContent>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#fff',
+            color: '#1e293b',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          },
+          success: {
+            iconTheme: {
+              primary: 'rgb(var(--admin-success))',
+              secondary: '#fff',
             },
-            success: {
-              iconTheme: {
-                primary: 'rgb(var(--admin-success))',
-                secondary: '#fff',
-              },
+          },
+          error: {
+            iconTheme: {
+              primary: 'rgb(var(--admin-error))',
+              secondary: '#fff',
             },
-            error: {
-              iconTheme: {
-                primary: 'rgb(var(--admin-error))',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
-      </NotificationProvider>
+          },
+        }}
+      />
     </div>
   );
 }

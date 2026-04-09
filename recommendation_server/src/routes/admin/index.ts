@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAdmin } from '@/middlewares/auth.middleware';
 import { validateBody, validateQuery, validateParams } from '@/middlewares/validate.middleware';
-import { uploadProductImages } from '@/middlewares/upload.middleware';
+import { uploadAvatar, uploadProductImages } from '@/middlewares/upload.middleware';
 import { asyncHandle } from '@/utils/handle-error';
 import adminProductController from '@/modules/admin/admin-product.controller';
 import adminCategoryController from '@/modules/admin/admin-category.controller';
@@ -188,6 +188,13 @@ router.patch(
   validateParams(idParamSchema),
   validateBody(updateUserSchema),
   asyncHandle(adminUserController.updateUser)
+);
+
+router.put(
+  '/users/:id/avatar',
+  validateParams(idParamSchema),
+  uploadAvatar.single('avatar'),
+  asyncHandle(adminUserController.uploadAvatar)
 );
 
 router.post(

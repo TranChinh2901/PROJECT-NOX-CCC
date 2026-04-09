@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { getMetadataArgsStorage } from 'typeorm';
 import { Product } from './product';
 import { Category } from './category';
 import { Brand } from './brand';
@@ -128,6 +129,15 @@ describe('Product Entity', () => {
 
       expect(product.brand_id).toBeUndefined();
       expect(product.brand).toBeUndefined();
+    });
+
+    it('should define inverse relationship with Review entity', () => {
+      const reviewRelation = getMetadataArgsStorage().relations.find(
+        (relation) => relation.target === Product && relation.propertyName === 'reviews'
+      );
+
+      expect(reviewRelation).toBeDefined();
+      expect(reviewRelation?.relationType).toBe('one-to-many');
     });
   });
 

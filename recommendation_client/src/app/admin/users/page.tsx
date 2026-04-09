@@ -1,7 +1,8 @@
 'use client';
 
-import { useDeferredValue, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { AUTH_USER_UPDATED_EVENT, useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types';
 import { RoleType } from '@/types/auth.types';
 import { adminApi } from '@/lib/api/admin.api';
@@ -9,8 +10,13 @@ import { AdminPagination } from '@/components/admin/AdminPagination';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 const PAGE_SIZE = 10;
+type EditableUserForm = Omit<Partial<User>, 'avatar'> & { avatar?: string | null };
 
 export default function UserManagement() {
+  const AUTH_STORAGE_KEYS = {
+    user: 'technova_user',
+    legacyUser: 'user',
+  } as const;
   const [users, setUsers] = useState<User[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -20,13 +26,17 @@ export default function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState<Partial<User>>({});
+  const [userForm, setUserForm] = useState<EditableUserForm>({});
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isSavingUser, setIsSavingUser] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const deferredSearchTerm = useDeferredValue(searchTerm.trim());
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useBodyScrollLock(Boolean(editingUser || showDeleteConfirm));
 
-  const { deleteUserById, updateUserById, isLoading } = useAuth();
+  const { deleteUserById, isLoading, user: currentUser } = useAuth();
 
   useEffect(() => {
     setCurrentPage(1);
@@ -81,18 +91,103 @@ export default function UserManagement() {
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setUserForm(user);
+    setAvatarPreview(user.avatar || null);
+    setAvatarFile(null);
   };
 
   const handleUpdateUser = async () => {
     if (!editingUser) return;
 
     try {
-      const updatedUser = await updateUserById(editingUser.id, userForm);
+      setIsSavingUser(true);
+
+      if (avatarFile) {
+        const avatarUser = await adminApi.uploadUserAvatar(editingUser.id, avatarFile);
+        setUserForm((currentForm) => ({ ...currentForm, avatar: avatarUser.avatar }));
+      }
+
+      const updatedUser = await adminApi.updateUser(editingUser.id, {
+        fullname: userForm.fullname,
+        email: userForm.email,
+        phone_number: userForm.phone_number?.replace(/[\s\-\(\)\+]/g, ''),
+        avatar: avatarFile ? undefined : userForm.avatar,
+        role: userForm.role,
+      });
+
+      if (currentUser?.id === updatedUser.id && typeof window !== 'undefined') {
+        const serializedUser = JSON.stringify(updatedUser);
+        localStorage.setItem(AUTH_STORAGE_KEYS.user, serializedUser);
+        localStorage.setItem(AUTH_STORAGE_KEYS.legacyUser, serializedUser);
+        window.dispatchEvent(
+          new CustomEvent(AUTH_USER_UPDATED_EVENT, {
+            detail: updatedUser,
+          }),
+        );
+      }
+
       setUsers(users.map(user => user.id === editingUser.id ? updatedUser : user));
       setEditingUser(null);
       setUserForm({});
+      setAvatarPreview(null);
+      setAvatarFile(null);
     } catch (error) {
       console.error('Failed to update user:', error);
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const handleAvatarSelect = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setUserForm((currentForm) => ({ ...currentForm, avatar: null }));
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ảnh đại diện phải nhỏ hơn hoặc bằng 2MB.');
+      event.target.value = '';
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn tệp hình ảnh hợp lệ.');
+      event.target.value = '';
+      return;
+    }
+
+    setAvatarFile(file);
+    setUserForm((currentForm) => ({ ...currentForm, avatar: undefined }));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const closeEditModal = () => {
+    if (isSavingUser) {
+      return;
+    }
+
+    setEditingUser(null);
+    setUserForm({});
+    setAvatarPreview(null);
+    setAvatarFile(null);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
     }
   };
 
@@ -180,7 +275,14 @@ export default function UserManagement() {
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
                       {user.avatar ? (
-                        <img src={user.avatar} alt={user.fullname} className="w-10 h-10 rounded-full" />
+                        <Image
+                          src={user.avatar}
+                          alt={user.fullname}
+                          width={40}
+                          height={40}
+                          unoptimized
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-[#7366ff] flex items-center justify-center">
                           <span className="text-white font-semibold">
@@ -261,6 +363,54 @@ export default function UserManagement() {
           <div className="glass-card max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
             <h3 className="text-xl font-bold mb-4">Chỉnh sửa người dùng</h3>
             <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-slate-200 bg-slate-100">
+                  {avatarPreview ? (
+                    <Image
+                      src={avatarPreview}
+                      alt={userForm.fullname || editingUser.fullname}
+                      width={96}
+                      height={96}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[#7366ff]">
+                      <span className="text-3xl font-semibold text-white">
+                        {(userForm.fullname || editingUser.fullname).charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAvatarSelect}
+                    disabled={isSavingUser}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {avatarPreview ? 'Thay ảnh' : 'Tải ảnh'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isSavingUser || (!avatarPreview && !editingUser.avatar)}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Xóa ảnh
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Tải ảnh mới hoặc xóa ảnh đại diện hiện tại
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Họ và tên</label>
                 <input
@@ -302,16 +452,18 @@ export default function UserManagement() {
             </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => { setEditingUser(null); setUserForm({}); }}
+                onClick={closeEditModal}
+                disabled={isSavingUser}
                 className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
               >
                 Hủy
               </button>
               <button
                 onClick={handleUpdateUser}
-                className="px-4 py-2 bg-[#7366ff] text-white rounded hover:bg-[#5d54cc] transition-colors"
+                disabled={isSavingUser}
+                className="px-4 py-2 bg-[#7366ff] text-white rounded hover:bg-[#5d54cc] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Lưu thay đổi
+                {isSavingUser ? 'Đang lưu...' : 'Lưu thay đổi'}
               </button>
             </div>
           </div>

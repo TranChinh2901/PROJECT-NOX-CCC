@@ -5,6 +5,7 @@ import { AuthContextType, User, LoginDto, SignupDto, UpdateProfileDto, AuthRespo
 import { authApi } from '@/lib/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AUTH_USER_UPDATED_EVENT = 'technova:user-updated';
 
 const STORAGE_KEYS = {
   accessToken: 'technova_access_token',
@@ -181,7 +182,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setIsAuthenticated(Boolean(storedAccessToken));
     setIsLoading(false);
-  }, []);
+
+    const syncUserFromStorage = () => {
+      const latestStoredUser =
+        localStorage.getItem(STORAGE_KEYS.user) ?? localStorage.getItem(STORAGE_KEYS.legacyUser);
+
+      if (!latestStoredUser) {
+        setUser(null);
+        return;
+      }
+
+      try {
+        setUser(JSON.parse(latestStoredUser) as User);
+      } catch {
+        localStorage.removeItem(STORAGE_KEYS.user);
+        localStorage.removeItem(STORAGE_KEYS.legacyUser);
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === STORAGE_KEYS.user ||
+        event.key === STORAGE_KEYS.legacyUser
+      ) {
+        syncUserFromStorage();
+      }
+    };
+
+    const handleUserUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<User | undefined>;
+      if (customEvent.detail) {
+        storeUser(customEvent.detail);
+        return;
+      }
+
+      syncUserFromStorage();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated as EventListener);
+    };
+  }, [storeUser]);
 
   // Alias for API parity
   const register = signup;

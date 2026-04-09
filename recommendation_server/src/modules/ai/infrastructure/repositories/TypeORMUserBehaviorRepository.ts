@@ -105,8 +105,9 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
         }
 
         // Track prices
-        if ((log.product as any).price) {
-          prices.push((log.product as any).price);
+        const basePrice = Number((log.product as any).base_price);
+        if (Number.isFinite(basePrice) && basePrice > 0) {
+          prices.push(basePrice);
         }
       }
     }

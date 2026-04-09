@@ -57,28 +57,37 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
     // Get the target product first
     const targetProduct = await this.repository.findOne({
       where: { id: productId },
-      relations: ['category', 'brand'],
+      relations: ['category', 'brand', 'reviews'],
     });
 
     if (!targetProduct) return [];
 
     // Find similar products (same category, similar price range)
-    const priceMin = (targetProduct as any).price * 0.7;
-    const priceMax = (targetProduct as any).price * 1.3;
+    const targetPrice = Number(targetProduct.base_price || 0);
+    const priceMin = targetPrice * 0.7;
+    const priceMax = targetPrice * 1.3;
 
-    const similarProducts = await this.repository
+    const queryBuilder = this.repository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.reviews', 'reviews')
       .where('product.category_id = :categoryId', {
-        categoryId: (targetProduct as any).category_id,
+        categoryId: targetProduct.category_id,
       })
       .andWhere('product.id != :productId', { productId })
-      .andWhere('product.price BETWEEN :priceMin AND :priceMax', { priceMin, priceMax })
-      .orderBy('product.average_rating', 'DESC')
-      .limit(limit)
-      .getMany();
+      .limit(limit);
+
+    if (targetPrice > 0) {
+      queryBuilder
+        .andWhere('product.base_price BETWEEN :priceMin AND :priceMax', { priceMin, priceMax })
+        .orderBy('ABS(product.base_price - :targetPrice)', 'ASC')
+        .setParameter('targetPrice', targetPrice);
+    } else {
+      queryBuilder.orderBy('product.created_at', 'DESC');
+    }
+
+    const similarProducts = await queryBuilder.getMany();
 
     return similarProducts.map((p) => this.toDomainFeature(p));
   }
@@ -87,19 +96,10 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
     productId: number,
     updates: Partial<DomainProductFeature>
   ): Promise<void> {
-    const updateData: any = {};
-
-    if (updates.avgRating !== undefined) {
-      updateData.average_rating = updates.avgRating;
-    }
-
-    if (updates.reviewCount !== undefined) {
-      updateData.review_count = updates.reviewCount;
-    }
-
-    if (Object.keys(updateData).length > 0) {
-      await this.repository.update(productId, updateData);
-    }
+    void productId;
+    void updates;
+    // Product statistics in this schema are derived from related tables (reviews/orders),
+    // so there is no dedicated product column to update here.
   }
 
   /**
@@ -107,7 +107,7 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
    */
   private toDomainFeature(product: Product): DomainProductFeature {
     // Calculate average rating and review count
-    const reviews = (product as any).reviews || [];
+    const reviews = product.reviews || [];
     const avgRating =
       reviews.length > 0
         ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
@@ -115,9 +115,9 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
 
     return {
       productId: product.id,
-      categoryId: (product as any).category_id || 0,
-      brandId: (product as any).brand_id || null,
-      price: (product as any).price || 0,
+      categoryId: product.category_id || 0,
+      brandId: product.brand_id || null,
+      price: Number(product.base_price || 0),
       avgRating,
       reviewCount: reviews.length,
       purchaseCount: 0, // TODO: Calculate from orders

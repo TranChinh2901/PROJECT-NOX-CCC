@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { CartContextType, Cart, AddToCartDto, UpdateCartItemDto, CartItem, Product, ProductVariant, CartItemVariant } from '@/types';
 import { CartStatus } from '@/types/order.types';
 import { cartApi, productApi } from '@/lib/api';
@@ -20,6 +21,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [itemCount, setItemCount] = useState(0);
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const prevUserId = useRef<number | null>(null);
 
@@ -98,7 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart(null);
       setItemCount(0);
     }
-  }, [calculateItemCount]);
+  }, [calculateItemCount, persistCart]);
   const syncWithAPI = useCallback(async (): Promise<Cart | null> => {
     setIsLoading(true);
     try {
@@ -457,6 +460,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const skipNextSync = useRef(false);
 
   useEffect(() => {
+    if (isAdminRoute) {
+      setCart(null);
+      setItemCount(0);
+      setIsLoading(false);
+      prevUserId.current = user?.id ?? null;
+      return;
+    }
+
     if (isAuthLoading) return;
 
     const currentUserId = user?.id ?? null;
@@ -508,7 +519,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     void syncCart();
-  }, [isAuthenticated, isAuthLoading, user?.id, loadCartFromStorage, clearLocalCartStorage, mergeLocalCartToServer, syncWithAPI]);
+  }, [isAdminRoute, isAuthenticated, isAuthLoading, user?.id, loadCartFromStorage, clearLocalCartStorage, mergeLocalCartToServer, syncWithAPI]);
 
   const value: CartContextType = {
     cart,

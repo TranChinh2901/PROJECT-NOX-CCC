@@ -3,6 +3,7 @@ import { Category } from "./category";
 import { Brand } from "./brand";
 import { ProductVariant } from "./product-variant";
 import { ProductImage } from "./product-image";
+import { Review } from "@/modules/reviews/entity/review";
 
 @Entity('products')
 @Unique('UQ_products_slug', ['slug'])
@@ -84,4 +85,7 @@ export class Product {
 
   @OneToMany(() => ProductImage, image => image.product)
   images?: ProductImage[];
+
+  @OneToMany(() => Review, review => review.product)
+  reviews?: Review[];
 }

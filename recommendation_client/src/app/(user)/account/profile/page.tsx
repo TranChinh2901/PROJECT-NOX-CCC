@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import Image from 'next/image';
+import React, { useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
 import Link from 'next/link';
@@ -10,8 +11,42 @@ import { Footer } from '@/components/layout/Footer';
 import ProfileSkeleton from '@/components/common/ProfileSkeleton';
 
 const ProfilePage: React.FC = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAuthenticated, getProfile } = useAuth();
   const router = useRouter();
+
+  const refreshProfile = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      await getProfile();
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+    }
+  }, [getProfile, isAuthenticated]);
+
+  useEffect(() => {
+    void refreshProfile();
+
+    const handleFocus = () => {
+      void refreshProfile();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshProfile();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshProfile]);
 
   if (isLoading) {
     return (
@@ -43,9 +78,12 @@ const ProfilePage: React.FC = () => {
             <div className="flex items-center gap-6">
               <div className="relative">
                 {user.avatar ? (
-                  <img
+                  <Image
                     src={user.avatar}
                     alt={user.fullname}
+                    width={96}
+                    height={96}
+                    unoptimized
                     className="w-24 h-24 rounded-full border-4 border-white object-cover"
                   />
                 ) : (

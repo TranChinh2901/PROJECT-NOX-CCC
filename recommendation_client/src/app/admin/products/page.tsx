@@ -1,13 +1,15 @@
 'use client';
 
 import Image from 'next/image';
-import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Search, Plus, Edit, Trash2, SlidersHorizontal, Package, TrendingUp, AlertCircle, CheckCircle, Grid3x3, LayoutList, ImagePlus, Star, LoaderCircle, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Brand, Category, Product, ProductImage, ProductVariant } from '@/types';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { adminApi } from '@/lib/api/admin.api';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { formatPrice } from '@/lib/utils';
 
 type ViewMode = 'grid' | 'list';
 
@@ -81,6 +83,244 @@ const STATUS_OPTIONS = [
   { value: 'inactive', label: 'Không hoạt động' },
 ] as const;
 
+const SEARCH_DEBOUNCE_MS = 250;
+
+const productCardViewportStyle: CSSProperties = {
+  contentVisibility: 'auto',
+  containIntrinsicSize: '360px 420px',
+};
+
+const PRODUCT_STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-800',
+  draft: 'bg-yellow-100 text-yellow-800',
+  out_of_stock: 'bg-red-100 text-red-800',
+};
+
+const PRODUCT_STATUS_LABELS: Record<string, string> = {
+  active: 'hoạt động',
+  inactive: 'không hoạt động',
+};
+
+const getProductStatusColor = (status: string) =>
+  PRODUCT_STATUS_COLORS[status] || 'bg-gray-100 text-gray-800';
+
+const getProductStatusLabel = (status: string) =>
+  PRODUCT_STATUS_LABELS[status] || status;
+
+type ProductCardActionProps = {
+  onOpenEdit: (product: Product) => void;
+  onRequestDelete: (productId: number) => void;
+  isOpeningEditor: boolean;
+};
+
+const ProductGridCard = memo(function ProductGridCard({
+  product,
+  onOpenEdit,
+  onRequestDelete,
+  isOpeningEditor,
+}: { product: Product } & ProductCardActionProps) {
+  const statusLabel = product.is_active ? 'active' : 'inactive';
+  const showComparePrice =
+    typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
+  const stockStatus =
+    (product.stock_quantity || 0) === 0 ? 'out' : (product.stock_quantity || 0) < 10 ? 'low' : 'normal';
+  const primaryImageUrl = product.primary_image;
+  const imageCount = product.image_count ?? 0;
+
+  return (
+    <GlassCard
+      hover
+      style={productCardViewportStyle}
+      className="overflow-hidden group cursor-pointer"
+    >
+      <div className="relative overflow-hidden border-b border-slate-100 bg-slate-50/80">
+        <div className="relative aspect-[4/3] w-full">
+          {primaryImageUrl ? (
+            <Image
+              src={primaryImageUrl}
+              alt={product.name}
+              fill
+              sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
+              className="object-contain p-3"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-center">
+              <Package className="h-12 w-12 text-slate-400" />
+              <span className="text-xs font-medium text-slate-500">Chưa có ảnh</span>
+            </div>
+          )}
+        </div>
+        <div className="absolute top-2 right-2 flex gap-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProductStatusColor(statusLabel)}`}>
+            {getProductStatusLabel(statusLabel)}
+          </span>
+          {stockStatus !== 'normal' && (
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                stockStatus === 'out' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+              }`}
+            >
+              {stockStatus === 'out' ? 'Hết hàng' : 'Sắp hết hàng'}
+            </span>
+          )}
+        </div>
+        <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm">
+            {primaryImageUrl ? 'Ảnh chính' : 'Ảnh sản phẩm'}
+          </span>
+          {imageCount > 1 && (
+            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white shadow-sm">
+              +{imageCount - 1} ảnh
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-3">
+        <div className="mb-1.5">
+          <h3 className="font-semibold text-sm text-slate-900 line-clamp-1">{product.name}</h3>
+          <p className="text-[11px] text-slate-500 mt-0.5">SKU: {product.sku}</p>
+        </div>
+        <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-tight min-h-[2.5rem]">{product.description}</p>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
+          <span className="bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[60%]">{product.category?.name}</span>
+          <span>Tồn kho: {product.stock_quantity || 0}</span>
+        </div>
+
+        <div className="mb-3">
+          <p className="text-base font-bold text-[#7C3AED]">{formatPrice(product.base_price)}</p>
+          {showComparePrice && (
+            <p className="text-xs text-slate-500 line-through">
+              {formatPrice(product.compare_at_price as number)}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2 mt-auto">
+          <button
+            onClick={() => onOpenEdit(product)}
+            disabled={isOpeningEditor}
+            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors cursor-pointer disabled:cursor-wait disabled:bg-[#8f85ff]"
+          >
+            {isOpeningEditor ? (
+              <LoaderCircle className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Edit className="w-3.5 h-3.5" />
+            )}
+            <span className="text-xs font-medium">{isOpeningEditor ? 'Đang mở' : 'Sửa'}</span>
+          </button>
+          <button
+            onClick={() => onRequestDelete(product.id)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Xóa</span>
+          </button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+});
+
+const ProductListRow = memo(function ProductListRow({
+  product,
+  onOpenEdit,
+  onRequestDelete,
+  isOpeningEditor,
+}: { product: Product } & ProductCardActionProps) {
+  const statusLabel = product.is_active ? 'active' : 'inactive';
+  const showComparePrice =
+    typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
+  const primaryImageUrl = product.primary_image;
+  const imageCount = product.image_count ?? 0;
+
+  return (
+    <GlassCard
+      hover
+      style={productCardViewportStyle}
+      className="p-6 cursor-pointer"
+    >
+      <div className="flex items-center gap-6">
+        <div className="flex-shrink-0">
+          {primaryImageUrl ? (
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 shadow-sm">
+              <div className="relative h-20 w-20">
+                <Image
+                  src={primaryImageUrl}
+                  alt={product.name}
+                  fill
+                  sizes="80px"
+                  className="object-contain"
+                />
+              </div>
+              {imageCount > 1 && (
+                <span className="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  +{imageCount - 1}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+              <Package className="w-8 h-8 text-slate-400" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h3 className="font-semibold text-lg text-slate-900">{product.name}</h3>
+              <p className="text-sm text-slate-500 mt-1">SKU: {product.sku}</p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getProductStatusColor(statusLabel)}`}>
+              {getProductStatusLabel(statusLabel)}
+            </span>
+          </div>
+          <p className="text-sm text-slate-600 mb-3 line-clamp-2">{product.description}</p>
+          <div className="flex items-center gap-4 text-sm text-slate-500">
+            <span className="bg-slate-100 px-3 py-1 rounded">{product.category?.name}</span>
+            <span>Tồn kho: {product.stock_quantity || 0}</span>
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <div className="mb-4">
+            <p className="text-2xl font-bold text-[#7C3AED]">{formatPrice(product.base_price)}</p>
+            {showComparePrice && (
+              <p className="text-sm text-slate-500 line-through">
+                {formatPrice(product.compare_at_price as number)}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onOpenEdit(product)}
+              disabled={isOpeningEditor}
+              className="flex items-center gap-2 px-4 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors disabled:cursor-wait disabled:bg-[#8f85ff]"
+            >
+              {isOpeningEditor ? (
+                <LoaderCircle className="w-4 h-4 animate-spin" />
+              ) : (
+                <Edit className="w-4 h-4" />
+              )}
+              <span className="text-sm">{isOpeningEditor ? 'Đang mở...' : 'Chỉnh sửa'}</span>
+            </button>
+            <button
+              onClick={() => onRequestDelete(product.id)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm">Xóa</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+});
+
 const sortProductImages = (images: ProductImage[] = []): ProductImage[] =>
   [...images].sort((firstImage, secondImage) => {
     if (firstImage.is_primary !== secondImage.is_primary) {
@@ -134,6 +374,7 @@ export default function ProductManagement() {
   const [newVariantForm, setNewVariantForm] = useState<VariantEditForm>(emptyVariantForm);
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
+  const [openingProductId, setOpeningProductId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
@@ -154,7 +395,7 @@ export default function ProductManagement() {
     lowStock: 0,
     outOfStock: 0,
   });
-  const deferredSearchTerm = useDeferredValue(searchTerm.trim());
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const primaryImageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -162,14 +403,25 @@ export default function ProductManagement() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearchTerm, selectedCategory, selectedBrand, selectedStatus, viewMode]);
+  }, [debouncedSearchTerm, selectedCategory, selectedBrand, selectedStatus, viewMode]);
+
+  useEffect(() => {
+    const nextSearchTerm = searchTerm.trim();
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(nextSearchTerm);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setIsFetching(true);
         const response = await adminApi.getAllProducts({
-          search: deferredSearchTerm || undefined,
+          search: debouncedSearchTerm || undefined,
           category_id: selectedCategory ? Number(selectedCategory) : undefined,
           brand_id: selectedBrand ? Number(selectedBrand) : undefined,
           is_active:
@@ -177,7 +429,7 @@ export default function ProductManagement() {
               ? undefined
               : selectedStatus === 'active',
           page: currentPage,
-          limit: viewMode === 'grid' ? 12 : 10,
+          limit: viewMode === 'grid' ? 24 : 10,
         });
         setProducts(response.data);
         setTotalPages(response.pagination.total_pages);
@@ -198,7 +450,7 @@ export default function ProductManagement() {
     };
 
     fetchProducts();
-  }, [currentPage, deferredSearchTerm, selectedCategory, selectedBrand, selectedStatus, viewMode]);
+  }, [currentPage, debouncedSearchTerm, selectedCategory, selectedBrand, selectedStatus, viewMode]);
 
   useEffect(() => {
     const loadProductMeta = async () => {
@@ -234,7 +486,7 @@ export default function ProductManagement() {
     is_featured: Boolean(product.is_featured),
   });
 
-  const openEditModal = (product: Product) => {
+  const initializeEditModal = useCallback((product: Product) => {
     const sortedImages = sortProductImages(product.images ?? []);
     setEditingProduct(product);
     setProductForm(mapProductToForm(product));
@@ -252,7 +504,29 @@ export default function ProductManagement() {
     setVariantErrors({});
     setNewVariantError('');
     setIsCreatingVariant(false);
-  };
+  }, []);
+
+  const openEditModal = useCallback(async (productSummary: Product) => {
+    try {
+      setOpeningProductId(productSummary.id);
+      const product = await adminApi.getProductById(productSummary.id);
+      initializeEditModal(product);
+    } catch (error) {
+      console.error('Failed to load full product details:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Không thể tải thông tin sản phẩm. Vui lòng thử lại.',
+      );
+    } finally {
+      setOpeningProductId(null);
+    }
+  }, [initializeEditModal]);
+
+  const requestDeleteProduct = useCallback((productId: number) => {
+    setDeleteProductError('');
+    setShowDeleteConfirm(productId);
+  }, []);
 
   const closeEditModal = () => {
     if (
@@ -773,31 +1047,6 @@ export default function ProductManagement() {
     }
   };
 
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      active: 'bg-green-100 text-green-800',
-      inactive: 'bg-gray-100 text-gray-800',
-      draft: 'bg-yellow-100 text-yellow-800',
-      out_of_stock: 'bg-red-100 text-red-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: { [key: string]: string } = {
-      active: 'hoạt động',
-      inactive: 'không hoạt động',
-    };
-    return labels[status] || status;
-  };
-
   const selectedProductImage =
     productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
   const editingProductVariants = [...(editingProduct?.variants ?? [])].sort(
@@ -985,201 +1234,29 @@ export default function ProductManagement() {
 
       {/* Products Grid/List */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => {
-            const statusLabel = product.is_active ? 'active' : 'inactive';
-            const showComparePrice = typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
-            const stockStatus = (product.stock_quantity || 0) === 0 ? 'out' : (product.stock_quantity || 0) < 10 ? 'low' : 'normal';
-            const displayImages = sortProductImages(product.images ?? []);
-            const primaryImage = displayImages[0];
-
-            return (
-              <GlassCard key={product.id} hover className="overflow-hidden group cursor-pointer">
-                {/* Product Image */}
-                <div className="relative overflow-hidden border-b border-slate-100 bg-slate-50/80">
-                  <div className="relative aspect-[4/3] w-full">
-                    {primaryImage ? (
-                      <Image
-                        src={primaryImage.image_url}
-                        alt={product.name}
-                        fill
-                        sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 100vw"
-                        className="object-contain p-5 transition-transform duration-300 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-center">
-                        <Package className="h-12 w-12 text-slate-400" />
-                        <span className="text-xs font-medium text-slate-500">Chưa có ảnh</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${getStatusColor(statusLabel)}`}>
-                      {getStatusLabel(statusLabel)}
-                    </span>
-                    {stockStatus !== 'normal' && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
-                        stockStatus === 'out' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
-                      }`}>
-                        {stockStatus === 'out' ? 'Hết hàng' : 'Sắp hết hàng'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                    <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm backdrop-blur">
-                      {primaryImage ? 'Ảnh chính' : 'Ảnh sản phẩm'}
-                    </span>
-                    {displayImages.length > 1 && (
-                      <span className="rounded-full bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-                        +{displayImages.length - 1} ảnh
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Product Info */}
-                <div className="p-4">
-                  <div className="mb-2">
-                    <h3 className="font-semibold text-slate-900 line-clamp-1 group-hover:text-[#7C3AED] transition-colors">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">SKU: {product.sku}</p>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-3 line-clamp-2">{product.description}</p>
-
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                    <span className="bg-slate-100 px-2 py-1 rounded">{product.category?.name}</span>
-                    <span>Tồn kho: {product.stock_quantity || 0}</span>
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-xl font-bold text-[#7C3AED]">
-                      {formatPrice(product.base_price)}
-                    </p>
-                    {showComparePrice && (
-                      <p className="text-sm text-slate-500 line-through">
-                        {formatPrice(product.compare_at_price as number)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEditModal(product)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors cursor-pointer"
-                    >
-                      <Edit className="w-4 h-4" />
-                      <span className="text-sm">Chỉnh sửa</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDeleteProductError('');
-                        setShowDeleteConfirm(product.id);
-                      }}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-sm">Xóa</span>
-                    </button>
-                  </div>
-                </div>
-              </GlassCard>
-            );
-          })}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {products.map((product) => (
+            <ProductGridCard
+              key={product.id}
+              product={product}
+              onOpenEdit={openEditModal}
+              onRequestDelete={requestDeleteProduct}
+              isOpeningEditor={openingProductId === product.id}
+            />
+          ))}
         </div>
       ) : (
         /* List View */
         <div className="space-y-4">
-          {products.map((product) => {
-            const statusLabel = product.is_active ? 'active' : 'inactive';
-            const showComparePrice = typeof product.compare_at_price === 'number' && product.compare_at_price > product.base_price;
-            const displayImages = sortProductImages(product.images ?? []);
-            const primaryImage = displayImages[0];
-
-            return (
-              <GlassCard key={product.id} hover className="p-6 cursor-pointer">
-                <div className="flex items-center gap-6">
-                  {/* Product Image */}
-                  <div className="flex-shrink-0">
-                    {primaryImage ? (
-                      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 shadow-sm">
-                        <div className="relative h-20 w-20">
-                          <Image
-                            src={primaryImage.image_url}
-                            alt={product.name}
-                            fill
-                            sizes="80px"
-                            className="object-contain"
-                          />
-                        </div>
-                        {displayImages.length > 1 && (
-                          <span className="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                            +{displayImages.length - 1}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
-                        <Package className="w-8 h-8 text-slate-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-lg text-slate-900">{product.name}</h3>
-                        <p className="text-sm text-slate-500 mt-1">SKU: {product.sku}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(statusLabel)}`}>
-                        {getStatusLabel(statusLabel)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 mb-3 line-clamp-2">{product.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-slate-500">
-                      <span className="bg-slate-100 px-3 py-1 rounded">{product.category?.name}</span>
-                      <span>Tồn kho: {product.stock_quantity || 0}</span>
-                    </div>
-                  </div>
-
-                  {/* Price and Actions */}
-                  <div className="flex-shrink-0 text-right">
-                    <div className="mb-4">
-                      <p className="text-2xl font-bold text-[#7C3AED]">
-                        {formatPrice(product.base_price)}
-                      </p>
-                      {showComparePrice && (
-                        <p className="text-sm text-slate-500 line-through">
-                          {formatPrice(product.compare_at_price as number)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(product)}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span className="text-sm">Chỉnh sửa</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteProductError('');
-                          setShowDeleteConfirm(product.id);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="text-sm">Xóa</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
-            );
-          })}
+          {products.map((product) => (
+            <ProductListRow
+              key={product.id}
+              product={product}
+              onOpenEdit={openEditModal}
+              onRequestDelete={requestDeleteProduct}
+              isOpeningEditor={openingProductId === product.id}
+            />
+          ))}
         </div>
       )}
 
@@ -1198,7 +1275,7 @@ export default function ProductManagement() {
           currentPage={currentPage}
           totalPages={totalPages}
           totalItems={stats.total}
-          pageSize={viewMode === 'grid' ? 12 : 10}
+          pageSize={viewMode === 'grid' ? 24 : 10}
           itemLabel="products"
           onPageChange={setCurrentPage}
           isFetching={isFetching}

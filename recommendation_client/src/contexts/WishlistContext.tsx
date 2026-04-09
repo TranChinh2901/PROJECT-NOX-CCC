@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { WishlistCollection, WishlistItem, WishlistContextType, WishlistResponse } from '../types/wishlist.types';
 import { useAuth } from './AuthContext';
 import { wishlistApi } from '../lib/api/wishlist.api';
@@ -40,6 +41,8 @@ const matchesWishlistItem = (item: WishlistItem, targetId: number): boolean => {
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false;
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const wishlistCount = items.length;
@@ -59,12 +62,18 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Load initial wishlist
   useEffect(() => {
+    if (isAdminRoute) {
+      setItems([]);
+      setIsLoading(false);
+      return;
+    }
+
     if (isAuthenticated) {
       loadWishlist();
     } else {
       setItems([]);
     }
-  }, [isAuthenticated, loadWishlist]);
+  }, [isAdminRoute, isAuthenticated, loadWishlist]);
 
   const isInWishlist = useCallback((productId: number) => {
     return items.some(item => matchesWishlistItem(item, productId));

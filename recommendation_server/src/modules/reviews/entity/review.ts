@@ -17,7 +17,7 @@ export class Review {
   @Column()
   product_id!: number;
 
-  @ManyToOne(() => Product, product => product.id, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
+  @ManyToOne(() => Product, product => product.reviews, { onDelete: 'CASCADE', onUpdate: 'RESTRICT' })
   @JoinColumn({ name: 'product_id', foreignKeyConstraintName: 'FK_reviews_product' })
   product!: Product;
 

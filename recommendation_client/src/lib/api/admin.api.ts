@@ -129,6 +129,14 @@ export interface AdminUsersResponse<T> {
   };
 }
 
+export interface UpdateAdminUserDto {
+  fullname?: string;
+  email?: string;
+  phone_number?: string;
+  avatar?: string | null;
+  role?: User['role'];
+}
+
 export interface AdminProductsResponse<T> {
   data: T[];
   pagination: {
@@ -380,6 +388,25 @@ export const adminApi = {
     sortOrder?: 'ASC' | 'DESC';
   }): Promise<AdminUsersResponse<User>> {
     return await apiClient.get<AdminUsersResponse<User>>('/admin/users', { params });
+  },
+
+  async updateUser(userId: number, data: UpdateAdminUserDto): Promise<User> {
+    return await apiClient.patch<User>(`/admin/users/${userId}`, data);
+  },
+
+  async uploadUserAvatar(userId: number, file: File): Promise<User> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return await apiClient.put<User>(
+      `/admin/users/${userId}/avatar`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    );
   },
 
   // Category management

@@ -103,6 +103,9 @@ export interface Product {
   sold_count?: number;
   meta_title?: string;
   meta_description?: string;
+  primary_image?: string | null;
+  image_count?: number;
+  variant_count?: number;
   created_at: Date;
   updated_at: Date;
   deleted_at?: Date;

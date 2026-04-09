@@ -23,6 +23,12 @@ type UploadProductImagesOptions = {
   sort_order?: number;
 };
 
+type ProductListMediaSummary = {
+  primaryImage: string | null;
+  imageCount: number;
+  variantCount: number;
+};
+
 export class AdminProductService {
   private productRepository: Repository<Product>;
   private productVariantRepository: Repository<ProductVariant>;
@@ -64,8 +70,6 @@ export class AdminProductService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.brand', 'brand')
-      .leftJoinAndSelect('product.variants', 'variants', 'variants.deleted_at IS NULL')
-      .leftJoinAndSelect('product.images', 'images', 'images.deleted_at IS NULL')
       .withDeleted()
       .andWhere('product.deleted_at IS NULL');
 
@@ -102,11 +106,19 @@ export class AdminProductService {
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
     const products = await queryBuilder.getMany();
-    const stockQuantityMap = await this.loadStockQuantityMap(products.map((product) => product.id));
+    const productIds = products.map((product) => product.id);
+    const [stockQuantityMap, productMediaSummaryMap] = await Promise.all([
+      this.loadStockQuantityMap(productIds),
+      this.loadProductListMediaSummaryMap(productIds),
+    ]);
 
     return {
       data: products.map((product) =>
-        this.formatProductResponse(product, stockQuantityMap.get(product.id) ?? 0),
+        this.formatProductListResponse(
+          product,
+          stockQuantityMap.get(product.id) ?? 0,
+          productMediaSummaryMap.get(product.id),
+        ),
       ),
       pagination: {
         total,
@@ -682,6 +694,123 @@ export class AdminProductService {
     return new Map(
       stockRows.map((row) => [Number(row.product_id), Number(row.stock_quantity) || 0]),
     );
+  }
+
+  private async loadProductListMediaSummaryMap(
+    productIds: number[],
+  ): Promise<Map<number, ProductListMediaSummary>> {
+    if (!productIds.length) {
+      return new Map();
+    }
+
+    const [images, variantRows] = await Promise.all([
+      this.productImageRepository
+        .createQueryBuilder('image')
+        .select([
+          'image.product_id AS product_id',
+          'image.image_url AS image_url',
+          'image.is_primary AS is_primary',
+          'image.sort_order AS sort_order',
+        ])
+        .where('image.product_id IN (:...productIds)', { productIds })
+        .andWhere('image.deleted_at IS NULL')
+        .orderBy('image.product_id', 'ASC')
+        .addOrderBy('image.is_primary', 'DESC')
+        .addOrderBy('image.sort_order', 'ASC')
+        .addOrderBy('image.id', 'ASC')
+        .getRawMany<{
+          product_id: string;
+          image_url: string;
+          is_primary: number | boolean;
+          sort_order: string;
+        }>(),
+      this.productVariantRepository
+        .createQueryBuilder('variant')
+        .select('variant.product_id', 'product_id')
+        .addSelect('COUNT(variant.id)', 'variant_count')
+        .where('variant.product_id IN (:...productIds)', { productIds })
+        .andWhere('variant.deleted_at IS NULL')
+        .groupBy('variant.product_id')
+        .getRawMany<{ product_id: string; variant_count: string }>(),
+    ]);
+
+    const summaryMap = new Map<number, ProductListMediaSummary>();
+
+    for (const productId of productIds) {
+      summaryMap.set(productId, {
+        primaryImage: null,
+        imageCount: 0,
+        variantCount: 0,
+      });
+    }
+
+    for (const image of images) {
+      const productId = Number(image.product_id);
+      const currentSummary = summaryMap.get(productId);
+
+      if (!currentSummary) {
+        continue;
+      }
+
+      currentSummary.imageCount += 1;
+
+      if (!currentSummary.primaryImage) {
+        currentSummary.primaryImage = image.image_url;
+      }
+    }
+
+    for (const variantRow of variantRows) {
+      const productId = Number(variantRow.product_id);
+      const currentSummary = summaryMap.get(productId);
+
+      if (!currentSummary) {
+        continue;
+      }
+
+      currentSummary.variantCount = Number(variantRow.variant_count) || 0;
+    }
+
+    return summaryMap;
+  }
+
+  private formatProductListResponse(
+    product: Product,
+    stockQuantity: number = 0,
+    mediaSummary?: ProductListMediaSummary,
+  ) {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      sku: product.sku,
+      description: product.description,
+      short_description: product.short_description,
+      base_price: product.base_price,
+      compare_at_price: product.compare_at_price,
+      cost_price: product.cost_price,
+      weight_kg: product.weight_kg,
+      stock_quantity: stockQuantity,
+      is_active: product.is_active,
+      is_featured: product.is_featured,
+      meta_title: product.meta_title,
+      meta_description: product.meta_description,
+      category: product.category ? {
+        id: product.category.id,
+        name: product.category.name,
+        slug: product.category.slug
+      } : null,
+      brand: product.brand ? {
+        id: product.brand.id,
+        name: product.brand.name,
+        slug: product.brand.slug
+      } : null,
+      primary_image: mediaSummary?.primaryImage ?? null,
+      image_count: mediaSummary?.imageCount ?? 0,
+      variant_count: mediaSummary?.variantCount ?? 0,
+      deleted_at: product.deleted_at,
+      created_at: product.created_at,
+      updated_at: product.updated_at
+    };
   }
 
   private formatProductResponse(product: Product, stockQuantity: number = 0) {

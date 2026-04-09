@@ -5,6 +5,8 @@ import adminUserService from './admin-user.service';
 import { UpdateUserDto, BulkDeactivateDto } from './dto/admin-user.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { RoleType } from '@/modules/auth/enum/auth.enum';
+import { AppError } from '@/common/error.response';
+import { ErrorCode } from '@/constants/error-code';
 
 class AdminUserController {
   async listUsers(req: Request, res: Response) {
@@ -46,6 +48,26 @@ class AdminUserController {
 
     return new AppResponse({
       message: 'User updated successfully',
+      statusCode: HttpStatusCode.OK,
+      data: user
+    }).sendResponse(res);
+  }
+
+  async uploadAvatar(req: Request, res: Response) {
+    const id = parseInt(req.params.id);
+
+    if (!req.file?.path) {
+      throw new AppError(
+        'Please upload an avatar image',
+        HttpStatusCode.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const user = await adminUserService.uploadAvatar(id, req.file.path);
+
+    return new AppResponse({
+      message: 'User avatar updated successfully',
       statusCode: HttpStatusCode.OK,
       data: user
     }).sendResponse(res);

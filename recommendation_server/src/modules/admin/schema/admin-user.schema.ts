@@ -12,6 +12,15 @@ export const updateUserSchema = Joi.object({
     "string.email": "Email must be a valid email address",
     "string.max": "Email must not exceed 150 characters",
   }),
+  phone_number: Joi.string().pattern(/^[0-9]{10,11}$/).messages({
+    "string.base": "Phone number must be a string",
+    "string.pattern.base": "Phone number must be 10-11 digits",
+  }),
+  avatar: Joi.string().uri().max(255).allow(null, '').messages({
+    "string.base": "Avatar must be a string",
+    "string.uri": "Avatar must be a valid URL",
+    "string.max": "Avatar must not exceed 255 characters",
+  }),
   role: Joi.string().valid(...Object.values(RoleType)).messages({
     "any.only": "Role must be either ADMIN or USER",
   }),
