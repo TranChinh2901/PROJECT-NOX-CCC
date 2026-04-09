@@ -1,23 +1,41 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { formatPrice } from '@/lib/utils';
+import { buildProductPath, formatPrice } from '@/lib/utils';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { productApi, recommendationApi } from '@/lib/api';
+import { Product } from '@/types';
+import { ProductImage } from '@/components/common/ProductImage';
 
 export default function CartPage() {
   const { cart, isLoading, updateQuantity, removeItem, bulkRemoveItems, refreshCart } = useCart();
+  const { user } = useAuth();
 
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [recommendationReasons, setRecommendationReasons] = useState<Record<number, string>>({});
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  const cartProductIds = useMemo(
+    () =>
+      new Set(
+        (cart?.items ?? [])
+          .map((item) => item.variant?.product?.id ?? item.variant?.product_id)
+          .filter((productId): productId is number => Number.isInteger(productId))
+      ),
+    [cart?.items]
+  );
 
   useBodyScrollLock(showConfirmDialog);
 
@@ -112,6 +130,92 @@ export default function CartPage() {
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showConfirmDialog, isBulkDeleting]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadCartRecommendations = async () => {
+      if (!cart?.items?.length) {
+        setRecommendedProducts([]);
+        setRecommendationReasons({});
+        return;
+      }
+
+      try {
+        setRecommendationLoading(true);
+
+        let products: Product[] = [];
+        let reasons: Record<number, string> = {};
+
+        if (user?.id) {
+          const personalized = await recommendationApi.getRecommendations(user.id, {
+            limit: 8,
+            strategy: 'hybrid',
+          });
+
+          const filteredRecommendations = personalized.recommendations.filter(
+            (recommendation) => !cartProductIds.has(recommendation.productId)
+          );
+
+          const resolvedProducts = await Promise.all(
+            filteredRecommendations.slice(0, 4).map((recommendation) =>
+              productApi.getProductById(recommendation.productId).catch(() => null)
+            )
+          );
+
+          products = resolvedProducts.filter((product): product is Product => Boolean(product));
+          reasons = filteredRecommendations.reduce<Record<number, string>>((accumulator, recommendation) => {
+            accumulator[recommendation.productId] = recommendation.reason;
+            return accumulator;
+          }, {});
+        }
+
+        if (products.length === 0) {
+          const featuredProducts = await productApi.getFeaturedProducts(4).catch(() => []);
+          products = featuredProducts.filter((product) => !cartProductIds.has(product.id)).slice(0, 4);
+          reasons = products.reduce<Record<number, string>>((accumulator, product) => {
+            accumulator[product.id] = 'gợi ý nổi bật để mua kèm';
+            return accumulator;
+          }, {});
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setRecommendedProducts(products);
+        setRecommendationReasons(reasons);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error('Failed to load cart recommendations:', error);
+        const featuredProducts = await productApi.getFeaturedProducts(4).catch(() => []);
+        const filteredFeaturedProducts = featuredProducts
+          .filter((product) => !cartProductIds.has(product.id))
+          .slice(0, 4);
+
+        setRecommendedProducts(filteredFeaturedProducts);
+        setRecommendationReasons(
+          filteredFeaturedProducts.reduce<Record<number, string>>((accumulator, product) => {
+            accumulator[product.id] = 'gợi ý nổi bật để mua kèm';
+            return accumulator;
+          }, {})
+        );
+      } finally {
+        if (isActive) {
+          setRecommendationLoading(false);
+        }
+      }
+    };
+
+    void loadCartRecommendations();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id, cart?.items, cartProductIds]);
 
   const handleIncreaseQuantity = async (itemId: number, currentQuantity: number) => {
     try {
@@ -437,6 +541,83 @@ export default function CartPage() {
               </div>
             </div>
           </div>
+
+          {(recommendationLoading || recommendedProducts.length > 0) && (
+            <section className="mt-14 border-t border-gray-200 pt-10">
+              <div className="mb-6">
+                <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#8a5a00]">
+                  Gợi ý mua kèm
+                </p>
+                <h2 className="mt-2 text-2xl font-heading font-bold text-gray-900">
+                  Có thể bạn sẽ cần thêm
+                </h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Các sản phẩm bổ sung được chọn theo hành vi mua sắm và nội dung trong giỏ hàng của bạn.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                {recommendationLoading
+                  ? Array.from({ length: 4 }).map((_, index) => (
+                      <div
+                        key={`cart-recommendation-skeleton-${index}`}
+                        className="h-80 rounded-2xl border border-gray-200 bg-white animate-pulse"
+                      />
+                    ))
+                  : recommendedProducts.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={buildProductPath(product)}
+                        className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:shadow-md"
+                      >
+                        <div className="border-b border-gray-100 bg-gray-50 p-4">
+                          <ProductImage
+                            src={product.images?.find((image) => image.is_primary)?.image_url || product.images?.[0]?.image_url}
+                            category={product.category?.slug || 'products'}
+                            alt={product.name}
+                            size="full"
+                            className="aspect-square transition-transform duration-300 group-hover:scale-[1.03]"
+                          />
+                        </div>
+
+                        <div className="space-y-3 p-5">
+                          {recommendationReasons[product.id] ? (
+                            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#8a5a00]">
+                              {recommendationReasons[product.id]}
+                            </p>
+                          ) : null}
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                              {product.category?.name || 'Danh mục công nghệ'}
+                            </p>
+                            <h3 className="mt-2 line-clamp-2 text-lg font-heading font-bold text-gray-900">
+                              {product.name}
+                            </h3>
+                          </div>
+                          <p className="line-clamp-2 text-sm leading-6 text-gray-600">
+                            {product.short_description || product.description}
+                          </p>
+                          <div className="flex items-end justify-between gap-3">
+                            <div>
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatPrice(product.base_price)}
+                              </p>
+                              {product.compare_at_price ? (
+                                <p className="text-sm text-gray-400 line-through">
+                                  {formatPrice(product.compare_at_price)}
+                                </p>
+                              ) : null}
+                            </div>
+                            <span className="text-sm font-semibold text-[#8a5a00] transition-transform group-hover:translate-x-1">
+                              Xem chi tiết
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
 
