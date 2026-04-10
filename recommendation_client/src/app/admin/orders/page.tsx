@@ -37,6 +37,7 @@ export default function OrdersManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [pageInput, setPageInput] = useState('1');
   const [showFilters, setShowFilters] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
 
@@ -101,6 +102,30 @@ export default function OrdersManagement() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+      return;
+    }
+
+    setPageInput(String(currentPage));
+  }, [currentPage, totalPages]);
+
+  const handlePageJump = () => {
+    const nextPage = Number.parseInt(pageInput, 10);
+
+    if (!Number.isFinite(nextPage)) {
+      setPageInput(String(currentPage));
+      return;
+    }
+
+    const safeTotalPages = Math.max(1, totalPages);
+    const normalizedPage = Math.min(Math.max(1, nextPage), safeTotalPages);
+
+    setCurrentPage(normalizedPage);
+    setPageInput(String(normalizedPage));
+  };
 
   const handleStatusUpdate = async (orderId: number, newStatus: string) => {
     if (!newStatus) {
@@ -440,25 +465,52 @@ export default function OrdersManagement() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-slate-200 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm text-slate-500">
               Hiển thị trang {currentPage} / {totalPages} ({totalOrders} đơn hàng)
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Trước
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Tiếp
-              </button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500 whitespace-nowrap">Đi tới trang</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={pageInput}
+                  onChange={(event) => setPageInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handlePageJump();
+                    }
+                  }}
+                  className="w-24 px-3 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7366ff] focus:border-transparent"
+                  aria-label="Nhập số trang cần chuyển tới"
+                />
+                <span className="text-sm text-slate-500 whitespace-nowrap">/ {totalPages}</span>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Trước
+                </button>
+                <button
+                  onClick={handlePageJump}
+                  className="px-4 py-2 bg-[#7366ff] text-white border border-[#7366ff] rounded-lg hover:bg-[#5d54cc] transition-colors"
+                >
+                  Đi
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Tiếp
+                </button>
+              </div>
             </div>
           </div>
         )}
