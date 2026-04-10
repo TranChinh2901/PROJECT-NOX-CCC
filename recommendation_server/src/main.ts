@@ -8,10 +8,21 @@ import { loadedEnv } from "@/config/load-env";
 import { requestLogger } from "@/middlewares/logger-filter";
 import { logger } from "@/utils/logger";
 import { attachNotificationWebSocketGateway } from "@/modules/notification/infrastructure/NotificationWebSocketGateway";
+import { RecommendationRefreshScheduler } from "@/modules/ai/infrastructure/jobs/RecommendationRefreshScheduler";
 
 const app = express();
 const server = createServer(app);
 const PORT = loadedEnv.port;
+const recommendationRefreshScheduler = new RecommendationRefreshScheduler({
+  enabled: loadedEnv.recommendation.schedulerEnabled,
+  intervalMinutes: loadedEnv.recommendation.refreshIntervalMinutes,
+  runOnStart: loadedEnv.recommendation.runOnStart,
+  days: loadedEnv.recommendation.days,
+  topK: loadedEnv.recommendation.topK,
+  topN: loadedEnv.recommendation.topN,
+  ttlHours: loadedEnv.recommendation.ttlHours,
+  algorithm: loadedEnv.recommendation.algorithm,
+});
 
 const allowedOrigins = (process.env.CORS_ORIGIN || [
   'http://localhost:3000',
@@ -54,6 +65,7 @@ const startServer = async () => {
   try {
     await initDatabase();
     attachNotificationWebSocketGateway(server);
+    recommendationRefreshScheduler.start();
     server.listen(PORT, () => {
       logger.success(`Server is running on port ${PORT}`);
     });
@@ -62,5 +74,12 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+const shutdown = () => {
+  recommendationRefreshScheduler.stop();
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 void startServer();

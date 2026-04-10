@@ -297,6 +297,14 @@ Run the full refresh pipeline in one command:
 npm run refresh:recommendation-pipeline
 ```
 
+Enable automatic periodic refresh inside the backend process:
+
+```bash
+RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED=true
+RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES=360
+RECOMMENDATION_PIPELINE_RUN_ON_START=true
+```
+
 ### Useful Flags
 
 ```bash
@@ -311,6 +319,17 @@ npm run refresh:recommendation-pipeline -- --days=90 --top-k=30 --top-n=12 --ttl
 - `--top-n`: number of recommendations per user
 - `--ttl-hours`: recommendation cache lifetime
 - `--algorithm`: cache algorithm tag, default `offline_model`
+
+### Scheduler Environment Variables
+
+- `RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED`: enable/disable in-process scheduler
+- `RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES`: refresh interval in minutes
+- `RECOMMENDATION_PIPELINE_RUN_ON_START`: run one refresh immediately after server boot
+- `RECOMMENDATION_PIPELINE_LOOKBACK_DAYS`: dataset export lookback window
+- `RECOMMENDATION_PIPELINE_TOP_K`: similar-item count during training
+- `RECOMMENDATION_PIPELINE_TOP_N`: recommendation count per user
+- `RECOMMENDATION_PIPELINE_TTL_HOURS`: cache TTL for precomputed recommendations
+- `RECOMMENDATION_PIPELINE_ALGORITHM`: algorithm tag stored in `recommendation_cache`
 
 ### Serving From the Offline Model
 

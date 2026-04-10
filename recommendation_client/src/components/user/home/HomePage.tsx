@@ -209,6 +209,7 @@ function HomePageContent() {
   const [activeDealIndex, setActiveDealIndex] = useState(0);
   
   const productImageRefs = useRef<Map<number, HTMLImageElement>>(new Map());
+  const trackedRecommendationImpressionsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -317,6 +318,39 @@ function HomePageContent() {
       isActive = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || personalizedProducts.length === 0) {
+      return;
+    }
+
+    personalizedProducts.forEach((product) => {
+      const impressionKey = `homepage:${recommendationBlockTitle}:${product.id}`;
+      if (trackedRecommendationImpressionsRef.current.has(impressionKey)) {
+        return;
+      }
+
+      trackedRecommendationImpressionsRef.current.add(impressionKey);
+
+      recommendationApi.trackBehavior({
+        userId: user.id,
+        behaviorType: 'view',
+        productId: product.id,
+        categoryId: product.category?.id,
+        metadata: {
+          event: 'impression',
+          source: recommendationBlockTitle === 'Dành cho bạn'
+            ? 'homepage_personalized'
+            : 'homepage_fallback',
+          recommendationReason: personalizedReasons[product.id],
+          recommendationBlockTitle,
+        },
+      }).catch((error: unknown) => {
+        trackedRecommendationImpressionsRef.current.delete(impressionKey);
+        console.error('Failed to track homepage recommendation impression:', error);
+      });
+    });
+  }, [user?.id, personalizedProducts, personalizedReasons, recommendationBlockTitle]);
 
   useEffect(() => {
     if (!categoryFilterSlug) {

@@ -184,6 +184,7 @@ export default function ProductPage() {
   const [flyingItems, setFlyingItems] = useState<Array<{ id: number; rect: DOMRect; imageUrl: string }>>([]);
   const productImageRef = useRef<HTMLImageElement>(null);
   const trackedProductViewRef = useRef<number | null>(null);
+  const trackedRecommendationImpressionsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -312,6 +313,37 @@ export default function ProductPage() {
       console.error('Failed to track product view:', error);
     });
   }, [user?.id, product?.id, product?.category?.id, product?.slug]);
+
+  useEffect(() => {
+    if (!user?.id || !product?.id || relatedProducts.length === 0) {
+      return;
+    }
+
+    relatedProducts.forEach((relatedProduct) => {
+      const impressionKey = `product_detail:${product.id}:${relatedProduct.id}`;
+      if (trackedRecommendationImpressionsRef.current.has(impressionKey)) {
+        return;
+      }
+
+      trackedRecommendationImpressionsRef.current.add(impressionKey);
+
+      recommendationApi.trackBehavior({
+        userId: user.id,
+        behaviorType: 'view',
+        productId: relatedProduct.id,
+        categoryId: relatedProduct.category?.id,
+        metadata: {
+          event: 'impression',
+          source: 'product_detail_similar',
+          contextProductId: product.id,
+          recommendationReason: relatedProductReasons[relatedProduct.id],
+        },
+      }).catch((error: unknown) => {
+        trackedRecommendationImpressionsRef.current.delete(impressionKey);
+        console.error('Failed to track product recommendation impression:', error);
+      });
+    });
+  }, [user?.id, product?.id, relatedProducts, relatedProductReasons]);
 
   const { addToCart: addToCartContext } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();

@@ -71,4 +71,14 @@ export const loadedEnv = {
       process.env.GEMINI_CHATBOT_INSTRUCTIONS,
     ),
   },
+  recommendation: {
+    schedulerEnabled: firstDefinedOr('false', process.env.RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED) === 'true',
+    refreshIntervalMinutes: toNumber(process.env.RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES, 360),
+    runOnStart: firstDefinedOr('false', process.env.RECOMMENDATION_PIPELINE_RUN_ON_START) === 'true',
+    days: toNumber(process.env.RECOMMENDATION_PIPELINE_LOOKBACK_DAYS, 180),
+    topK: toNumber(process.env.RECOMMENDATION_PIPELINE_TOP_K, 20),
+    topN: toNumber(process.env.RECOMMENDATION_PIPELINE_TOP_N, 10),
+    ttlHours: toNumber(process.env.RECOMMENDATION_PIPELINE_TTL_HOURS, 24),
+    algorithm: firstDefinedOr('offline_model', process.env.RECOMMENDATION_PIPELINE_ALGORITHM),
+  },
 };

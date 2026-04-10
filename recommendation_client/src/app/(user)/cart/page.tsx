@@ -26,6 +26,7 @@ export default function CartPage() {
   const [recommendationReasons, setRecommendationReasons] = useState<Record<number, string>>({});
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  const trackedRecommendationImpressionsRef = useRef<Set<string>>(new Set());
 
   const cartProductIds = useMemo(
     () =>
@@ -235,6 +236,36 @@ export default function CartPage() {
       console.error('Failed to track cart recommendation click:', error);
     });
   }, [user?.id, recommendationReasons]);
+
+  useEffect(() => {
+    if (!user?.id || recommendedProducts.length === 0) {
+      return;
+    }
+
+    recommendedProducts.forEach((product) => {
+      const impressionKey = `cart:${product.id}`;
+      if (trackedRecommendationImpressionsRef.current.has(impressionKey)) {
+        return;
+      }
+
+      trackedRecommendationImpressionsRef.current.add(impressionKey);
+
+      recommendationApi.trackBehavior({
+        userId: user.id,
+        behaviorType: 'view',
+        productId: product.id,
+        categoryId: product.category?.id,
+        metadata: {
+          event: 'impression',
+          source: 'cart_recommendation',
+          recommendationReason: recommendationReasons[product.id],
+        },
+      }).catch((error: unknown) => {
+        trackedRecommendationImpressionsRef.current.delete(impressionKey);
+        console.error('Failed to track cart recommendation impression:', error);
+      });
+    });
+  }, [user?.id, recommendedProducts, recommendationReasons]);
 
   const handleIncreaseQuantity = async (itemId: number, currentQuantity: number) => {
     try {

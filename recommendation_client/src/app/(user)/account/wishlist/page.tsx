@@ -22,6 +22,7 @@ export default function WishlistPage() {
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [recommendationReasons, setRecommendationReasons] = useState<Record<number, string>>({});
   const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const trackedRecommendationImpressionsRef = React.useRef<Set<string>>(new Set());
 
   const wishlistProductIds = useMemo(
     () =>
@@ -136,6 +137,36 @@ export default function WishlistPage() {
       console.error('Failed to track wishlist recommendation click:', error);
     });
   }, [user?.id, recommendationReasons]);
+
+  useEffect(() => {
+    if (!user?.id || recommendedProducts.length === 0) {
+      return;
+    }
+
+    recommendedProducts.forEach((product) => {
+      const impressionKey = `wishlist:${product.id}`;
+      if (trackedRecommendationImpressionsRef.current.has(impressionKey)) {
+        return;
+      }
+
+      trackedRecommendationImpressionsRef.current.add(impressionKey);
+
+      recommendationApi.trackBehavior({
+        userId: user.id,
+        behaviorType: 'view',
+        productId: product.id,
+        categoryId: product.category?.id,
+        metadata: {
+          event: 'impression',
+          source: 'wishlist_recommendation',
+          recommendationReason: recommendationReasons[product.id],
+        },
+      }).catch((error: unknown) => {
+        trackedRecommendationImpressionsRef.current.delete(impressionKey);
+        console.error('Failed to track wishlist recommendation impression:', error);
+      });
+    });
+  }, [user?.id, recommendedProducts, recommendationReasons]);
 
   if (authLoading) {
     return (
