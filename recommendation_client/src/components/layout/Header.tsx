@@ -47,16 +47,6 @@ function HeaderSearchParamsSync({
   return null;
 }
 
-const DEFAULT_DELIVERY_ADDRESSES: DeliveryAddress[] = [
-  {
-    id: "dn-q1",
-    fullName: "Hoàng Văn Chuẩn",
-    phoneNumber: "0985981024",
-    city: "Đà Nẵng",
-    houseNumber: "24 Trần Kim Bảng",
-    note: "Giao giờ hành chính",
-  },
-];
 const VIETNAM_CITY_OPTIONS = [
   "Hà Nội",
   "TP. Hồ Chí Minh",
@@ -96,11 +86,8 @@ export const Header: React.FC = () => {
   const [showDeliveryPanel, setShowDeliveryPanel] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [navLinks, setNavLinks] = useState<NavigationItem[]>([]);
-  const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>(
-    DEFAULT_DELIVERY_ADDRESSES,
-  );
-  const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] =
-    useState<string>(DEFAULT_DELIVERY_ADDRESSES[0].id);
+  const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>([]);
+  const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>("");
   const [isDeliveryStorageHydrated, setIsDeliveryStorageHydrated] =
     useState(false);
   const [deliveryFullNameInput, setDeliveryFullNameInput] = useState("");
@@ -111,10 +98,10 @@ export const Header: React.FC = () => {
   const selectedDeliveryAddress =
     deliveryAddresses.find(
       (address) => address.id === selectedDeliveryAddressId,
-    ) || deliveryAddresses[0];
+    ) || null;
   const selectedDeliveryText = selectedDeliveryAddress
     ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
-    : user?.address || "your address";
+    : user?.address || "Chưa có địa chỉ";
   const selectedDeliveryMapQuery = selectedDeliveryAddress
     ? `${selectedDeliveryAddress.houseNumber}, ${selectedDeliveryAddress.city}`
     : user?.address || "";
@@ -177,6 +164,8 @@ export const Header: React.FC = () => {
     const syncFromStorage = () => {
       const storedAddresses = readDeliveryAddressesFromStorage();
       if (storedAddresses.length === 0) {
+        setDeliveryAddresses([]);
+        setSelectedDeliveryAddressId("");
         setIsDeliveryStorageHydrated(true);
         return;
       }
@@ -215,10 +204,6 @@ export const Header: React.FC = () => {
 
   useEffect(() => {
     if (!isDeliveryStorageHydrated) {
-      return;
-    }
-
-    if (deliveryAddresses.length === 0) {
       return;
     }
 
@@ -331,12 +316,8 @@ export const Header: React.FC = () => {
         (address) => address.id !== addressId,
       );
 
-      if (nextAddresses.length === 0) {
-        return currentAddresses;
-      }
-
       if (selectedDeliveryAddressId === addressId) {
-        setSelectedDeliveryAddressId(nextAddresses[0].id);
+        setSelectedDeliveryAddressId(nextAddresses[0]?.id || "");
       }
 
       return nextAddresses;
@@ -464,12 +445,7 @@ export const Header: React.FC = () => {
                                 onClick={() =>
                                   handleRemoveDeliveryAddress(address.id)
                                 }
-                                disabled={deliveryAddresses.length === 1}
-                                title={
-                                  deliveryAddresses.length === 1
-                                    ? "Cần tối thiểu 1 địa chỉ"
-                                    : "Xoá địa chỉ"
-                                }
+                                title="Xoá địa chỉ"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
