@@ -3,6 +3,7 @@ import { IRecommendationRepository } from '../../domain/repositories/IRecommenda
 import { Recommendation } from '../../domain/entities/Recommendation';
 import { RecommendationCache } from '../../../ai/entity/recommendation-cache';
 import { AppDataSource } from '@/config/database.config';
+import { RecommendationType } from '../../enum/recommendation.enum';
 
 /**
  * Adapter: TypeORM Recommendation Repository
@@ -16,6 +17,8 @@ import { AppDataSource } from '@/config/database.config';
  */
 export class TypeORMRecommendationRepository implements IRecommendationRepository {
   private repository: Repository<RecommendationCache>;
+  private readonly recommendationType = RecommendationType.PERSONALIZED;
+  private readonly algorithm = 'content_based';
 
   constructor() {
     this.repository = AppDataSource.getRepository(RecommendationCache);
@@ -26,6 +29,8 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
       where: {
         user_id: userId,
         is_active: true,
+        recommendation_type: this.recommendationType,
+        algorithm: this.algorithm,
       },
       order: {
         generated_at: 'DESC',
@@ -52,26 +57,32 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
   }
 
   async save(userId: number, recommendations: Recommendation[]): Promise<void> {
+    const cacheKey = this.buildCacheKey(userId);
+    const generatedAt = new Date();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
     // Deactivate old cache entries
     await this.repository.update(
-      { user_id: userId, is_active: true },
+      {
+        user_id: userId,
+        is_active: true,
+        recommendation_type: this.recommendationType,
+        algorithm: this.algorithm,
+      },
       { is_active: false }
     );
 
-    // Create new cache entry
-    const cacheEntry = this.repository.create({
-      cache_key: this.buildCacheKey(userId),
+    await this.repository.upsert({
+      cache_key: cacheKey,
       user_id: userId,
-      recommendation_type: 'personalized' as any,
-      algorithm: 'content_based',
+      recommendation_type: this.recommendationType,
+      algorithm: this.algorithm,
       recommended_products: recommendations.map((r) => r.toJSON()) as any[],
-      generated_at: new Date(),
-      expires_at: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      generated_at: generatedAt,
+      expires_at: expiresAt,
       is_active: true,
       cache_hit_count: 0,
-    });
-
-    await this.repository.save(cacheEntry);
+    }, ['cache_key']);
   }
 
   async deleteExpired(maxAgeMinutes: number): Promise<number> {
@@ -88,27 +99,21 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
 
   async hasFreshRecommendations(userId: number, maxAgeMinutes: number): Promise<boolean> {
     const freshSince = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
-
-    const count = await this.repository.count({
-      where: {
-        user_id: userId,
-        is_active: true,
-      },
-    });
-
-    if (count === 0) return false;
-
     const latestCache = await this.repository.findOne({
       where: {
         user_id: userId,
         is_active: true,
+        recommendation_type: this.recommendationType,
+        algorithm: this.algorithm,
       },
       order: {
         generated_at: 'DESC',
       },
     });
 
-    return latestCache ? latestCache.generated_at >= freshSince : false;
+    return latestCache
+      ? latestCache.generated_at >= freshSince && latestCache.expires_at >= new Date()
+      : false;
   }
 
   private buildCacheKey(userId: number): string {

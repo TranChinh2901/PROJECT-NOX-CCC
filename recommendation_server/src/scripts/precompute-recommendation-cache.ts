@@ -124,7 +124,7 @@ async function precomputeRecommendationCache(): Promise<void> {
       .filter((entry): entry is RecommendationCache => Boolean(entry));
 
     if (cacheEntries.length > 0) {
-      await repository.save(cacheEntries);
+      await repository.upsert(cacheEntries, ['cache_key']);
     }
 
     const summary: PrecomputeSummary = {
