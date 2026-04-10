@@ -2,15 +2,18 @@ import { DEFAULT_PRODUCT_IMAGE_ALIASES } from "@/scripts/support/product-image-a
 import {
   buildCloudinaryAssetIndex,
   buildCloudinaryAssetUrl,
+  buildCloudinaryLibraryPublicId,
   buildCloudinarySeedAssetPublicId,
   getCloudinaryProductImageLibraryPrefix,
   getCloudinaryProductImageSeedPrefix,
   isCloudinarySeedUrl,
   isCloudinaryUrl,
   listCloudinaryAssetsByPrefix,
+  uploadRemoteImageToCloudinary,
   uploadSvgToCloudinary,
 } from "@/scripts/support/cloudinary-product-image-assets";
 import { normalizeProductImageKey } from "@/scripts/support/supabase-product-image-sync";
+import supabaseStorageService from "@/services/supabase-storage.service";
 
 type DeviceFamily =
   | "phone"
@@ -42,6 +45,10 @@ type FamilyDefinition = {
 };
 
 const VIEW_COUNT = 3;
+const SUPABASE_PRODUCT_IMAGE_LIBRARY_PREFIX = "images";
+const SUPABASE_PRODUCT_IMAGE_PAGE_SIZE = 100;
+const CLOUDINARY_LIBRARY_SYNC_BATCH_SIZE = 5;
+
 const FAMILY_DEFINITIONS: Record<DeviceFamily, FamilyDefinition> = {
   "phone": {
     title: "Flagship Phone",
@@ -574,12 +581,97 @@ export function selectClosestProductImageUrl(input: {
 async function loadUploadedProductAssets(): Promise<Map<string, string[]>> {
   if (!uploadedProductAssetsPromise) {
     uploadedProductAssetsPromise = (async () => {
-      const uploadedAssets = await listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageLibraryPrefix()}/`);
+      let uploadedAssets = await listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageLibraryPrefix()}/`);
+
+      if (uploadedAssets.length === 0) {
+        uploadedAssets = await hydrateCloudinaryLibraryFromSupabase();
+      }
+
       return buildCloudinaryAssetIndex(uploadedAssets);
     })();
   }
 
   return uploadedProductAssetsPromise;
+}
+
+export async function hydrateCloudinaryLibraryFromSupabase() {
+  try {
+    const libraryObjects = await listSupabaseLibraryObjects();
+    if (libraryObjects.length === 0) {
+      return [];
+    }
+
+    console.log(
+      `[seed-product-image-library] Cloudinary product image library is empty. Importing ${libraryObjects.length} images from Supabase storage...`,
+    );
+
+    for (
+      let startIndex = 0;
+      startIndex < libraryObjects.length;
+      startIndex += CLOUDINARY_LIBRARY_SYNC_BATCH_SIZE
+    ) {
+      const batch = libraryObjects.slice(
+        startIndex,
+        startIndex + CLOUDINARY_LIBRARY_SYNC_BATCH_SIZE,
+      );
+
+      const results = await Promise.allSettled(
+        batch.map(async (objectName) => {
+          const storagePath = `${SUPABASE_PRODUCT_IMAGE_LIBRARY_PREFIX}/${objectName}`;
+          await uploadRemoteImageToCloudinary({
+            sourceUrl: supabaseStorageService.getPublicUrl(storagePath),
+            publicId: buildCloudinaryLibraryPublicId(objectName),
+            overwrite: true,
+            tags: ["product-image", "product-image-library", "supabase-import"],
+          });
+        }),
+      );
+
+      for (const [index, result] of results.entries()) {
+        if (result.status === "rejected") {
+          console.warn(
+            `[seed-product-image-library] Failed to import ${batch[index]} from Supabase: ${
+              result.reason instanceof Error ? result.reason.message : String(result.reason)
+            }`,
+          );
+        }
+      }
+    }
+
+    return listCloudinaryAssetsByPrefix(`${getCloudinaryProductImageLibraryPrefix()}/`);
+  } catch (error) {
+    console.warn(
+      `[seed-product-image-library] Could not hydrate Cloudinary product image library from Supabase: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+
+    return [];
+  }
+}
+
+async function listSupabaseLibraryObjects(): Promise<string[]> {
+  const objectNames: string[] = [];
+
+  for (let offset = 0; ; offset += SUPABASE_PRODUCT_IMAGE_PAGE_SIZE) {
+    const page = await supabaseStorageService.listObjects({
+      prefix: SUPABASE_PRODUCT_IMAGE_LIBRARY_PREFIX,
+      limit: SUPABASE_PRODUCT_IMAGE_PAGE_SIZE,
+      offset,
+    });
+
+    const pageObjectNames = page
+      .filter((entry) => Boolean(entry.id))
+      .map((entry) => entry.name);
+
+    objectNames.push(...pageObjectNames);
+
+    if (page.length < SUPABASE_PRODUCT_IMAGE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return objectNames;
 }
 
 async function uploadSeedAsset(family: DeviceFamily, view: number): Promise<void> {

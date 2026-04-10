@@ -1,10 +1,17 @@
+import * as cloudinaryProductImageAssets from "@/scripts/support/cloudinary-product-image-assets";
+import supabaseStorageService from "@/services/supabase-storage.service";
 import {
+  hydrateCloudinaryLibraryFromSupabase,
   selectAliasedProductImageUrl,
   selectClosestProductImageUrl,
   selectExactProductImageUrl,
 } from "./seed-product-image-library";
 
 describe("seed product image library", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("prefers an exact uploaded product image when the normalized product name matches", () => {
     const uploadedAssetsByNormalizedName = new Map<string, string[]>([
       [
@@ -102,5 +109,74 @@ describe("seed product image library", () => {
     ).toBe(
       "https://example.com/storage/v1/object/public/product-images/images/iphone_17_air_1tb.webp",
     );
+  });
+
+  it("hydrates the Cloudinary library from Supabase objects when real product images exist there", async () => {
+    jest
+      .spyOn(supabaseStorageService, "listObjects")
+      .mockResolvedValue([
+        { id: "1", name: "iphone_17_128gb.jpg" },
+        { id: null, name: "nested-folder" },
+        { id: "2", name: "samsung_galaxy_s26_12gb_256gb.webp" },
+      ]);
+    jest
+      .spyOn(supabaseStorageService, "getPublicUrl")
+      .mockImplementation((path) => `https://supabase.example/${path}`);
+
+    const uploadRemoteImageToCloudinarySpy = jest
+      .spyOn(cloudinaryProductImageAssets, "uploadRemoteImageToCloudinary")
+      .mockImplementation(async ({ publicId }) => ({
+        publicId,
+        secureUrl: `https://cloudinary.example/${publicId}`,
+      }));
+    jest
+      .spyOn(cloudinaryProductImageAssets, "listCloudinaryAssetsByPrefix")
+      .mockResolvedValue([
+        {
+          publicId: "products/library/iphone-17-128gb",
+          secureUrl: "https://cloudinary.example/products/library/iphone-17-128gb",
+        },
+        {
+          publicId: "products/library/samsung-galaxy-s26-12gb-256gb",
+          secureUrl: "https://cloudinary.example/products/library/samsung-galaxy-s26-12gb-256gb",
+        },
+      ]);
+
+    const assets = await hydrateCloudinaryLibraryFromSupabase();
+
+    expect(uploadRemoteImageToCloudinarySpy).toHaveBeenCalledTimes(2);
+    expect(uploadRemoteImageToCloudinarySpy).toHaveBeenNthCalledWith(1, {
+      sourceUrl: "https://supabase.example/images/iphone_17_128gb.jpg",
+      publicId: "products/library/iphone-17-128gb",
+      overwrite: true,
+      tags: ["product-image", "product-image-library", "supabase-import"],
+    });
+    expect(uploadRemoteImageToCloudinarySpy).toHaveBeenNthCalledWith(2, {
+      sourceUrl: "https://supabase.example/images/samsung_galaxy_s26_12gb_256gb.webp",
+      publicId: "products/library/samsung-galaxy-s26-12gb-256gb",
+      overwrite: true,
+      tags: ["product-image", "product-image-library", "supabase-import"],
+    });
+    expect(assets).toEqual([
+      {
+        publicId: "products/library/iphone-17-128gb",
+        secureUrl: "https://cloudinary.example/products/library/iphone-17-128gb",
+      },
+      {
+        publicId: "products/library/samsung-galaxy-s26-12gb-256gb",
+        secureUrl: "https://cloudinary.example/products/library/samsung-galaxy-s26-12gb-256gb",
+      },
+    ]);
+  });
+
+  it("returns an empty library when Supabase does not contain any real product images", async () => {
+    jest.spyOn(supabaseStorageService, "listObjects").mockResolvedValue([]);
+    const uploadRemoteImageToCloudinarySpy = jest.spyOn(
+      cloudinaryProductImageAssets,
+      "uploadRemoteImageToCloudinary",
+    );
+
+    await expect(hydrateCloudinaryLibraryFromSupabase()).resolves.toEqual([]);
+    expect(uploadRemoteImageToCloudinarySpy).not.toHaveBeenCalled();
   });
 });
