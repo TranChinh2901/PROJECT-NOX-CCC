@@ -14,7 +14,7 @@ import AdminNotificationController from '@/modules/notification/presentation/Adm
 import { createProductSchema, createProductVariantSchema, listProductsQuerySchema, updateProductSchema, updateProductVariantSchema } from '@/modules/admin/schema/admin-product.schema';
 import { createCategorySchema, updateCategorySchema } from '@/modules/admin/schema/admin-category.schema';
 import { createBrandSchema, updateBrandSchema } from '@/modules/admin/schema/admin-brand.schema';
-import { updateUserSchema, bulkDeactivateSchema } from '@/modules/admin/schema/admin-user.schema';
+import { updateUserSchema, bulkDeactivateSchema, userListQuerySchema } from '@/modules/admin/schema/admin-user.schema';
 import { reviewFilterQuerySchema, bulkApproveSchema } from '@/modules/admin/schema/admin-review.schema';
 import { orderFilterQuerySchema, updateOrderStatusSchema, addInternalNoteSchema } from '@/modules/admin/schema/order.schema';
 import { dateRangeQuerySchema, topProductsQuerySchema } from '@/modules/admin/schema/analytics.schema';
@@ -173,7 +173,7 @@ router.delete(
 
 router.get(
   '/users',
-  validateQuery(paginationQuerySchema),
+  validateQuery(userListQuerySchema),
   asyncHandle(adminUserController.listUsers)
 );
 

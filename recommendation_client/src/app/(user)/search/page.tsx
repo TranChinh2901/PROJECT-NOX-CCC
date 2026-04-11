@@ -3,19 +3,17 @@
 import React, { Suspense, useState, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Skeleton } from '@/components/common/Skeleton';
-import { productApi, categoryApi, recommendationApi } from '@/lib/api';
+import { productApi, recommendationApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Product, Category } from '@/types';
+import { Product } from '@/types';
 import { buildProductPath } from '@/lib/utils';
-import toast from 'react-hot-toast';
 import { 
   BadgeCheck,
   Search, 
-  MapPin,
   Filter,
   Sparkles,
   ChevronRight,
@@ -54,7 +52,6 @@ function ProductCard({ product }: { product: Product }) {
                        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
   const destinationHref = buildProductPath(product);
   const categoryLabel = product.category?.name ?? 'Thiết bị chọn lọc';
-  const brandLabel = product.brand?.name ?? 'TechNova Select';
   const soldCount = product.sold_count ?? 0;
 
   return (
@@ -86,9 +83,8 @@ function ProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="flex flex-1 flex-col p-3.5 sm:p-4">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a6a12] sm:mb-3 sm:gap-3 sm:text-[11px] sm:tracking-[0.16em]">
-          <span className="truncate">{brandLabel}</span>
-          <span className="rounded-full bg-[#fbf6ed] px-2 py-0.5 text-[#7a6a4a] normal-case tracking-normal sm:px-2.5 sm:py-1">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a6a12] sm:mb-3 sm:text-[11px] sm:tracking-[0.16em]">
+          <span className="inline-flex rounded-full bg-[#fbf6ed] px-2 py-0.5 text-[#7a6a4a] normal-case tracking-normal sm:px-2.5 sm:py-1">
             {categoryLabel}
           </span>
         </div>
@@ -120,36 +116,21 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 function SearchPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [sortBy, setSortBy] = useState('relevance');
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const selectedCategory: number | null = null;
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const trackedSearchRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortBy, selectedCategory]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const categoriesData = await categoryApi.getAllCategories();
-        setCategories(categoriesData || []);
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -162,7 +143,6 @@ function SearchPageContent() {
            const productsData = await productApi.getAllProducts({ limit: 50 });
            if (isActive) {
              setProducts(productsData.data || []);
-             setError(null);
            }
            setLoading(false);
            return;
@@ -171,12 +151,10 @@ function SearchPageContent() {
         const response = await productApi.searchProducts(searchQuery, 100);
         if (isActive) {
           setProducts(response.data || []);
-          setError(null);
         }
       } catch (err) {
         if (isActive) {
           console.error('Error searching products:', err);
-          setError('Không thể tải dữ liệu tìm kiếm.');
         }
       } finally {
         if (isActive) {

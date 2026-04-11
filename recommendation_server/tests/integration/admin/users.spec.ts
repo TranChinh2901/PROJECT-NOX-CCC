@@ -11,6 +11,7 @@ import { generateTokenWithRole } from '../../helpers/auth.helper';
 import adminRoutes from '@/routes/admin/index';
 import { AppDataSource } from '@/config/database.config';
 import bcryptjs from 'bcryptjs';
+import { exceptionHandler } from '@/middlewares/exception-filter';
 
 describe('User Admin Service Integration Tests', () => {
   let app: Express;
@@ -30,6 +31,7 @@ describe('User Admin Service Integration Tests', () => {
     app = express();
     app.use(express.json());
     app.use('/api/v1/admin', adminRoutes);
+    app.use(exceptionHandler);
 
     adminToken = generateTokenWithRole(1, 'admin@example.com', 'ADMIN');
   });
@@ -92,7 +94,7 @@ describe('User Admin Service Integration Tests', () => {
         .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(4);
       expect(response.body.data.pagination).toMatchObject({
         total: 4,
@@ -109,7 +111,7 @@ describe('User Admin Service Integration Tests', () => {
         .query({ role: RoleType.USER })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(3);
       expect(response.body.data.data.every((u: any) => u.role === RoleType.USER)).toBe(true);
     });
@@ -121,7 +123,7 @@ describe('User Admin Service Integration Tests', () => {
         .query({ page: 1, limit: 2 })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(2);
       expect(response.body.data.pagination.total_pages).toBe(2);
     });
@@ -133,7 +135,7 @@ describe('User Admin Service Integration Tests', () => {
         .query({ search: 'John' })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(1);
       expect(response.body.data.data[0].fullname).toBe('John Doe');
     });
@@ -145,7 +147,7 @@ describe('User Admin Service Integration Tests', () => {
         .query({ search: 'jane@example.com' })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(1);
       expect(response.body.data.data[0].email).toBe('jane@example.com');
     });
@@ -173,7 +175,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.id).toBe(user.id);
       expect(response.body.data.email).toBe(user.email);
       expect(response.body.data.order_count).toBe(1);
@@ -185,7 +187,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('USER_NOT_FOUND');
     });
   });
@@ -200,7 +202,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ fullname: 'John Updated' })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.fullname).toBe('John Updated');
       expect(response.body.data.id).toBe(user.id);
     });
@@ -214,7 +216,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ email: 'newemail@example.com' })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.email).toBe('newemail@example.com');
     });
 
@@ -227,7 +229,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ role: RoleType.ADMIN })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.role).toBe(RoleType.ADMIN);
     });
 
@@ -241,7 +243,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ email: existingEmail })
         .expect(400);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('EMAIL_ALREADY_EXISTS');
     });
 
@@ -252,7 +254,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ fullname: 'Updated Name' })
         .expect(404);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('USER_NOT_FOUND');
     });
 
@@ -265,7 +267,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({})
         .expect(400);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
     });
   });
 
@@ -279,7 +281,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('deactivated');
 
       const updatedUser = await userRepository.findOne({ where: { id: user.id } });
@@ -337,7 +339,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('USER_NOT_FOUND');
     });
   });
@@ -352,7 +354,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('activated');
 
       const updatedUser = await userRepository.findOne({ where: { id: user.id } });
@@ -365,7 +367,7 @@ describe('User Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('USER_NOT_FOUND');
     });
   });
@@ -380,7 +382,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ ids: userIds })
         .expect(200);
 
-      expect(response.body.status).toBe(true);
+      expect(response.body.success).toBe(true);
       expect(response.body.data.deactivated).toBe(2);
 
       const deactivatedUsers = await userRepository.findByIds(userIds);
@@ -396,8 +398,8 @@ describe('User Admin Service Integration Tests', () => {
         .send({ ids: userIds })
         .expect(400);
 
-      expect(response.body.status).toBe(false);
-      expect(response.body.message).toContain('100');
+      expect(response.body.success).toBe(false);
+      expect(response.body.errorCode).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 when no IDs provided', async () => {
@@ -407,7 +409,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ ids: [] })
         .expect(400);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
     });
 
     it('should return 404 when one or more users not found', async () => {
@@ -419,7 +421,7 @@ describe('User Admin Service Integration Tests', () => {
         .send({ ids: userIds })
         .expect(404);
 
-      expect(response.body.status).toBe(false);
+      expect(response.body.success).toBe(false);
       expect(response.body.errorCode).toBe('USER_NOT_FOUND');
     });
 

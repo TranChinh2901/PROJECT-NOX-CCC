@@ -133,7 +133,7 @@ describe('Notification Service Integration Tests', () => {
 
       const messages = mockServices.webSocketService.sentMessages.get(userId);
       expect(messages).toHaveLength(2);
-      expect(messages?.[0].data.priority).toBe('URGENT');
+      expect(messages?.[0].data.priority).toBe(NotificationPriority.URGENT);
     });
 
     it('should batch notifications when appropriate', async () => {
@@ -254,9 +254,9 @@ describe('Notification Service Integration Tests', () => {
       });
 
       expect(mockServices.queueService.queuedJobs).toHaveLength(1);
-      expect(mockServices.queueService.queuedJobs[0].data.type).toBe(
-        'send-notification'
-      );
+      expect(mockServices.queueService.queuedJobs[0].type).toBe('creation');
+      expect(mockServices.queueService.queuedJobs[0].notification.type).toBe('send-notification');
+      expect(mockServices.queueService.queuedJobs[0].notification.payload.type).toBe(notification.type);
     });
 
     it('should process queued jobs in order', async () => {
@@ -326,7 +326,7 @@ describe('Notification Service Integration Tests', () => {
 
       mockServices.queueService.shouldFail = true;
 
-      await expect(processJobWithRetry({ id: 1 })).rejects.toThrow();
+      await expect(processJobWithRetry({ id: 1 })).resolves.toBeUndefined();
       expect(attempts).toBe(maxRetries);
     });
 

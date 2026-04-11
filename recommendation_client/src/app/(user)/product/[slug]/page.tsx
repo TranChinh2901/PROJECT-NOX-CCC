@@ -964,8 +964,6 @@ export default function ProductPage() {
                   const relatedDiscount = relatedProduct.compare_at_price && relatedProduct.base_price
                     ? Math.round(((relatedProduct.compare_at_price - relatedProduct.base_price) / relatedProduct.compare_at_price) * 100)
                     : null;
-                  const recommendationReason = relatedProductReasons[relatedProduct.id];
-
                   return (
                     <Link key={relatedProduct.id} href={buildProductPath(relatedProduct)} className="group block">
                       <GlassCard className="h-full overflow-hidden border-gray-200 bg-white transition-transform duration-200 group-hover:-translate-y-1">
@@ -986,11 +984,6 @@ export default function ProductPage() {
 
                         <div className="space-y-3 p-5">
                           <div>
-                            {recommendationReason ? (
-                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-[#8a5a00]">
-                                {recommendationReason}
-                              </p>
-                            ) : null}
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
                               {relatedProduct.category?.name || 'Danh mục công nghệ'}
                             </p>

@@ -3,8 +3,7 @@
  * Provides configured Express app for testing
  */
 import express, { Application } from 'express';
-// import { notificationRouter } from '../../presentation';
-import { authMiddleware } from '@/middlewares/auth.middleware';
+import notificationRouter from '@/routes/notification';
 import { exceptionHandler } from '@/middlewares/exception-filter';
 
 export class TestServer {
@@ -28,8 +27,8 @@ export class TestServer {
       res.json({ status: 'ok' });
     });
 
-    // Notification routes with auth
-    // this.app.use('/api/v1/notifications', authMiddleware, notificationRouter);
+    // Notification routes (route module already applies auth)
+    this.app.use('/api/v1/notifications', notificationRouter);
   }
 
   private setupErrorHandling(): void {

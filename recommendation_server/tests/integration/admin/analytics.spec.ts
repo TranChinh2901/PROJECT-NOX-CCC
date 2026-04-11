@@ -10,7 +10,9 @@ import { Order } from '@/modules/orders/entity/order';
 import { OrderItem } from '@/modules/orders/entity/order-item';
 import { Product } from '@/modules/products/entity/product';
 import { ProductVariant } from '@/modules/products/entity/product-variant';
-import { OrderStatus } from '@/modules/orders/enum/order.enum';
+import { Category } from '@/modules/products/entity/category';
+import { Brand } from '@/modules/products/entity/brand';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@/modules/orders/enum/order.enum';
 import { HttpStatusCode } from '@/constants/status-code';
 import { RoleType } from '@/modules/auth/enum/auth.enum';
 
@@ -19,6 +21,8 @@ describe('Analytics Integration Tests', () => {
   let dataSource: DataSource;
   let adminToken: string;
   let adminUser: User;
+  let categoryId: number;
+  let brandId: number;
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) {
@@ -47,6 +51,22 @@ describe('Analytics Integration Tests', () => {
     }
 
     adminToken = generateTokenWithRole(adminUser.id, adminUser.email, 'ADMIN');
+
+    const category = await dataSource.getRepository(Category).save({
+      name: 'Analytics Category',
+      slug: `analytics-category-${Date.now()}`,
+      description: 'Analytics test category',
+      is_active: true,
+    });
+    categoryId = category.id;
+
+    const brand = await dataSource.getRepository(Brand).save({
+      name: 'Analytics Brand',
+      slug: `analytics-brand-${Date.now()}`,
+      description: 'Analytics test brand',
+      is_active: true,
+    });
+    brandId = brand.id;
   });
 
   afterAll(async () => {
@@ -62,43 +82,56 @@ describe('Analytics Integration Tests', () => {
     await orderRepo.query('TRUNCATE TABLE orders');
     await orderRepo.query('TRUNCATE TABLE product_variants');
     await orderRepo.query('TRUNCATE TABLE products');
+    await orderRepo.query("DELETE FROM users WHERE email <> 'admin_analytics@test.com'");
     await orderRepo.query('SET FOREIGN_KEY_CHECKS = 1');
   });
 
+  const createProductRecord = async (name: string, slug: string, sku: string, basePrice: number) =>
+    dataSource.getRepository(Product).save({
+      category_id: categoryId,
+      brand_id: brandId,
+      name,
+      slug,
+      sku,
+      description: `${name} description`,
+      base_price: basePrice,
+      is_active: true,
+    });
+
+  const createVariantRecord = async (productId: number, sku: string, finalPrice: number) =>
+    dataSource.getRepository(ProductVariant).save({
+      product_id: productId,
+      sku,
+      final_price: finalPrice,
+      price_adjustment: 0,
+      is_active: true,
+    });
+
+  const createOrderRecord = async (
+    orderNumber: string,
+    status: OrderStatus,
+    totalAmount: number,
+    createdAt: Date,
+    paymentStatus: PaymentStatus = status === OrderStatus.DELIVERED ? PaymentStatus.PAID : PaymentStatus.PENDING,
+  ) =>
+    dataSource.getRepository(Order).save({
+      order_number: orderNumber,
+      user_id: adminUser.id,
+      status,
+      payment_status: paymentStatus,
+      payment_method: PaymentMethod.COD,
+      shipping_address: { address: '123 Analytics St' },
+      billing_address: { address: '123 Analytics St' },
+      subtotal: totalAmount,
+      total_amount: totalAmount,
+      currency: 'VND',
+      created_at: createdAt,
+    });
+
   describe('GET /api/v1/admin/analytics/sales', () => {
     it('should return sales stats with completed orders', async () => {
-      // Create test data
-      const product = await dataSource.getRepository(Product).save({
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 100,
-        final_price: 100,
-        is_active: true,
-      });
-
-      const variant = await dataSource.getRepository(ProductVariant).save({
-        product_id: product.id,
-        sku: 'TEST-SKU-001',
-        price: 100,
-        final_price: 100,
-        stock_quantity: 100,
-      });
-
-      const order1 = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
-
-      const order2 = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 300,
-        currency: 'VND',
-        created_at: new Date('2024-01-20'),
-      });
+      await createOrderRecord('SAL-001', OrderStatus.DELIVERED, 200, new Date('2024-01-15'), PaymentStatus.PAID);
+      await createOrderRecord('SAL-002', OrderStatus.DELIVERED, 300, new Date('2024-01-20'), PaymentStatus.PAID);
 
       const response = await request(app)
         .get('/api/v1/admin/analytics/sales')
@@ -117,37 +150,8 @@ describe('Analytics Integration Tests', () => {
     });
 
     it('should exclude cancelled orders from sales stats', async () => {
-      const product = await dataSource.getRepository(Product).save({
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 100,
-        final_price: 100,
-        is_active: true,
-      });
-
-      const variant = await dataSource.getRepository(ProductVariant).save({
-        product_id: product.id,
-        sku: 'TEST-SKU-002',
-        price: 100,
-        final_price: 100,
-        stock_quantity: 100,
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.CANCELLED,
-        total_amount: 500,
-        currency: 'VND',
-        created_at: new Date('2024-01-20'),
-      });
+      await createOrderRecord('SAL-003', OrderStatus.DELIVERED, 200, new Date('2024-01-15'), PaymentStatus.PAID);
+      await createOrderRecord('SAL-004', OrderStatus.CANCELLED, 500, new Date('2024-01-20'));
 
       const response = await request(app)
         .get('/api/v1/admin/analytics/sales')
@@ -183,29 +187,9 @@ describe('Analytics Integration Tests', () => {
     });
 
     it('should filter by date range correctly', async () => {
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 100,
-        currency: 'VND',
-        created_at: new Date('2023-12-31'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 300,
-        currency: 'VND',
-        created_at: new Date('2024-02-01'),
-      });
+      await createOrderRecord('SAL-005', OrderStatus.DELIVERED, 100, new Date('2023-12-31'), PaymentStatus.PAID);
+      await createOrderRecord('SAL-006', OrderStatus.DELIVERED, 200, new Date('2024-01-15'), PaymentStatus.PAID);
+      await createOrderRecord('SAL-007', OrderStatus.DELIVERED, 300, new Date('2024-02-01'), PaymentStatus.PAID);
 
       const response = await request(app)
         .get('/api/v1/admin/analytics/sales')
@@ -235,37 +219,10 @@ describe('Analytics Integration Tests', () => {
 
   describe('GET /api/v1/admin/analytics/orders', () => {
     it('should return order stats grouped by status', async () => {
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.PENDING,
-        total_amount: 100,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.PENDING,
-        total_amount: 150,
-        currency: 'VND',
-        created_at: new Date('2024-01-16'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-17'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.CANCELLED,
-        total_amount: 300,
-        currency: 'VND',
-        created_at: new Date('2024-01-18'),
-      });
+      await createOrderRecord('ORD-101', OrderStatus.PENDING, 100, new Date('2024-01-15'));
+      await createOrderRecord('ORD-102', OrderStatus.PENDING, 150, new Date('2024-01-16'));
+      await createOrderRecord('ORD-103', OrderStatus.DELIVERED, 200, new Date('2024-01-17'), PaymentStatus.PAID);
+      await createOrderRecord('ORD-104', OrderStatus.CANCELLED, 300, new Date('2024-01-18'));
 
       const response = await request(app)
         .get('/api/v1/admin/analytics/orders')
@@ -322,21 +279,8 @@ describe('Analytics Integration Tests', () => {
     });
 
     it('should filter by date range correctly', async () => {
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.PENDING,
-        total_amount: 100,
-        currency: 'VND',
-        created_at: new Date('2023-12-31'),
-      });
-
-      await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
+      await createOrderRecord('ORD-105', OrderStatus.PENDING, 100, new Date('2023-12-31'));
+      await createOrderRecord('ORD-106', OrderStatus.DELIVERED, 200, new Date('2024-01-15'), PaymentStatus.PAID);
 
       const response = await request(app)
         .get('/api/v1/admin/analytics/orders')
@@ -354,49 +298,18 @@ describe('Analytics Integration Tests', () => {
 
   describe('GET /api/v1/admin/analytics/top-products', () => {
     it('should return top products by revenue', async () => {
-      const product1 = await dataSource.getRepository(Product).save({
-        name: 'Product A',
-        description: 'Description A',
-        price: 100,
-        final_price: 100,
-        is_active: true,
-      });
+      const product1 = await createProductRecord('Product A', 'analytics-product-a', 'AN-PROD-A', 100);
+      const variant1 = await createVariantRecord(product1.id, 'SKU-A-001', 100);
 
-      const variant1 = await dataSource.getRepository(ProductVariant).save({
-        product_id: product1.id,
-        sku: 'SKU-A-001',
-        price: 100,
-        final_price: 100,
-        stock_quantity: 100,
-      });
+      const product2 = await createProductRecord('Product B', 'analytics-product-b', 'AN-PROD-B', 200);
+      const variant2 = await createVariantRecord(product2.id, 'SKU-B-001', 200);
 
-      const product2 = await dataSource.getRepository(Product).save({
-        name: 'Product B',
-        description: 'Description B',
-        price: 200,
-        final_price: 200,
-        is_active: true,
-      });
-
-      const variant2 = await dataSource.getRepository(ProductVariant).save({
-        product_id: product2.id,
-        sku: 'SKU-B-001',
-        price: 200,
-        final_price: 200,
-        stock_quantity: 100,
-      });
-
-      const order = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 500,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
+      const order = await createOrderRecord('TOP-001', OrderStatus.DELIVERED, 500, new Date('2024-01-15'), PaymentStatus.PAID);
 
       await dataSource.getRepository(OrderItem).save({
         order_id: order.id,
         variant_id: variant1.id,
+        product_snapshot: { name: product1.name, sku: product1.sku, price: product1.base_price },
         quantity: 2,
         unit_price: 100,
         total_price: 200,
@@ -405,6 +318,7 @@ describe('Analytics Integration Tests', () => {
       await dataSource.getRepository(OrderItem).save({
         order_id: order.id,
         variant_id: variant2.id,
+        product_snapshot: { name: product2.name, sku: product2.sku, price: product2.base_price },
         quantity: 1,
         unit_price: 200,
         total_price: 200,
@@ -427,33 +341,14 @@ describe('Analytics Integration Tests', () => {
     it('should limit results to specified limit', async () => {
       const products = [];
       for (let i = 1; i <= 10; i++) {
-        const product = await dataSource.getRepository(Product).save({
-          name: `Product ${i}`,
-          description: `Description ${i}`,
-          price: 100 * i,
-          final_price: 100 * i,
-          is_active: true,
-        });
-
-        const variant = await dataSource.getRepository(ProductVariant).save({
-          product_id: product.id,
-          sku: `SKU-${i}-001`,
-          price: 100 * i,
-          final_price: 100 * i,
-          stock_quantity: 100,
-        });
-
-        const order = await dataSource.getRepository(Order).save({
-          user_id: adminUser.id,
-          status: OrderStatus.DELIVERED,
-          total_amount: 100 * i,
-          currency: 'VND',
-          created_at: new Date('2024-01-15'),
-        });
+        const product = await createProductRecord(`Product ${i}`, `analytics-product-${i}`, `AN-PROD-${i}`, 100 * i);
+        const variant = await createVariantRecord(product.id, `SKU-${i}-001`, 100 * i);
+        const order = await createOrderRecord(`TOP-${100 + i}`, OrderStatus.DELIVERED, 100 * i, new Date('2024-01-15'), PaymentStatus.PAID);
 
         await dataSource.getRepository(OrderItem).save({
           order_id: order.id,
           variant_id: variant.id,
+          product_snapshot: { name: product.name, sku: product.sku, price: product.base_price },
           quantity: 1,
           unit_price: 100 * i,
           total_price: 100 * i,
@@ -473,49 +368,25 @@ describe('Analytics Integration Tests', () => {
     });
 
     it('should exclude cancelled orders from top products', async () => {
-      const product = await dataSource.getRepository(Product).save({
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 100,
-        final_price: 100,
-        is_active: true,
-      });
-
-      const variant = await dataSource.getRepository(ProductVariant).save({
-        product_id: product.id,
-        sku: 'SKU-TEST-001',
-        price: 100,
-        final_price: 100,
-        stock_quantity: 100,
-      });
-
-      const completedOrder = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 200,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
+      const product = await createProductRecord('Test Product', 'analytics-test-product', 'AN-TEST-PROD', 100);
+      const variant = await createVariantRecord(product.id, 'SKU-TEST-001', 100);
+      const completedOrder = await createOrderRecord('TOP-201', OrderStatus.DELIVERED, 200, new Date('2024-01-15'), PaymentStatus.PAID);
 
       await dataSource.getRepository(OrderItem).save({
         order_id: completedOrder.id,
         variant_id: variant.id,
+        product_snapshot: { name: product.name, sku: product.sku, price: product.base_price },
         quantity: 2,
         unit_price: 100,
         total_price: 200,
       });
 
-      const cancelledOrder = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.CANCELLED,
-        total_amount: 1000,
-        currency: 'VND',
-        created_at: new Date('2024-01-16'),
-      });
+      const cancelledOrder = await createOrderRecord('TOP-202', OrderStatus.CANCELLED, 1000, new Date('2024-01-16'));
 
       await dataSource.getRepository(OrderItem).save({
         order_id: cancelledOrder.id,
         variant_id: variant.id,
+        product_snapshot: { name: product.name, sku: product.sku, price: product.base_price },
         quantity: 10,
         unit_price: 100,
         total_price: 1000,
@@ -547,33 +418,14 @@ describe('Analytics Integration Tests', () => {
     });
 
     it('should use default limit when not specified', async () => {
-      const product = await dataSource.getRepository(Product).save({
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 100,
-        final_price: 100,
-        is_active: true,
-      });
-
-      const variant = await dataSource.getRepository(ProductVariant).save({
-        product_id: product.id,
-        sku: 'SKU-DEFAULT-001',
-        price: 100,
-        final_price: 100,
-        stock_quantity: 100,
-      });
-
-      const order = await dataSource.getRepository(Order).save({
-        user_id: adminUser.id,
-        status: OrderStatus.DELIVERED,
-        total_amount: 100,
-        currency: 'VND',
-        created_at: new Date('2024-01-15'),
-      });
+      const product = await createProductRecord('Default Product', 'analytics-default-product', 'AN-DEF-PROD', 100);
+      const variant = await createVariantRecord(product.id, 'SKU-DEFAULT-001', 100);
+      const order = await createOrderRecord('TOP-301', OrderStatus.DELIVERED, 100, new Date('2024-01-15'), PaymentStatus.PAID);
 
       await dataSource.getRepository(OrderItem).save({
         order_id: order.id,
         variant_id: variant.id,
+        product_snapshot: { name: product.name, sku: product.sku, price: product.base_price },
         quantity: 1,
         unit_price: 100,
         total_price: 100,

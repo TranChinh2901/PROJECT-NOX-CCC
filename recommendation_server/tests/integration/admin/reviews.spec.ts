@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import request from 'supertest';
 import express, { Express } from 'express';
 import { DataSource } from 'typeorm';
-import { getTestDataSource, resetTestDatabase } from '../../setup/test-datasource';
 import { generateTestAccessToken } from '../../helpers/auth.helper';
 import adminRouter from '../../../src/routes/admin';
+import { exceptionHandler } from '../../../src/middlewares/exception-filter';
 import { Review } from '../../../src/modules/reviews/entity/review';
 import { User } from '../../../src/modules/users/entity/user.entity';
 import { Product } from '../../../src/modules/products/entity/product';
@@ -17,6 +17,7 @@ import { ADMIN_USER, USER_1, USER_2 } from '../../fixtures/users.fixture';
 import { PRODUCT_1, PRODUCT_2 } from '../../fixtures/products.fixture';
 import { RoleType } from '../../../src/modules/auth/enum/auth.enum';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '../../../src/modules/orders/enum/order.enum';
+import { AppDataSource } from '../../../src/config/database.config';
 
 describe('Admin Review Service Integration Tests', () => {
   let app: Express;
@@ -41,15 +42,15 @@ describe('Admin Review Service Integration Tests', () => {
   let testOrderItem2: OrderItem;
 
   beforeAll(async () => {
-    dataSource = getTestDataSource();
+    dataSource = AppDataSource;
     if (!dataSource.isInitialized) {
       await dataSource.initialize();
-      await dataSource.query('PRAGMA foreign_keys = OFF');
     }
 
     app = express();
     app.use(express.json());
     app.use('/api/v1/admin', adminRouter);
+    app.use(exceptionHandler);
 
     adminToken = generateTestAccessToken(ADMIN_USER.id, ADMIN_USER.email, RoleType.ADMIN);
 
@@ -64,7 +65,16 @@ describe('Admin Review Service Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    await resetTestDatabase();
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 0');
+    await orderItemRepository.query('DELETE FROM order_items WHERE 1=1');
+    await orderRepository.query('DELETE FROM orders WHERE 1=1');
+    await reviewRepository.query('DELETE FROM reviews WHERE 1=1');
+    await variantRepository.query('DELETE FROM product_variants WHERE 1=1');
+    await productRepository.query('DELETE FROM products WHERE 1=1');
+    await brandRepository.query('DELETE FROM brands WHERE 1=1');
+    await categoryRepository.query('DELETE FROM categories WHERE 1=1');
+    await userRepository.query('DELETE FROM users WHERE 1=1');
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
 
     const timestamp = Date.now();
     
@@ -126,24 +136,6 @@ describe('Admin Review Service Integration Tests', () => {
       color: 'Blue',
       final_price: 500000,
       is_active: true,
-    });
-    testUser2 = await userRepository.save({
-      ...USER_2,
-      id: undefined,
-    });
-
-    // Create test products
-    testProduct1 = await productRepository.save({
-      ...PRODUCT_1,
-      id: undefined,
-      category_id: 1,
-      brand_id: 1,
-    });
-    testProduct2 = await productRepository.save({
-      ...PRODUCT_2,
-      id: undefined,
-      category_id: 1,
-      brand_id: 1,
     });
 
     // Create test order

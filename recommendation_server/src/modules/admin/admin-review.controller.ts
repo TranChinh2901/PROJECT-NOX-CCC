@@ -6,13 +6,19 @@ import { ReviewFilterQueryDto, BulkApproveDto } from './dto/admin-review.dto';
 
 class AdminReviewController {
   async listReviews(req: Request, res: Response) {
+    const approvedQuery = req.query.is_approved;
     const query: ReviewFilterQueryDto = {
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
       sortBy: req.query.sortBy as string,
       sortOrder: req.query.sortOrder as 'ASC' | 'DESC',
       search: req.query.search as string,
-      is_approved: req.query.is_approved !== undefined ? req.query.is_approved === 'true' : undefined,
+      is_approved:
+        typeof approvedQuery === 'boolean'
+          ? approvedQuery
+          : approvedQuery !== undefined
+            ? approvedQuery === 'true'
+            : undefined,
       product_id: req.query.product_id ? parseInt(req.query.product_id as string) : undefined,
       user_id: req.query.user_id ? parseInt(req.query.user_id as string) : undefined,
       rating: req.query.rating ? parseInt(req.query.rating as string) : undefined,

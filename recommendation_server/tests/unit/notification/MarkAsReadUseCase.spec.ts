@@ -111,8 +111,8 @@ describe('MarkAsReadUseCase', () => {
     mockRepo = new MockNotificationRepository(testNotifications);
     mockWs = new MockWebSocketService();
     useCase = new MarkAsReadUseCase(
-      mockRepo as INotificationRepository,
-      mockWs as IWebSocketService,
+      mockRepo as unknown as INotificationRepository,
+      mockWs as unknown as IWebSocketService,
     );
   });
 

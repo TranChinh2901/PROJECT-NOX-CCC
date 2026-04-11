@@ -1,14 +1,11 @@
 /**
  * Test Database Helper
- * Manages test database lifecycle and provides utilities for testing
+ * Reuses AppDataSource so notification routes and repositories point at the same database.
  */
-import path from 'path';
 import { DataSource } from 'typeorm';
-import { entities } from '@/config/load-entities';
-import { ProjectNamingStrategy } from '@/database/typeorm-naming.strategy';
-
-const resolveTestDatabaseType = (): 'mysql' | 'mariadb' =>
-  (process.env.TEST_DATABASE_TYPE ?? process.env.TEST_DB_TYPE ?? 'mysql') as 'mysql' | 'mariadb';
+import { AppDataSource } from '@/config/database.config';
+import { User } from '@/modules/users/entity/user.entity';
+import { RoleType } from '@/modules/auth/enum/auth.enum';
 
 export class TestDatabase {
   private static instance: TestDatabase;
@@ -28,37 +25,10 @@ export class TestDatabase {
       return this.dataSource;
     }
 
-    const hasMysqlConfig = Boolean(
-      process.env.TEST_DB_HOST &&
-      process.env.TEST_DB_PORT &&
-      process.env.TEST_DB_USERNAME &&
-      process.env.TEST_DB_NAME
-    );
-
-    this.dataSource = hasMysqlConfig
-      ? new DataSource({
-          type: resolveTestDatabaseType(),
-          host: process.env.TEST_DB_HOST,
-          port: Number(process.env.TEST_DB_PORT),
-          username: process.env.TEST_DB_USERNAME,
-          password: process.env.TEST_DB_PASSWORD,
-          database: process.env.TEST_DB_NAME,
-          entities,
-          migrations: [path.join(process.cwd(), 'src/database/migrations/*{.ts,.js}')],
-          migrationsRun: true,
-          logging: false,
-          namingStrategy: new ProjectNamingStrategy(),
-        })
-      : new DataSource({
-          type: 'sqlite',
-          database: ':memory:',
-          entities,
-          synchronize: true,
-          logging: false,
-          dropSchema: true,
-        });
-
-    await this.dataSource.initialize();
+    this.dataSource = AppDataSource;
+    if (!this.dataSource.isInitialized) {
+      await this.dataSource.initialize();
+    }
     return this.dataSource;
   }
 
@@ -74,11 +44,59 @@ export class TestDatabase {
       throw new Error('Database not connected');
     }
 
-    const entities = this.dataSource.entityMetadatas;
-    for (const entity of entities) {
-      const repository = this.dataSource.getRepository(entity.name);
-      await repository.clear();
+    if (this.dataSource.options.type === 'sqlite') {
+      await this.dataSource.query('PRAGMA foreign_keys = OFF');
+
+      const entityMetadatas = [...this.dataSource.entityMetadatas].sort(
+        (left, right) => right.foreignKeys.length - left.foreignKeys.length,
+      );
+
+      for (const entity of entityMetadatas) {
+        await this.dataSource.query(`DELETE FROM "${entity.tableName}"`);
+      }
+
+      await this.dataSource.query('PRAGMA foreign_keys = ON');
+    } else {
+      await this.dataSource.query('SET FOREIGN_KEY_CHECKS = 0');
+      const entityMetadatas = [...this.dataSource.entityMetadatas].sort(
+        (left, right) => right.foreignKeys.length - left.foreignKeys.length,
+      );
+      for (const entity of entityMetadatas) {
+        await this.dataSource.query(`DELETE FROM \`${entity.tableName}\``);
+      }
+      await this.dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
     }
+
+    const userRepository = this.dataSource.getRepository(User);
+    await userRepository.save([
+      userRepository.create({
+        id: 1,
+        fullname: 'Notification Test User',
+        email: 'test@example.com',
+        phone_number: '0900000001',
+        password: 'hashed-password',
+        role: RoleType.USER,
+        is_verified: true,
+      }),
+      userRepository.create({
+        id: 2,
+        fullname: 'Notification Test User Two',
+        email: 'test2@example.com',
+        phone_number: '0900000002',
+        password: 'hashed-password',
+        role: RoleType.USER,
+        is_verified: true,
+      }),
+      userRepository.create({
+        id: 999,
+        fullname: 'Notification Admin User',
+        email: 'admin@example.com',
+        phone_number: '0900000999',
+        password: 'hashed-password',
+        role: RoleType.ADMIN,
+        is_verified: true,
+      }),
+    ]);
   }
 
   async seed(): Promise<void> {
@@ -101,7 +119,15 @@ export class TestDatabase {
     await queryRunner.startTransaction();
 
     try {
-      const result = await work(dataSource);
+      const transactionalDataSource = Object.assign(
+        Object.create(dataSource),
+        {
+          getRepository: queryRunner.manager.getRepository.bind(queryRunner.manager),
+          query: queryRunner.query.bind(queryRunner),
+        },
+      ) as DataSource;
+
+      const result = await work(transactionalDataSource);
       await queryRunner.commitTransaction();
       return result;
     } catch (error) {

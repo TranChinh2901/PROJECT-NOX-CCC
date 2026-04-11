@@ -9,6 +9,7 @@ import { ErrorCode } from '@/constants/error-code';
 
 class AdminProductController {
   async listProducts(req: Request, res: Response) {
+    const activeQuery = req.query.is_active;
     const query: AdminProductListQueryDto = {
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
@@ -18,9 +19,11 @@ class AdminProductController {
       category_id: req.query.category_id ? parseInt(req.query.category_id as string) : undefined,
       brand_id: req.query.brand_id ? parseInt(req.query.brand_id as string) : undefined,
       is_active:
-        req.query.is_active === undefined
-          ? undefined
-          : req.query.is_active === 'true',
+        typeof activeQuery === 'boolean'
+          ? activeQuery
+          : activeQuery === undefined
+            ? undefined
+            : activeQuery === 'true',
     };
 
     const result = await adminProductService.listProducts(query);

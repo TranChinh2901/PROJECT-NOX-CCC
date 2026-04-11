@@ -85,6 +85,61 @@ describe("seed product image library", () => {
     );
   });
 
+  it("supports nearby-storage aliases for the iPhone 16e family", () => {
+    const uploadedAssetsByNormalizedName = new Map<string, string[]>([
+      [
+        "iphone_16e_256gb",
+        [
+          "https://example.com/storage/v1/object/public/product-images/images/iphone_16e_256gb.jpg",
+        ],
+      ],
+    ]);
+
+    expect(
+      selectAliasedProductImageUrl({
+        productName: "iPhone 16e 128GB",
+        uploadedAssetsByNormalizedName,
+      }),
+    ).toBe(
+      "https://example.com/storage/v1/object/public/product-images/images/iphone_16e_256gb.jpg",
+    );
+  });
+
+  it("supports curated generic desktop aliases for seeded office and gaming PCs", () => {
+    const uploadedAssetsByNormalizedName = new Map<string, string[]>([
+      [
+        "pc_gaming_rtx_4070_super_32gb_1tb",
+        [
+          "https://example.com/storage/v1/object/public/product-images/images/pc_gaming_rtx_4070_super_32gb_1tb.jpg",
+        ],
+      ],
+      [
+        "pc_b_n_h_ng_mini_tower_16gb_512gb",
+        [
+          "https://example.com/storage/v1/object/public/product-images/images/pc_b_n_h_ng_mini_tower_16gb_512gb.png",
+        ],
+      ],
+    ]);
+
+    expect(
+      selectAliasedProductImageUrl({
+        productName: "PC Streaming RTX 4070 Ti 64GB/4TB",
+        uploadedAssetsByNormalizedName,
+      }),
+    ).toBe(
+      "https://example.com/storage/v1/object/public/product-images/images/pc_gaming_rtx_4070_super_32gb_1tb.jpg",
+    );
+
+    expect(
+      selectAliasedProductImageUrl({
+        productName: "PC Văn Phòng Intel Core i5 12400 16GB/512GB",
+        uploadedAssetsByNormalizedName,
+      }),
+    ).toBe(
+      "https://example.com/storage/v1/object/public/product-images/images/pc_b_n_h_ng_mini_tower_16gb_512gb.png",
+    );
+  });
+
   it("falls back to the closest matching real product image when exact and alias matches are absent", () => {
     const uploadedAssetsByNormalizedName = new Map<string, string[]>([
       [

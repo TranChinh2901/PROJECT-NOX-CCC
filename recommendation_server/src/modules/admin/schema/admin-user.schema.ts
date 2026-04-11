@@ -1,5 +1,12 @@
 import Joi from "joi";
 import { RoleType } from "@/modules/auth/enum/auth.enum";
+import { paginationQuerySchema } from "./pagination-query.schema";
+
+export const userListQuerySchema = paginationQuerySchema.keys({
+  role: Joi.string().valid(...Object.values(RoleType)).optional().messages({
+    "any.only": "Role must be either ADMIN or USER",
+  }),
+});
 
 export const updateUserSchema = Joi.object({
   fullname: Joi.string().min(1).max(100).messages({

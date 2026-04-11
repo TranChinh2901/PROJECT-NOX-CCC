@@ -4,6 +4,9 @@
  */
 import { INotificationRepository } from '../../domain/repositories/INotificationRepository';
 import { IWebSocketService } from '../../domain/services/IWebSocketService';
+import { AppError } from '@/common/error.response';
+import { HttpStatusCode } from '@/constants/status-code';
+import { ErrorCode } from '@/constants/error-code';
 import {
   MarkAsReadRequestDTO,
   MarkManyAsReadRequestDTO,
@@ -29,11 +32,19 @@ export class MarkAsReadUseCase {
     const notification = await this.notificationRepository.findById(request.notificationId);
 
     if (!notification) {
-      throw new Error('Notification not found');
+      throw new AppError(
+        'Notification not found',
+        HttpStatusCode.NOT_FOUND,
+        ErrorCode.NOTIFICATION_NOT_FOUND,
+      );
     }
 
     if (notification.userId.getValue() !== request.userId) {
-      throw new Error('Unauthorized: notification does not belong to user');
+      throw new AppError(
+        'Unauthorized: notification does not belong to user',
+        HttpStatusCode.FORBIDDEN,
+        ErrorCode.FORBIDDEN,
+      );
     }
 
     // 2. Mark as read

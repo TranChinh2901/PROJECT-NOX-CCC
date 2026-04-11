@@ -85,7 +85,7 @@ describe('Brand Admin Integration Tests', () => {
         .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.status).toBe('success');
+      expect(response.body.success).toBe(true);
       expect(response.body.data.data).toHaveLength(2);
       expect(response.body.data.pagination).toMatchObject({
         total: 2,
@@ -172,7 +172,7 @@ describe('Brand Admin Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe('success');
+      expect(response.body.success).toBe(true);
       expect(response.body.data).toMatchObject({
         name: 'Nike',
         slug: 'nike',
@@ -187,7 +187,7 @@ describe('Brand Admin Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
 
-      expect(response.body.error_code).toBe('BRAND_NOT_FOUND');
+      expect(response.body.errorCode).toBe('BRAND_NOT_FOUND');
     });
 
     it('should return 400 for invalid id format', async () => {
@@ -213,9 +213,9 @@ describe('Brand Admin Integration Tests', () => {
         .post('/api/v1/admin/brands')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(brandData)
-        .expect(200);
+        .expect(201);
 
-      expect(response.body.status).toBe('success');
+      expect(response.body.success).toBe(true);
       expect(response.body.data).toMatchObject(brandData);
       expect(response.body.data.id).toBeDefined();
     });
@@ -236,7 +236,7 @@ describe('Brand Admin Integration Tests', () => {
         })
         .expect(409);
 
-      expect(response.body.error_code).toBe('BRAND_ALREADY_EXISTS');
+      expect(response.body.errorCode).toBe('BRAND_ALREADY_EXISTS');
     });
 
     it('should reject missing required fields', async () => {
@@ -257,7 +257,7 @@ describe('Brand Admin Integration Tests', () => {
           name: 'Minimal Brand',
           slug: 'minimal-brand',
         })
-        .expect(200);
+        .expect(201);
 
       expect(response.body.data.name).toBe('Minimal Brand');
       expect(response.body.data.slug).toBe('minimal-brand');
@@ -307,7 +307,7 @@ describe('Brand Admin Integration Tests', () => {
         })
         .expect(409);
 
-      expect(response.body.error_code).toBe('BRAND_ALREADY_EXISTS');
+      expect(response.body.errorCode).toBe('BRAND_ALREADY_EXISTS');
     });
 
     it('should allow updating slug to same value', async () => {
@@ -338,7 +338,7 @@ describe('Brand Admin Integration Tests', () => {
         })
         .expect(404);
 
-      expect(response.body.error_code).toBe('BRAND_NOT_FOUND');
+      expect(response.body.errorCode).toBe('BRAND_NOT_FOUND');
     });
   });
 
@@ -379,6 +379,7 @@ describe('Brand Admin Integration Tests', () => {
         name: 'Test Product',
         slug: 'test-product',
         sku: 'TEST-SKU-001',
+        description: 'Product linked to brand',
         base_price: 100,
         brand_id: brand.id,
         category_id: category.id,
@@ -390,7 +391,7 @@ describe('Brand Admin Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(409);
 
-      expect(response.body.error_code).toBe('BRAND_IN_USE');
+      expect(response.body.errorCode).toBe('BRAND_IN_USE');
     });
 
     it('should allow delete when brand has only soft-deleted products', async () => {
@@ -410,6 +411,7 @@ describe('Brand Admin Integration Tests', () => {
         name: 'Test Product',
         slug: 'test-product',
         sku: 'TEST-SKU-002',
+        description: 'Soft deleted product linked to brand',
         base_price: 100,
         brand_id: brand.id,
         category_id: category.id,

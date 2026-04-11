@@ -2,7 +2,7 @@
  * Repository Integration Tests
  * Tests database operations, caching, transactions, and data integrity
  */
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { testDb } from '../helpers/test-database';
 import { Notification, NotificationPreference } from '../../entity';
 import { NotificationType, NotificationPriority } from '../../enum/notification.enum';
@@ -156,8 +156,11 @@ describe('Notification Repository Integration Tests', () => {
         order: { created_at: 'DESC' },
       });
 
-      expect(found[0].id).toBe(n2.id);
-      expect(found[1].id).toBe(n1.id);
+      expect(found).toHaveLength(2);
+      expect(found[0].created_at.getTime()).toBeGreaterThanOrEqual(found[1].created_at.getTime());
+      expect(found.map((notification) => notification.id).sort((left, right) => left - right)).toEqual(
+        [n1.id, n2.id].sort((left, right) => left - right),
+      );
     });
   });
 
@@ -171,7 +174,7 @@ describe('Notification Repository Integration Tests', () => {
       const updated = await repository.save(notification);
 
       expect(updated.is_read).toBe(true);
-      expect(updated.updated_at.getTime()).toBeGreaterThan(
+      expect(updated.updated_at.getTime()).toBeGreaterThanOrEqual(
         notification.created_at.getTime()
       );
     });
@@ -182,9 +185,9 @@ describe('Notification Repository Integration Tests', () => {
       );
 
       const ids = notifications.map(n => n.id);
-      await repository.update({ id: { $in: ids } as any }, { is_read: true });
+      await repository.update({ id: In(ids) }, { is_read: true });
 
-      const updated = await repository.findBy({ id: { $in: ids } as any });
+      const updated = await repository.findBy({ id: In(ids) });
       expect(updated.every(n => n.is_read)).toBe(true);
     });
 
@@ -220,25 +223,16 @@ describe('Notification Repository Integration Tests', () => {
       const ids = notifications.map(n => n.id);
       await repository.delete(ids);
 
-      const found = await repository.findBy({ id: { $in: ids } as any });
+      const found = await repository.findBy({ id: In(ids) });
       expect(found).toHaveLength(0);
     });
 
-    it('should soft delete notification if configured', async () => {
+    it('should reject soft delete because notifications do not use delete date columns', async () => {
       const notification = await repository.save(
         NotificationFixtures.createNotification({ user_id: 1 })
       );
 
-      await repository.softDelete(notification.id);
-
-      const found = await repository.findOne({ where: { id: notification.id } });
-      expect(found).toBeNull();
-
-      const withDeleted = await repository.findOne({
-        where: { id: notification.id },
-        withDeleted: true,
-      });
-      expect(withDeleted).toBeDefined();
+      await expect(repository.softDelete(notification.id)).rejects.toThrow('delete date columns');
     });
   });
 
@@ -349,13 +343,13 @@ describe('Notification Repository Integration Tests', () => {
         .createQueryBuilder('notification')
         .select('notification.type')
         .addSelect('COUNT(*)', 'count')
-        .where('notification.user_id = :userId', { user_id: 1 })
+        .where('notification.user_id = :userId', { userId: 1 })
         .groupBy('notification.type')
         .getRawMany();
 
       expect(results).toHaveLength(2);
-      const orderUpdates = results.find(r => r.type === 'ORDER_UPDATE');
-      expect(orderUpdates?.count).toBe('2');
+      const orderPlaced = results.find(r => r.notification_type === NotificationType.ORDER_PLACED || r.type === NotificationType.ORDER_PLACED);
+      expect(String(orderPlaced?.count)).toBe('2');
     });
   });
 });

@@ -53,6 +53,8 @@ const createRawManyQueryBuilder = (rows: unknown[]) => ({
   innerJoin: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   andWhere: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  addOrderBy: jest.fn().mockReturnThis(),
   groupBy: jest.fn().mockReturnThis(),
   getRawMany: jest.fn().mockResolvedValue(rows),
 });
@@ -78,7 +80,9 @@ describe('AdminProductService', () => {
     brandRepository = createMockRepository<Brand>();
     inventoryRepository = createMockRepository<Inventory>();
     productRepository.createQueryBuilder = jest.fn();
+    productVariantRepository.createQueryBuilder = jest.fn();
     inventoryRepository.createQueryBuilder = jest.fn();
+    productImageRepository.createQueryBuilder = jest.fn();
 
     (AppDataSource.getRepository as jest.Mock).mockImplementation((entity: unknown) => {
       if (entity === Product) return productRepository;
@@ -100,6 +104,8 @@ describe('AdminProductService', () => {
     inventoryRepository.createQueryBuilder.mockReturnValue(
       createRawManyQueryBuilder([{ product_id: String(product.id), stock_quantity: '7' }]),
     );
+    productImageRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    productVariantRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
 
     const result = await service.listProducts({ page: 1, limit: 10 });
 
@@ -117,6 +123,8 @@ describe('AdminProductService', () => {
 
     productRepository.createQueryBuilder.mockReturnValue(queryBuilder);
     inventoryRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    productImageRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    productVariantRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
 
     await service.listProducts({
       page: 1,
@@ -143,6 +151,8 @@ describe('AdminProductService', () => {
 
     productRepository.createQueryBuilder.mockReturnValue(queryBuilder);
     inventoryRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    productImageRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    productVariantRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
 
     await service.listProducts({ page: 1, limit: 10 });
 

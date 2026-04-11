@@ -42,6 +42,8 @@ export class InMemoryQueueService implements INotificationQueueService {
         this.processNextJob();
       }
     }, 100); // Check every 100ms
+
+    this.processingInterval.unref();
   }
 
   private async processNextJob(): Promise<void> {
@@ -151,12 +153,14 @@ export class InMemoryQueueService implements INotificationQueueService {
 
     // If delayed, schedule status change
     if (delayMs > 0) {
-      setTimeout(() => {
+      const delayedWakeup = setTimeout(() => {
         const j = this.jobs.get(id);
         if (j && j.status === 'delayed') {
           j.status = 'waiting';
         }
       }, delayMs);
+
+      delayedWakeup.unref();
     }
 
     return id;

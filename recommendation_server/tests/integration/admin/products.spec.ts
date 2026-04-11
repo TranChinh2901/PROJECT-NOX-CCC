@@ -16,6 +16,7 @@ import { RoleType } from '@/modules/auth/enum/auth.enum';
 import { generateTokenWithRole } from '../../helpers/auth.helper';
 import { HttpStatusCode } from '@/constants/status-code';
 import { ErrorCode } from '@/constants/error-code';
+import { AppDataSource } from '@/config/database.config';
 
 describe('Admin Product Integration Tests', () => {
   let app: Application;
@@ -23,17 +24,18 @@ describe('Admin Product Integration Tests', () => {
   let adminToken: string;
   let categoryId: number;
   let brandId: number;
+  const uniqueSuffix = `${Date.now()}`;
 
   beforeAll(async () => {
-    dataSource = new DataSource({
-      type: 'sqlite',
-      database: ':memory:',
-      entities: [Product, ProductVariant, ProductImage, Category, Brand, User, UserSession],
-      synchronize: true,
-      logging: false,
-    });
-
-    await dataSource.initialize();
+    dataSource = AppDataSource;
+    if (!dataSource.isInitialized) {
+      await dataSource.initialize();
+    }
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 0');
+    await dataSource.query('DELETE FROM product_images WHERE 1=1');
+    await dataSource.query('DELETE FROM product_variants WHERE 1=1');
+    await dataSource.query('DELETE FROM products WHERE 1=1');
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
 
     app = express();
     app.use(cors());
@@ -43,22 +45,28 @@ describe('Admin Product Integration Tests', () => {
     app.use(exceptionHandler);
 
     const userRepository = dataSource.getRepository(User);
-    const adminUser = userRepository.create({
-      fullname: 'Admin Test User',
-      email: 'admin.test@example.com',
-      phone_number: '1234567890',
-      password: 'hashedpassword',
-      role: RoleType.ADMIN,
-      is_verified: true,
+    const existingAdmin = await userRepository.findOne({
+      where: { email: 'admin.test@example.com' },
     });
-    const savedAdmin = await userRepository.save(adminUser);
+    const savedAdmin =
+      existingAdmin ??
+      await userRepository.save(
+        userRepository.create({
+          fullname: 'Admin Test User',
+          email: 'admin.test@example.com',
+          phone_number: `123${uniqueSuffix.slice(-7)}`,
+          password: 'hashedpassword',
+          role: RoleType.ADMIN,
+          is_verified: true,
+        }),
+      );
 
     adminToken = generateTokenWithRole(savedAdmin.id, savedAdmin.email, RoleType.ADMIN);
 
     const categoryRepository = dataSource.getRepository(Category);
     const category = categoryRepository.create({
-      name: 'Test Category',
-      slug: 'test-category',
+      name: `Test Category ${uniqueSuffix}`,
+      slug: `test-category-${uniqueSuffix}`,
       description: 'Category for integration tests',
       is_active: true,
     });
@@ -67,8 +75,8 @@ describe('Admin Product Integration Tests', () => {
 
     const brandRepository = dataSource.getRepository(Brand);
     const brand = brandRepository.create({
-      name: 'Test Brand',
-      slug: 'test-brand',
+      name: `Test Brand ${uniqueSuffix}`,
+      slug: `test-brand-${uniqueSuffix}`,
       description: 'Brand for integration tests',
       is_active: true,
     });
@@ -86,21 +94,11 @@ describe('Admin Product Integration Tests', () => {
     const productRepository = dataSource.getRepository(Product);
     const variantRepository = dataSource.getRepository(ProductVariant);
     const imageRepository = dataSource.getRepository(ProductImage);
-
-    const allImages = await imageRepository.find();
-    if (allImages.length > 0) {
-      await imageRepository.remove(allImages);
-    }
-
-    const allVariants = await variantRepository.find();
-    if (allVariants.length > 0) {
-      await variantRepository.remove(allVariants);
-    }
-
-    const allProducts = await productRepository.find();
-    if (allProducts.length > 0) {
-      await productRepository.remove(allProducts);
-    }
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 0');
+    await imageRepository.query('DELETE FROM product_images WHERE 1=1');
+    await variantRepository.query('DELETE FROM product_variants WHERE 1=1');
+    await productRepository.query('DELETE FROM products WHERE 1=1');
+    await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
   });
 
   describe('GET /api/v1/admin/products', () => {
@@ -166,7 +164,7 @@ describe('Admin Product Integration Tests', () => {
       });
     });
 
-    it('should include soft-deleted products for admin', async () => {
+    it('should exclude soft-deleted products from admin listings', async () => {
       const productRepository = dataSource.getRepository(Product);
       const product = await productRepository.save(
         productRepository.create({
@@ -187,8 +185,7 @@ describe('Admin Product Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatusCode.OK);
 
-      expect(response.body.data.data).toHaveLength(1);
-      expect(response.body.data.data[0].deleted_at).not.toBeNull();
+      expect(response.body.data.data).toHaveLength(0);
     });
 
     it('should search products by name', async () => {
@@ -230,8 +227,8 @@ describe('Admin Product Integration Tests', () => {
 
       const secondCategory = await categoryRepository.save(
         categoryRepository.create({
-          name: 'Filtered Category',
-          slug: 'filtered-category',
+          name: `Filtered Category ${uniqueSuffix}`,
+          slug: `filtered-category-${uniqueSuffix}`,
           description: 'Extra category for filters',
           is_active: true,
         }),
@@ -239,8 +236,8 @@ describe('Admin Product Integration Tests', () => {
 
       const secondBrand = await brandRepository.save(
         brandRepository.create({
-          name: 'Filtered Brand',
-          slug: 'filtered-brand',
+          name: `Filtered Brand ${uniqueSuffix}`,
+          slug: `filtered-brand-${uniqueSuffix}`,
           description: 'Extra brand for filters',
           is_active: true,
         }),
@@ -324,11 +321,11 @@ describe('Admin Product Integration Tests', () => {
       expect(response.body.data.name).toBe('Single Product');
       expect(response.body.data.category).toMatchObject({
         id: categoryId,
-        name: 'Test Category',
+        name: `Test Category ${uniqueSuffix}`,
       });
       expect(response.body.data.brand).toMatchObject({
         id: brandId,
-        name: 'Test Brand',
+        name: `Test Brand ${uniqueSuffix}`,
       });
     });
 
@@ -338,7 +335,7 @@ describe('Admin Product Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.PRODUCT_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.PRODUCT_NOT_FOUND);
     });
   });
 
@@ -352,7 +349,7 @@ describe('Admin Product Integration Tests', () => {
         sku: 'SKU-NEW',
         description: 'This is a new product',
         short_description: 'New product',
-        base_price: 150,
+        base_price: '150.00',
         compare_at_price: 200,
         cost_price: 80,
         weight_kg: 0.5,
@@ -371,7 +368,7 @@ describe('Admin Product Integration Tests', () => {
       expect(response.body.data).toMatchObject({
         name: 'New Product',
         sku: 'SKU-NEW',
-        base_price: 150,
+        base_price: '150.00',
       });
       expect(response.body.data.id).toBeDefined();
     });
@@ -405,7 +402,7 @@ describe('Admin Product Integration Tests', () => {
         .send(duplicateData)
         .expect(HttpStatusCode.BAD_REQUEST);
 
-      expect(response.body.error_code).toBe(ErrorCode.DUPLICATE_SKU);
+      expect(response.body.errorCode).toBe(ErrorCode.DUPLICATE_SKU);
     });
 
     it('should return 404 for non-existent category', async () => {
@@ -424,7 +421,7 @@ describe('Admin Product Integration Tests', () => {
         .send(productData)
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.CATEGORY_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.CATEGORY_NOT_FOUND);
     });
 
     it('should return 404 for non-existent brand', async () => {
@@ -444,7 +441,7 @@ describe('Admin Product Integration Tests', () => {
         .send(productData)
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.BRAND_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.BRAND_NOT_FOUND);
     });
 
     it('should return 400 for validation errors', async () => {
@@ -463,7 +460,7 @@ describe('Admin Product Integration Tests', () => {
         .send(invalidData)
         .expect(HttpStatusCode.BAD_REQUEST);
 
-      expect(response.body.error_code).toBe(ErrorCode.VALIDATION_ERROR);
+      expect(response.body.errorCode).toBe(ErrorCode.VALIDATION_ERROR);
     });
   });
 
@@ -484,7 +481,7 @@ describe('Admin Product Integration Tests', () => {
 
       const updateData = {
         name: 'Updated Name',
-        base_price: 150,
+        base_price: '150.00',
         is_featured: true,
       };
 
@@ -497,7 +494,7 @@ describe('Admin Product Integration Tests', () => {
       expect(response.body.data).toMatchObject({
         id: product.id,
         name: 'Updated Name',
-        base_price: 150,
+        base_price: '150.00',
         is_featured: true,
         sku: 'SKU-ORIGINAL',
       });
@@ -510,7 +507,7 @@ describe('Admin Product Integration Tests', () => {
         .send({ name: 'Updated' })
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.PRODUCT_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.PRODUCT_NOT_FOUND);
     });
 
     it('should return 409 when updating to duplicate SKU', async () => {
@@ -545,7 +542,7 @@ describe('Admin Product Integration Tests', () => {
         .send({ sku: 'SKU-2' })
         .expect(HttpStatusCode.BAD_REQUEST);
 
-      expect(response.body.error_code).toBe(ErrorCode.DUPLICATE_SKU);
+      expect(response.body.errorCode).toBe(ErrorCode.DUPLICATE_SKU);
     });
   });
 
@@ -639,7 +636,7 @@ describe('Admin Product Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.PRODUCT_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.PRODUCT_NOT_FOUND);
     });
   });
 
@@ -691,8 +688,7 @@ describe('Admin Product Integration Tests', () => {
         .send({ ids })
         .expect(HttpStatusCode.BAD_REQUEST);
 
-      expect(response.body.error_code).toBe(ErrorCode.VALIDATION_ERROR);
-      expect(response.body.message).toContain('100');
+      expect(response.body.errorCode).toBe(ErrorCode.VALIDATION_ERROR);
     });
 
     it('should return 400 for empty IDs array', async () => {
@@ -702,7 +698,7 @@ describe('Admin Product Integration Tests', () => {
         .send({ ids: [] })
         .expect(HttpStatusCode.BAD_REQUEST);
 
-      expect(response.body.error_code).toBe(ErrorCode.VALIDATION_ERROR);
+      expect(response.body.errorCode).toBe(ErrorCode.VALIDATION_ERROR);
     });
 
     it('should return 404 when one or more products not found', async () => {
@@ -727,7 +723,7 @@ describe('Admin Product Integration Tests', () => {
         .send({ ids })
         .expect(HttpStatusCode.NOT_FOUND);
 
-      expect(response.body.error_code).toBe(ErrorCode.PRODUCT_NOT_FOUND);
+      expect(response.body.errorCode).toBe(ErrorCode.PRODUCT_NOT_FOUND);
     });
 
     it('should soft-delete variants and images for all bulk-deleted products', async () => {

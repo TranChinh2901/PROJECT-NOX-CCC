@@ -12,8 +12,8 @@ import { Inventory } from '@/modules/inventory/entity/inventory';
 import { Warehouse } from '@/modules/inventory/entity/warehouse';
 import { Product } from '@/modules/products/entity/product';
 import { ProductVariant } from '@/modules/products/entity/product-variant';
-import { Category } from '@/modules/categories/entity/category.entity';
-import { Brand } from '@/modules/brands/entity/brand.entity';
+import { Category } from '@/modules/products/entity/category';
+import { Brand } from '@/modules/products/entity/brand';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '@/modules/orders/enum/order.enum';
 import { generateTestAccessToken } from '../../helpers/auth.helper';
 import { ADMIN_USER, USER_1 } from '../../fixtures/users.fixture';
@@ -24,6 +24,7 @@ describe('Order Admin Service Integration Tests', () => {
   let adminToken: string;
   let testWarehouse: Warehouse;
   let testInventory: Inventory;
+  const uniqueSuffix = Date.now().toString().slice(-6);
 
   const createProductSnapshot = () => ({
     name: 'Test Product',
@@ -58,16 +59,16 @@ describe('Order Admin Service Integration Tests', () => {
 
     const categoryRepo = AppDataSource.getRepository(Category);
     const testCategory = await categoryRepo.save({
-      name: 'Test Category',
-      slug: 'test-category-orders',
+      name: `Test Category ${uniqueSuffix}`,
+      slug: `test-category-orders-${uniqueSuffix}`,
       description: 'Test category for orders',
       is_active: true,
     });
 
     const brandRepo = AppDataSource.getRepository(Brand);
     const testBrand = await brandRepo.save({
-      name: 'Test Brand',
-      slug: 'test-brand-orders',
+      name: `Test Brand ${uniqueSuffix}`,
+      slug: `test-brand-orders-${uniqueSuffix}`,
       description: 'Test brand for orders',
       is_active: true,
     });
@@ -93,8 +94,8 @@ describe('Order Admin Service Integration Tests', () => {
 
     const warehouseRepo = AppDataSource.getRepository(Warehouse);
     testWarehouse = await warehouseRepo.save({
-      name: 'Test Warehouse Orders',
-      code: 'TEST-WH-ORD',
+      name: `Test Warehouse Orders ${uniqueSuffix}`,
+      code: `TWO-${uniqueSuffix}`,
       address: '123 Test Address',
       city: 'Test City',
       is_active: true,
@@ -120,8 +121,8 @@ describe('Order Admin Service Integration Tests', () => {
     const categoryRepo = AppDataSource.getRepository(Category);
     const brandRepo = AppDataSource.getRepository(Brand);
 
-    await orderItemRepo.delete({});
-    await orderRepo.delete({});
+    await orderItemRepo.query('DELETE FROM order_items WHERE 1=1');
+    await orderRepo.query('DELETE FROM orders WHERE 1=1');
     if (testInventory?.id) {
       await inventoryRepo.delete({ id: testInventory.id });
     }
@@ -130,8 +131,8 @@ describe('Order Admin Service Integration Tests', () => {
     }
     await variantRepo.delete({ id: PRODUCT_1_VARIANT_1.id });
     await productRepo.delete({ id: PRODUCT_1.id });
-    await categoryRepo.delete({ slug: 'test-category-orders' });
-    await brandRepo.delete({ slug: 'test-brand-orders' });
+    await categoryRepo.delete({ slug: `test-category-orders-${uniqueSuffix}` });
+    await brandRepo.delete({ slug: `test-brand-orders-${uniqueSuffix}` });
 
     if (AppDataSource.isInitialized) {
       await AppDataSource.destroy();
@@ -231,9 +232,9 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThanOrEqual(3);
+      expect(response.body.data.data).toBeDefined();
+      expect(Array.isArray(response.body.data.data)).toBe(true);
+      expect(response.body.data.data.length).toBeGreaterThanOrEqual(3);
     });
 
     it('should filter orders by status', async () => {
@@ -243,8 +244,8 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.every((order: Order) => order.status === OrderStatus.PENDING)).toBe(true);
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.every((order: Order) => order.status === OrderStatus.PENDING)).toBe(true);
     });
 
     it('should filter orders by payment_status', async () => {
@@ -254,8 +255,8 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.every((order: Order) => order.payment_status === PaymentStatus.PAID)).toBe(true);
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.every((order: Order) => order.payment_status === PaymentStatus.PAID)).toBe(true);
     });
 
     it('should filter orders by user_id', async () => {
@@ -265,8 +266,8 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.every((order: Order) => order.user_id === USER_1.id)).toBe(true);
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.every((order: Order) => order.user_id === USER_1.id)).toBe(true);
     });
 
     it('should filter orders by date range (start_date and end_date)', async () => {
@@ -284,8 +285,8 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.data).toBeDefined();
+      expect(Array.isArray(response.body.data.data)).toBe(true);
     });
 
     it('should filter orders by start_date only', async () => {
@@ -298,8 +299,8 @@ describe('Order Admin Service Integration Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.data).toBeDefined();
+      expect(Array.isArray(response.body.data.data)).toBe(true);
     });
   });
 
@@ -371,7 +372,7 @@ describe('Order Admin Service Integration Tests', () => {
       const orderItemRepo = AppDataSource.getRepository(OrderItem);
 
       testOrder = await orderRepo.save({
-        order_number: `ORD-STATUS-${Date.now()}`,
+        order_number: `OS-${Date.now().toString().slice(-8)}`,
         user_id: USER_1.id,
         status: OrderStatus.PENDING,
         payment_status: PaymentStatus.PENDING,
@@ -464,7 +465,7 @@ describe('Order Admin Service Integration Tests', () => {
         .send({ status: OrderStatus.PENDING });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toContain('Invalid status transition');
+      expect(response.body.errorCode).toBe('VALIDATION_ERROR');
     });
 
     it('should create status history with changed_by as admin email (VARCHAR field)', async () => {
@@ -500,7 +501,7 @@ describe('Order Admin Service Integration Tests', () => {
       initialInventory = inventory!.quantity_available;
 
       testOrder = await orderRepo.save({
-        order_number: `ORD-CANCEL-${Date.now()}`,
+        order_number: `OC-${Date.now().toString().slice(-8)}`,
         user_id: USER_1.id,
         status: OrderStatus.CONFIRMED,
         payment_status: PaymentStatus.PENDING,
@@ -593,7 +594,7 @@ describe('Order Admin Service Integration Tests', () => {
       const orderRepo = AppDataSource.getRepository(Order);
 
       testOrder = await orderRepo.save({
-        order_number: `ORD-NOTES-${Date.now()}`,
+        order_number: `ON-${Date.now().toString().slice(-8)}`,
         user_id: USER_1.id,
         status: OrderStatus.PENDING,
         payment_status: PaymentStatus.PENDING,

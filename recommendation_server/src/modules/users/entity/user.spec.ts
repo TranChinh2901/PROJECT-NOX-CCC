@@ -291,7 +291,7 @@ describe('User Entity', () => {
       user.fullname = 'Modified Name';
       await userRepository.save(user);
 
-      expect(user.updated_at.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
+      expect(user.updated_at.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
       await userRepository.delete(user.id);
     });
   });

@@ -254,9 +254,9 @@ function HomePageContent() {
         }, {})
       );
       setRecommendationBlockTitle('Xu hướng nổi bật');
-      setRecommendationBlockSubtitle('Gợi ý nhanh cho mọi khách hàng');
+      setRecommendationBlockSubtitle('Những lựa chọn đang được xem nhiều hôm nay');
       setRecommendationBlockDescription(
-        'Các sản phẩm nổi bật và đang được quan tâm nhiều, dùng làm fallback khi chưa có dữ liệu cá nhân hóa.'
+        'Tổng hợp các mẫu nổi bật, bán ổn và dễ so sánh để bạn bắt đầu ngay với những lựa chọn đáng xem nhất.'
       );
     };
 
@@ -583,7 +583,7 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pb-8 pt-4 sm:pt-16">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pb-8 pt-8 sm:pt-20 lg:pt-24">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
           <div className="hero-grid absolute inset-0 opacity-50" />
@@ -946,7 +946,6 @@ function ProductCard({
                        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
   const destinationHref = buildProductPath(product);
   const categoryLabel = product.category?.name ?? 'Thiết bị chọn lọc';
-  const brandLabel = product.brand?.name ?? 'TechNova Select';
   const soldCount = product.sold_count ?? 0;
 
   return (
@@ -988,9 +987,8 @@ function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col p-3.5 sm:p-4">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a6a12] sm:mb-3 sm:gap-3 sm:text-[11px] sm:tracking-[0.16em]">
-          <span className="truncate">{brandLabel}</span>
-          <span className="rounded-full bg-[#fbf6ed] px-2 py-0.5 text-[#7a6a4a] normal-case tracking-normal sm:px-2.5 sm:py-1">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a6a12] sm:mb-3 sm:text-[11px] sm:tracking-[0.16em]">
+          <span className="inline-flex rounded-full bg-[#fbf6ed] px-2 py-0.5 text-[#7a6a4a] normal-case tracking-normal sm:px-2.5 sm:py-1">
             {categoryLabel}
           </span>
         </div>

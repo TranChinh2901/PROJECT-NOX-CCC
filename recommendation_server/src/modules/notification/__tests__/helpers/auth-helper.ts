@@ -11,7 +11,10 @@ export interface TestUser {
 }
 
 export class AuthHelper {
-  private static readonly SECRET = process.env.JWT_SECRET || 'test-secret-key';
+  private static readonly SECRET =
+    process.env.ACCESS_TOKEN_SECRET ||
+    process.env.JWT_SECRET ||
+    'test-secret-key';
   private static readonly EXPIRES_IN = '1h';
 
   static generateToken(user: TestUser): string {
