@@ -8,6 +8,7 @@ import { AppDataSource } from '@/config/database.config';
 import { RecommendationCache } from '../entity/recommendation-cache';
 import { UserBehaviorLog } from '../entity/user-behavior-log';
 import { UserActionType } from '../enum/user-behavior.enum';
+import { AuthenticatedRequest } from '@/middlewares/auth.middleware';
 
 /**
  * Presentation Layer: Recommendation Controller
@@ -147,7 +148,7 @@ export class RecommendationController {
    *
    * Get personalized recommendations for a user
    */
-  async getRecommendations(req: Request, res: Response): Promise<Response> {
+  async getRecommendations(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const userId = parseInt(req.params.userId, 10);
 
@@ -155,6 +156,13 @@ export class RecommendationController {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
           message: 'Invalid user ID',
+        });
+      }
+
+      if (req.user && req.user.id !== userId) {
+        return res.status(HttpStatusCode.FORBIDDEN).json({
+          success: false,
+          message: 'You can only access recommendations for your own account',
         });
       }
 
@@ -201,15 +209,24 @@ export class RecommendationController {
    *
    * Track user behavior for recommendation training
    */
-  async trackBehavior(req: Request, res: Response): Promise<Response> {
+  async trackBehavior(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { userId, behaviorType, productId, categoryId, metadata } = req.body;
+      const authenticatedUserId = req.user?.id;
+      const resolvedUserId = authenticatedUserId ?? userId;
 
       // Validation
-      if (!userId || !behaviorType) {
+      if (!resolvedUserId || !behaviorType) {
         return res.status(HttpStatusCode.BAD_REQUEST).json({
           success: false,
           message: 'userId and behaviorType are required',
+        });
+      }
+
+      if (authenticatedUserId && userId && userId !== authenticatedUserId) {
+        return res.status(HttpStatusCode.FORBIDDEN).json({
+          success: false,
+          message: 'You can only track behavior for your own account',
         });
       }
 
@@ -225,7 +242,7 @@ export class RecommendationController {
       const useCase = container.getTrackUserBehaviorUseCase();
 
       await useCase.execute({
-        userId,
+        userId: resolvedUserId,
         behaviorType,
         productId,
         categoryId,

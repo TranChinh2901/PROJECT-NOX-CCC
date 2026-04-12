@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-04-12T15:24:59.852Z",
+  "inputDataset": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-training-data.csv",
+  "inputModel": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-baseline-model.json",
+  "topK": 10,
+  "holdoutCount": 1,
+  "evaluatedUsers": 91,
+  "skippedUsers": 9,
+  "catalogSize": 197,
+  "recommendedCatalogSize": 190,
+  "precisionAtK": 0.089064,
+  "recallAtK": 0.868132,
+  "hitRateAtK": 0.868132,
+  "mrrAtK": 0.709179,
+  "coverageAtK": 0.964467
+}

@@ -4,7 +4,10 @@ import {
   IUserBehaviorRepository,
   UserBehaviorLog,
 } from '../../domain/repositories/IUserBehaviorRepository';
-import { IProductFeatureRepository } from '../../domain/repositories/IProductFeatureRepository';
+import {
+  IProductFeatureRepository,
+  ProductFeature,
+} from '../../domain/repositories/IProductFeatureRepository';
 import { IRecommendationEngine } from '../../domain/services/IRecommendationEngine';
 import { RecommendationStrategy } from '../../domain/services/IRecommendationEngine';
 import { GetRecommendationsRequestDTO } from '../dto/GetRecommendationsRequest';
@@ -77,7 +80,14 @@ export class GetRecommendationsUseCase {
       userId,
       request.categoryFilter
     );
-    const productFeatures = await this.productFeatureRepository.getByIds(candidateProductIds);
+    let productFeatures = await this.productFeatureRepository.getByIds(candidateProductIds);
+
+    if (productFeatures.length === 0) {
+      productFeatures = await this.productFeatureRepository.getFallbackProducts(
+        Math.max(limit * 3, 20),
+        request.categoryFilter
+      );
+    }
 
     // 4. Generate recommendations using ML engine
     const generatedRecommendations = await this.recommendationEngine.generateRecommendations(
@@ -91,11 +101,19 @@ export class GetRecommendationsUseCase {
       userPreference,
       productFeatures
     );
-    const recommendations = this.filterRecommendations(
+    let recommendations = this.filterRecommendations(
       generatedRecommendations,
       excludedProductIds,
       limit
     );
+
+    if (recommendations.length === 0) {
+      recommendations = this.buildFallbackRecommendations(
+        productFeatures,
+        excludedProductIds,
+        limit
+      );
+    }
 
     // 5. Cache the results
     await this.recommendationRepository.save(userId, recommendations);
@@ -133,6 +151,52 @@ export class GetRecommendationsUseCase {
     const combined = [...new Set([...popularProducts, ...userViewedProducts])];
 
     return combined.slice(0, 200); // Limit candidates
+  }
+
+  private buildFallbackRecommendations(
+    productFeatures: ProductFeature[],
+    excludedProductIds: number[],
+    limit: number
+  ): Recommendation[] {
+    const excludedProductIdSet = new Set(excludedProductIds);
+
+    return productFeatures
+      .filter((productFeature) => !excludedProductIdSet.has(productFeature.productId))
+      .sort((left, right) => {
+        const leftScore = this.calculateFallbackScore(left);
+        const rightScore = this.calculateFallbackScore(right);
+        return rightScore - leftScore;
+      })
+      .slice(0, limit)
+      .map((productFeature) =>
+        Recommendation.create(
+          productFeature.productId,
+          this.calculateFallbackScore(productFeature),
+          this.generateFallbackReason(productFeature)
+        )
+      );
+  }
+
+  private calculateFallbackScore(productFeature: ProductFeature): number {
+    const ratingScore = productFeature.avgRating > 0
+      ? Math.min(productFeature.avgRating / 5, 1) * 0.55
+      : 0.25;
+    const reviewScore = Math.min(productFeature.reviewCount / 50, 1) * 0.25;
+    const purchaseScore = Math.min(productFeature.purchaseCount / 100, 1) * 0.2;
+
+    return Number(Math.min(ratingScore + reviewScore + purchaseScore, 1).toFixed(6));
+  }
+
+  private generateFallbackReason(productFeature: ProductFeature): string {
+    if (productFeature.avgRating >= 4) {
+      return 'popular and highly rated';
+    }
+
+    if (productFeature.reviewCount > 0) {
+      return 'popular with shoppers';
+    }
+
+    return 'popular product';
   }
 
   private async getExcludedProductIds(

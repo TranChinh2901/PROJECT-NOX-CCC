@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-04-12T15:24:51.927Z",
+  "inputPath": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-baseline-model.json",
+  "algorithm": "offline_model",
+  "ttlHours": 24,
+  "userCount": 100,
+  "insertedEntries": 99
+}

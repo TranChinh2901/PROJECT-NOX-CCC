@@ -22,6 +22,7 @@ describe('ContentBasedEngine', () => {
     getById: jest.fn(),
     getByIds: jest.fn(),
     getByCategory: jest.fn(),
+    getFallbackProducts: jest.fn(),
     findSimilar: jest.fn(),
     updateStatistics: jest.fn(),
   });

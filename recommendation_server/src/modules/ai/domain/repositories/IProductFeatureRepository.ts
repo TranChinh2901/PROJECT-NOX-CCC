@@ -33,6 +33,11 @@ export interface IProductFeatureRepository {
   getByCategory(categoryId: number, limit: number): Promise<ProductFeature[]>;
 
   /**
+   * Get active products for cold-start/fallback recommendations.
+   */
+  getFallbackProducts(limit: number, categoryId?: number): Promise<ProductFeature[]>;
+
+  /**
    * Get similar products based on features
    */
   findSimilar(productId: number, limit: number): Promise<ProductFeature[]>;

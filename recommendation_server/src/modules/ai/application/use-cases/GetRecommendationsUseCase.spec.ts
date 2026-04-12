@@ -34,6 +34,7 @@ describe('GetRecommendationsUseCase', () => {
     getById: jest.fn(),
     getByIds: jest.fn(),
     getByCategory: jest.fn(),
+    getFallbackProducts: jest.fn(),
     findSimilar: jest.fn(),
     updateStatistics: jest.fn(),
   });
@@ -159,5 +160,48 @@ describe('GetRecommendationsUseCase', () => {
     expect(result.fromCache).toBe(true);
     expect(result.recommendations.map((recommendation) => recommendation.productId)).toEqual([302]);
     expect(recommendationEngine.generateRecommendations).not.toHaveBeenCalled();
+  });
+
+  it('returns fallback products when the engine cannot generate recommendations', async () => {
+    const recommendationRepository = createRecommendationRepository();
+    const behaviorRepository = createBehaviorRepository();
+    const productFeatureRepository = createProductFeatureRepository();
+    const recommendationEngine = createRecommendationEngine();
+    const useCase = new GetRecommendationsUseCase(
+      recommendationRepository,
+      behaviorRepository,
+      productFeatureRepository,
+      recommendationEngine
+    );
+
+    recommendationRepository.hasFreshRecommendations.mockResolvedValue(false);
+    behaviorRepository.deriveUserPreferences.mockResolvedValue(
+      UserPreference.create(1, [], [], 0, Number.MAX_SAFE_INTEGER)
+    );
+    behaviorRepository.getPopularProducts.mockResolvedValue([]);
+    behaviorRepository.getBehaviorHistory
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    productFeatureRepository.getByIds.mockResolvedValue([]);
+    productFeatureRepository.getFallbackProducts.mockResolvedValue([
+      makeProductFeature(401),
+      { ...makeProductFeature(402), avgRating: 3.5, reviewCount: 3, purchaseCount: 0 },
+    ]);
+    recommendationEngine.generateRecommendations.mockResolvedValue([]);
+    recommendationEngine.getStrategy.mockReturnValue(RecommendationStrategy.CONTENT_BASED);
+
+    const result = await useCase.execute({
+      userId: 1,
+      limit: 2,
+    });
+
+    expect(productFeatureRepository.getFallbackProducts).toHaveBeenCalledWith(20, undefined);
+    expect(result.recommendations.map((recommendation) => recommendation.productId)).toEqual([
+      401,
+      402,
+    ]);
+    expect(result.fromCache).toBe(false);
+    expect(recommendationRepository.save).toHaveBeenCalled();
   });
 });

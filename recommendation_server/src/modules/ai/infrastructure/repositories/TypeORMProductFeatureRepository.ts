@@ -53,6 +53,26 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
     return products.map((p) => this.toDomainFeature(p));
   }
 
+  async getFallbackProducts(limit: number, categoryId?: number): Promise<DomainProductFeature[]> {
+    const queryBuilder = this.repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.reviews', 'reviews')
+      .where('product.is_active = :isActive', { isActive: true })
+      .andWhere('product.deleted_at IS NULL')
+      .orderBy('product.is_featured', 'DESC')
+      .addOrderBy('product.created_at', 'DESC')
+      .limit(limit);
+
+    if (categoryId) {
+      queryBuilder.andWhere('product.category_id = :categoryId', { categoryId });
+    }
+
+    const products = await queryBuilder.getMany();
+    return products.map((product) => this.toDomainFeature(product));
+  }
+
   async findSimilar(productId: number, limit: number): Promise<DomainProductFeature[]> {
     // Get the target product first
     const targetProduct = await this.repository.findOne({

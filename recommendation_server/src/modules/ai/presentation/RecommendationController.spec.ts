@@ -34,6 +34,24 @@ describe('RecommendationController', () => {
     expect(container.getRecommendationsUseCase).not.toHaveBeenCalled();
   });
 
+  it('rejects recommendation requests for a different authenticated user', async () => {
+    const req = createMockRequest({
+      params: { userId: '15' },
+      query: { strategy: 'hybrid' },
+    }) as any;
+    req.user = { id: 16, email: 'other@example.com', role: 'user' };
+    const res = createMockResponse();
+
+    await controller.getRecommendations(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatusCode.FORBIDDEN);
+    expect((res as any).jsonData).toEqual({
+      success: false,
+      message: 'You can only access recommendations for your own account',
+    });
+    expect(container.getRecommendationsUseCase).not.toHaveBeenCalled();
+  });
+
   it('waits for behavior tracking persistence before returning success', async () => {
     let completed = false;
     const execute = jest.fn().mockImplementation(async () => {
@@ -68,6 +86,54 @@ describe('RecommendationController', () => {
       message: 'Behavior tracked successfully',
       data: {},
     });
+  });
+
+  it('uses the authenticated user id when tracking behavior', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+    (container.getTrackUserBehaviorUseCase as jest.Mock).mockReturnValue({ execute });
+
+    const req = createMockRequest({
+      method: 'POST',
+      body: {
+        behaviorType: 'view',
+        productId: 90,
+      },
+    }) as any;
+    req.user = { id: 23, email: 'user@example.com', role: 'user' };
+    const res = createMockResponse();
+
+    await controller.trackBehavior(req, res);
+
+    expect(execute).toHaveBeenCalledWith({
+      userId: 23,
+      behaviorType: 'view',
+      productId: 90,
+      categoryId: undefined,
+      metadata: undefined,
+    });
+    expect(res.status).toHaveBeenCalledWith(HttpStatusCode.OK);
+  });
+
+  it('rejects tracking behavior for a different authenticated user', async () => {
+    const req = createMockRequest({
+      method: 'POST',
+      body: {
+        userId: 22,
+        behaviorType: 'view',
+        productId: 90,
+      },
+    }) as any;
+    req.user = { id: 23, email: 'user@example.com', role: 'user' };
+    const res = createMockResponse();
+
+    await controller.trackBehavior(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatusCode.FORBIDDEN);
+    expect((res as any).jsonData).toEqual({
+      success: false,
+      message: 'You can only track behavior for your own account',
+    });
+    expect(container.getTrackUserBehaviorUseCase).not.toHaveBeenCalled();
   });
 
   it('returns 500 when tracking behavior persistence fails', async () => {
