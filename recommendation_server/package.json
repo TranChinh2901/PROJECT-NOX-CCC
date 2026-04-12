@@ -7,6 +7,7 @@
     "seed:ecommerce": "ts-node -r tsconfig-paths/register src/scripts/seed-ecommerce.ts",
     "export:recommendation-dataset": "ts-node -r tsconfig-paths/register src/scripts/export-recommendation-dataset.ts",
     "train:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/train-recommendation-baseline.ts",
+    "evaluate:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/evaluate-recommendation-baseline.ts",
     "precompute:recommendation-cache": "ts-node -r tsconfig-paths/register src/scripts/precompute-recommendation-cache.ts",
     "refresh:recommendation-pipeline": "ts-node -r tsconfig-paths/register src/scripts/refresh-recommendation-pipeline.ts",
     "sync:product-images": "ts-node -r tsconfig-paths/register src/scripts/sync-product-images-to-cloudinary.ts",

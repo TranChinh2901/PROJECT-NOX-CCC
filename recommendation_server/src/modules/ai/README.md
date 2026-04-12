@@ -11,6 +11,7 @@ This module implements a recommendation system following **Clean Architecture** 
 - [Key Design Patterns](#key-design-patterns)
 - [API Endpoints](#api-endpoints)
 - [ML Pipeline](#ml-pipeline)
+- [Offline Evaluation](#offline-evaluation)
 - [Testing Strategy](#testing-strategy)
 - [Future Enhancements](#future-enhancements)
 
@@ -258,6 +259,60 @@ Application Layer (Use Cases)
        ↓ depends on
 Domain Layer (Interfaces)
        ↑ implemented by
+
+---
+
+## Offline Evaluation
+
+To support thesis reporting and model comparison, the recommendation baseline now includes an
+offline evaluation step.
+
+### Available script
+
+```bash
+npm run evaluate:recommendation-baseline
+```
+
+### What it does
+
+- Loads the exported recommendation dataset CSV
+- Loads the baseline collaborative model JSON
+- Splits each eligible user into:
+  - training interactions
+  - holdout interactions (latest interactions)
+- Rebuilds top-K recommendations from `similarItemsByProduct`
+- Computes ranking metrics
+
+### Reported metrics
+
+- `Precision@K`: among recommended items, how many are actually relevant
+- `Recall@K`: among held-out relevant items, how many are recovered
+- `HitRate@K`: percentage of evaluated users receiving at least one correct recommendation
+- `MRR@K`: how early the first correct recommendation appears
+- `Coverage@K`: how much of the catalog appears in recommendations
+
+### Example
+
+```bash
+npm run export:recommendation-dataset
+npm run train:recommendation-baseline
+npm run evaluate:recommendation-baseline -- --top-k=10 --holdout-count=1
+```
+
+The evaluation result is written to:
+
+```text
+exports/recommendation-evaluation.json
+```
+
+### Suggested thesis interpretation
+
+- If `HitRate@K` is acceptable but `Coverage@K` is low:
+  the system is relevant but not diverse enough.
+- If `Coverage@K` is high but `Precision@K` is low:
+  the system explores widely but recommends too much noise.
+- If `MRR@K` is high:
+  relevant products appear early, improving practical user experience.
 Infrastructure Layer
 
 ---

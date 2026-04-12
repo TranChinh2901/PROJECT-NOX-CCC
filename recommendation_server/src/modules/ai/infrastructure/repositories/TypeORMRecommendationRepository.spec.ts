@@ -19,6 +19,7 @@ describe('TypeORMRecommendationRepository', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.RECOMMENDATION_ENGINE;
     (AppDataSource.getRepository as jest.Mock).mockReturnValue(repositoryMock);
   });
 
@@ -84,5 +85,48 @@ describe('TypeORMRecommendationRepository', () => {
         generated_at: 'DESC',
       },
     });
+  });
+
+  it('uses the configured algorithm in cache keys for offline model mode', async () => {
+    process.env.RECOMMENDATION_ENGINE = 'offline_model';
+    repositoryMock.update.mockResolvedValue({ affected: 1 });
+    repositoryMock.upsert.mockResolvedValue({ identifiers: [], generatedMaps: [], raw: {} });
+
+    const recommendationRepository = new TypeORMRecommendationRepository();
+
+    await recommendationRepository.save(
+      77,
+      [Recommendation.create(12, 0.61, 'offline recommendation')]
+    );
+
+    expect(repositoryMock.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cache_key: 'user:77:type:personalized:algo:offline_model',
+        algorithm: 'offline_model',
+      }),
+      ['cache_key']
+    );
+  });
+
+  it('normalizes cached scores above 1 when loading recommendations', async () => {
+    repositoryMock.find.mockResolvedValue([
+      {
+        recommended_products: [
+          { productId: 88, score: 3.7, reason: 'overscored item' },
+        ],
+      },
+    ]);
+
+    const recommendationRepository = new TypeORMRecommendationRepository();
+    const recommendations = await recommendationRepository.findByUserId(5);
+
+    expect(recommendations).toHaveLength(1);
+    expect(recommendations[0].toJSON()).toEqual(
+      expect.objectContaining({
+        productId: 88,
+        score: 1,
+        reason: 'overscored item',
+      })
+    );
   });
 });

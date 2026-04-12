@@ -4,15 +4,12 @@ import recommendationController from '../modules/ai/presentation/RecommendationC
 const router = Router();
 
 /**
- * @route   GET /api/recommendations/:userId
- * @desc    Get personalized recommendations for a user
- * @access  Public (should be protected with auth middleware in production)
- * @query   strategy?: 'collaborative' | 'content' | 'hybrid' | 'popularity'
- * @query   limit?: number (default: 10)
- * @query   categoryId?: number (filter by category)
+ * @route   GET /api/recommendations/status
+ * @desc    Get operational status of recommendation system
+ * @access  Public
  */
-router.get('/:userId', (req, res) => {
-  return recommendationController.getRecommendations(req, res);
+router.get('/status', (req, res) => {
+  return recommendationController.getStatus(req, res);
 });
 
 /**
@@ -37,6 +34,18 @@ router.post('/track', (req, res) => {
  */
 router.get('/similar/:productId', (req, res) => {
   return recommendationController.getSimilarProducts(req, res);
+});
+
+/**
+ * @route   GET /api/recommendations/:userId
+ * @desc    Get personalized recommendations for a user
+ * @access  Public (should be protected with auth middleware in production)
+ * @query   strategy?: 'collaborative' | 'content' | 'hybrid' | 'popularity'
+ * @query   limit?: number (default: 10)
+ * @query   categoryId?: number (filter by category)
+ */
+router.get('/:userId', (req, res) => {
+  return recommendationController.getRecommendations(req, res);
 });
 
 export default router;

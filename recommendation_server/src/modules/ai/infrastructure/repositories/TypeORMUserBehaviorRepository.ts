@@ -19,6 +19,16 @@ import { DeviceType } from '@/modules/users/enum/user-session.enum';
 export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
   private repository: Repository<UserBehaviorLog>;
   private sessionRepository: Repository<UserSession>;
+  private readonly nonImpressionViewClause =
+    "(log.action_type != :viewAction OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) != :impressionEvent)";
+  private readonly preferenceWeightByAction: Partial<Record<UserActionType, number>> = {
+    [UserActionType.VIEW]: 1,
+    [UserActionType.CLICK]: 2,
+    [UserActionType.ADD_TO_CART]: 4,
+    [UserActionType.PURCHASE]: 6,
+    [UserActionType.WISHLIST_ADD]: 5,
+    [UserActionType.REVIEW_VIEW]: 3,
+  };
 
   constructor() {
     this.repository = AppDataSource.getRepository(UserBehaviorLog);
@@ -58,16 +68,33 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
       queryBuilder.andWhere('log.action_type IN (:...actionTypes)', { actionTypes });
     }
 
+    queryBuilder.andWhere(this.nonImpressionViewClause, {
+      viewAction: UserActionType.VIEW,
+      impressionEvent: 'impression',
+    });
+
     const logs = await queryBuilder.getMany();
 
-    return logs.map((log) => ({
-      userId: log.user_id!,
-      productId: log.product_id,
-      categoryId: undefined, // TODO: Join with product to get category
-      behaviorType: this.mapActionToBehaviorType(log.action_type),
-      metadata: log.metadata as any,
-      timestamp: log.created_at,
-    }));
+    const behaviorHistory: DomainUserBehaviorLog[] = [];
+
+    for (const log of logs) {
+      const behaviorType = this.mapActionToBehaviorType(log.action_type);
+
+      if (!behaviorType) {
+        continue;
+      }
+
+      behaviorHistory.push({
+        userId: log.user_id!,
+        productId: log.product_id,
+        categoryId: undefined, // TODO: Join with product to get category
+        behaviorType,
+        metadata: log.metadata as any,
+        timestamp: log.created_at,
+      });
+    }
+
+    return behaviorHistory;
   }
 
   async deriveUserPreferences(userId: number): Promise<UserPreference> {
@@ -81,6 +108,10 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
       .andWhere('log.created_at >= :since', {
         since: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
       })
+      .andWhere(this.nonImpressionViewClause, {
+        viewAction: UserActionType.VIEW,
+        impressionEvent: 'impression',
+      })
       .orderBy('log.created_at', 'DESC')
       .limit(500)
       .getMany();
@@ -92,22 +123,26 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
 
     for (const log of recentLogs) {
       if (log.product) {
+        const signalWeight = this.getPreferenceWeight(log.action_type);
+
         // Count category occurrences
         const categoryId = (log.product as any).category_id;
         if (categoryId) {
-          categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+          categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + signalWeight);
         }
 
         // Count brand occurrences
         const brandId = (log.product as any).brand_id;
         if (brandId) {
-          brandMap.set(brandId, (brandMap.get(brandId) || 0) + 1);
+          brandMap.set(brandId, (brandMap.get(brandId) || 0) + signalWeight);
         }
 
         // Track prices
         const basePrice = Number((log.product as any).base_price);
         if (Number.isFinite(basePrice) && basePrice > 0) {
-          prices.push(basePrice);
+          for (let index = 0; index < signalWeight; index += 1) {
+            prices.push(basePrice);
+          }
         }
       }
     }
@@ -154,6 +189,10 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
       .andWhere('log.created_at >= :since', {
         since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
       })
+      .andWhere(this.nonImpressionViewClause, {
+        viewAction: UserActionType.VIEW,
+        impressionEvent: 'impression',
+      })
       .groupBy('log.product_id')
       .orderBy('count', 'DESC')
       .limit(limit);
@@ -175,6 +214,10 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
       .select('DISTINCT log.product_id')
       .where('log.user_id = :userId', { userId })
       .andWhere('log.product_id IS NOT NULL')
+      .andWhere(this.nonImpressionViewClause, {
+        viewAction: UserActionType.VIEW,
+        impressionEvent: 'impression',
+      })
       .getRawMany();
 
     const productIds = userProducts.map((p) => p.product_id);
@@ -190,6 +233,10 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
       .where('log.product_id IN (:...productIds)', { productIds })
       .andWhere('log.user_id != :userId', { userId })
       .andWhere('log.user_id IS NOT NULL')
+      .andWhere(this.nonImpressionViewClause, {
+        viewAction: UserActionType.VIEW,
+        impressionEvent: 'impression',
+      })
       .groupBy('log.user_id')
       .orderBy('commonProducts', 'DESC')
       .limit(limit)
@@ -217,19 +264,23 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
   /**
    * Map persistence UserActionType to domain BehaviorType
    */
-  private mapActionToBehaviorType(actionType: UserActionType): BehaviorType {
-    const mapping: Record<UserActionType, BehaviorType> = {
+  private mapActionToBehaviorType(actionType: UserActionType): BehaviorType | null {
+    const mapping: Partial<Record<UserActionType, BehaviorType | null>> = {
       [UserActionType.VIEW]: BehaviorType.VIEW,
       [UserActionType.CLICK]: BehaviorType.VIEW,
       [UserActionType.ADD_TO_CART]: BehaviorType.ADD_TO_CART,
-      [UserActionType.REMOVE_FROM_CART]: BehaviorType.ADD_TO_CART,
+      [UserActionType.REMOVE_FROM_CART]: null,
       [UserActionType.PURCHASE]: BehaviorType.PURCHASE,
       [UserActionType.SEARCH]: BehaviorType.SEARCH,
       [UserActionType.WISHLIST_ADD]: BehaviorType.WISHLIST,
       [UserActionType.REVIEW_VIEW]: BehaviorType.REVIEW,
     };
 
-    return mapping[actionType] || BehaviorType.VIEW;
+    return mapping[actionType] ?? null;
+  }
+
+  private getPreferenceWeight(actionType: UserActionType): number {
+    return this.preferenceWeightByAction[actionType] || 1;
   }
 
   private async resolveSession(userId: number, startedAt: Date): Promise<UserSession> {

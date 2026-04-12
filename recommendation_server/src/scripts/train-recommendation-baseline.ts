@@ -119,6 +119,35 @@ const normalizeReason = (row: DatasetRow): string => {
   return 'based on recent browsing behavior';
 };
 
+const normalizeRecommendationScores = (
+  recommendations: Array<{
+    productId: number;
+    score: number;
+    reason: string;
+  }>
+): Array<{
+  productId: number;
+  score: number;
+  reason: string;
+}> => {
+  const maxScore = recommendations.reduce(
+    (currentMax, recommendation) => Math.max(currentMax, recommendation.score),
+    0
+  );
+
+  if (maxScore <= 0) {
+    return recommendations.map((recommendation) => ({
+      ...recommendation,
+      score: 0,
+    }));
+  }
+
+  return recommendations.map((recommendation) => ({
+    ...recommendation,
+    score: Number((recommendation.score / maxScore).toFixed(6)),
+  }));
+};
+
 async function loadDataset(inputPath: string): Promise<DatasetRow[]> {
   const rawCsv = await readFile(inputPath, 'utf8');
   const lines = rawCsv
@@ -254,19 +283,21 @@ async function trainBaselineModel(): Promise<void> {
       }
     }
 
-    recommendationsByUser[String(userId)] = Array.from(candidateScores.entries())
-      .map(([productId, score]) => {
-        const reasons = candidateReasons.get(productId) || [];
-        const uniqueReason = Array.from(new Set(reasons))[0] || 'similar user-item interactions';
+    recommendationsByUser[String(userId)] = normalizeRecommendationScores(
+      Array.from(candidateScores.entries())
+        .map(([productId, score]) => {
+          const reasons = candidateReasons.get(productId) || [];
+          const uniqueReason = Array.from(new Set(reasons))[0] || 'similar user-item interactions';
 
-        return {
-          productId,
-          score: Number(score.toFixed(6)),
-          reason: uniqueReason,
-        };
-      })
-      .sort((left, right) => right.score - left.score)
-      .slice(0, topNRecommendations);
+          return {
+            productId,
+            score,
+            reason: uniqueReason,
+          };
+        })
+        .sort((left, right) => right.score - left.score)
+        .slice(0, topNRecommendations)
+    );
   }
 
   const modelOutput: RecommendationOutput = {

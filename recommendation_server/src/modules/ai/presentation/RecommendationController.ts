@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
+import { access, stat } from 'fs/promises';
 import { container } from '../di/container';
 import { AppResponse } from '@/common/success.response';
 import { HttpStatusCode } from '@/constants/status-code';
+import path from 'path';
+import { AppDataSource } from '@/config/database.config';
+import { RecommendationCache } from '../entity/recommendation-cache';
+import { UserBehaviorLog } from '../entity/user-behavior-log';
+import { UserActionType } from '../enum/user-behavior.enum';
 
 /**
  * Presentation Layer: Recommendation Controller
@@ -15,6 +21,127 @@ import { HttpStatusCode } from '@/constants/status-code';
  * Controllers should be thin and not contain business logic.
  */
 export class RecommendationController {
+  private readonly validStrategies = ['collaborative', 'content', 'hybrid', 'popularity'];
+
+  /**
+   * GET /api/recommendations/status
+   *
+   * Lightweight operational status for the recommendation system.
+   */
+  async getStatus(_req: Request, res: Response): Promise<Response> {
+    try {
+      const engineMode = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase() || 'content_based';
+      const configuredModelPath = process.env.RECOMMENDATION_MODEL_PATH || 'exports/recommendation-baseline-model.json';
+      const resolvedModelPath = path.isAbsolute(configuredModelPath)
+        ? configuredModelPath
+        : path.resolve(process.cwd(), configuredModelPath);
+
+      let modelFile = {
+        configuredPath: configuredModelPath,
+        resolvedPath: resolvedModelPath,
+        exists: false,
+        sizeBytes: 0,
+        updatedAt: null as string | null,
+      };
+
+      try {
+        await access(resolvedModelPath);
+        const fileStats = await stat(resolvedModelPath);
+        modelFile = {
+          configuredPath: configuredModelPath,
+          resolvedPath: resolvedModelPath,
+          exists: true,
+          sizeBytes: fileStats.size,
+          updatedAt: fileStats.mtime.toISOString(),
+        };
+      } catch {
+        modelFile.exists = false;
+      }
+
+      const recommendationCacheRepository = AppDataSource.getRepository(RecommendationCache);
+      const behaviorLogRepository = AppDataSource.getRepository(UserBehaviorLog);
+      const now = new Date();
+
+      const [activeCacheRows, latestCacheEntry, totalBehaviorLogs, impressionLogs, nonImpressionViewLogs] =
+        await Promise.all([
+          recommendationCacheRepository
+            .createQueryBuilder('cache')
+            .select('cache.algorithm', 'algorithm')
+            .addSelect('COUNT(*)', 'count')
+            .where('cache.is_active = :isActive', { isActive: true })
+            .andWhere('cache.expires_at >= :now', { now })
+            .groupBy('cache.algorithm')
+            .getRawMany<{ algorithm: string; count: string }>(),
+          recommendationCacheRepository.findOne({
+            where: { is_active: true },
+            order: { generated_at: 'DESC' },
+          }),
+          behaviorLogRepository.count(),
+          behaviorLogRepository
+            .createQueryBuilder('log')
+            .where('log.action_type = :viewAction', { viewAction: UserActionType.VIEW })
+            .andWhere(
+              "JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) = :impressionEvent",
+              { impressionEvent: 'impression' }
+            )
+            .getCount(),
+          behaviorLogRepository
+            .createQueryBuilder('log')
+            .where('log.action_type = :viewAction', { viewAction: UserActionType.VIEW })
+            .andWhere(
+              "(JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) != :impressionEvent)",
+              { impressionEvent: 'impression' }
+            )
+            .getCount(),
+        ]);
+
+      return new AppResponse({
+        statusCode: HttpStatusCode.OK,
+        message: 'Recommendation system status retrieved successfully',
+        data: {
+          engine: {
+            mode: engineMode,
+            strategy: container.getRecommendationEngine().getStrategy(),
+          },
+          modelFile,
+          cache: {
+            activeByAlgorithm: activeCacheRows.map((row) => ({
+              algorithm: row.algorithm,
+              count: Number(row.count),
+            })),
+            latestActiveEntry: latestCacheEntry
+              ? {
+                  id: latestCacheEntry.id,
+                  algorithm: latestCacheEntry.algorithm,
+                  recommendationType: latestCacheEntry.recommendation_type,
+                  userId: latestCacheEntry.user_id ?? null,
+                  generatedAt: latestCacheEntry.generated_at.toISOString(),
+                  expiresAt: latestCacheEntry.expires_at.toISOString(),
+                  isActive: latestCacheEntry.is_active,
+                }
+              : null,
+          },
+          behaviorLogs: {
+            total: totalBehaviorLogs,
+            impressionViews: impressionLogs,
+            userInitiatedViews: nonImpressionViewLogs,
+          },
+          scheduler: {
+            enabled: process.env.RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED === 'true',
+            runOnStart: process.env.RECOMMENDATION_PIPELINE_RUN_ON_START === 'true',
+            refreshIntervalMinutes: Number(process.env.RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES || 360),
+          },
+        },
+      }).sendResponse(res);
+    } catch (error: any) {
+      console.error('Error getting recommendation status:', error);
+      return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Failed to get recommendation system status',
+      });
+    }
+  }
+
   /**
    * GET /api/recommendations/:userId
    *
@@ -36,6 +163,13 @@ export class RecommendationController {
       const categoryFilter = req.query.categoryId
         ? parseInt(req.query.categoryId as string, 10)
         : undefined;
+
+      if (strategy && !this.validStrategies.includes(strategy)) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          success: false,
+          message: `Invalid strategy. Must be one of: ${this.validStrategies.join(', ')}`,
+        });
+      }
 
       // Get use case from DI container
       const useCase = container.getRecommendationsUseCase();
@@ -90,20 +224,14 @@ export class RecommendationController {
       // Get use case from DI container
       const useCase = container.getTrackUserBehaviorUseCase();
 
-      // Execute use case (async, don't await for better performance)
-      useCase
-        .execute({
-          userId,
-          behaviorType,
-          productId,
-          categoryId,
-          metadata,
-        })
-        .catch((error) => {
-          console.error('Error tracking behavior:', error);
-        });
+      await useCase.execute({
+        userId,
+        behaviorType,
+        productId,
+        categoryId,
+        metadata,
+      });
 
-      // Return immediately (fire and forget)
       return new AppResponse({
         statusCode: HttpStatusCode.OK,
         message: 'Behavior tracked successfully',

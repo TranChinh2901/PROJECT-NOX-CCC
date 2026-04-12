@@ -27,6 +27,7 @@ const ACTION_WEIGHTS: Record<string, number> = {
   purchase: 6,
   review_view: 2,
 };
+const SUPPORTED_ACTION_TYPES = Object.keys(ACTION_WEIGHTS);
 
 const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_OUTPUT_PATH = path.join(
@@ -84,7 +85,7 @@ async function exportRecommendationDataset(): Promise<void> {
       .addSelect('product.category_id', 'category_id')
       .addSelect('product.brand_id', 'brand_id')
       .addSelect(
-        `SUM(CASE WHEN log.action_type = 'view' THEN 1 ELSE 0 END)`,
+        `SUM(CASE WHEN log.action_type IN ('view', 'click') THEN 1 ELSE 0 END)`,
         'view_count'
       )
       .addSelect(
@@ -108,6 +109,16 @@ async function exportRecommendationDataset(): Promise<void> {
       .where('log.user_id IS NOT NULL')
       .andWhere('log.product_id IS NOT NULL')
       .andWhere('log.created_at >= :since', { since })
+      .andWhere('log.action_type IN (:...actionTypes)', {
+        actionTypes: SUPPORTED_ACTION_TYPES,
+      })
+      .andWhere(
+        "(log.action_type != :viewAction OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) != :impressionEvent)",
+        {
+          viewAction: 'view',
+          impressionEvent: 'impression',
+        }
+      )
       .groupBy('log.user_id')
       .addGroupBy('log.product_id')
       .addGroupBy('product.category_id')

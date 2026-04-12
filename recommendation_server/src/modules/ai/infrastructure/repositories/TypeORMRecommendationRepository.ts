@@ -18,10 +18,13 @@ import { RecommendationType } from '../../enum/recommendation.enum';
 export class TypeORMRecommendationRepository implements IRecommendationRepository {
   private repository: Repository<RecommendationCache>;
   private readonly recommendationType = RecommendationType.PERSONALIZED;
-  private readonly algorithm = 'content_based';
+  private readonly algorithm: string;
 
   constructor() {
     this.repository = AppDataSource.getRepository(RecommendationCache);
+    this.algorithm = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase() === 'offline_model'
+      ? 'offline_model'
+      : 'content_based';
   }
 
   async findByUserId(userId: number): Promise<Recommendation[]> {
@@ -48,7 +51,7 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
     const recommendations = (latestCache.recommended_products as any[]).map((item) =>
       Recommendation.create(
         item.productId,
-        item.score,
+        this.normalizeScore(item.score),
         item.reason
       )
     );
@@ -117,6 +120,20 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
   }
 
   private buildCacheKey(userId: number): string {
-    return `user:${userId}:type:personalized:algo:content_based`;
+    return `user:${userId}:type:personalized:algo:${this.algorithm}`;
+  }
+
+  private normalizeScore(score: unknown): number {
+    const parsedScore = Number(score);
+
+    if (!Number.isFinite(parsedScore) || parsedScore <= 0) {
+      return 0;
+    }
+
+    if (parsedScore >= 1) {
+      return 1;
+    }
+
+    return parsedScore;
   }
 }

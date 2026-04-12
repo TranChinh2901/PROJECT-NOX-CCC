@@ -55,12 +55,14 @@ export class OfflineModelRecommendationEngine implements IRecommendationEngine {
         }
 
         const productFeature = productFeatureById.get(recommendation.productId);
-        if (!productFeature) {
-          return false;
-        }
+        if (request.categoryFilter) {
+          if (!productFeature) {
+            return false;
+          }
 
-        if (request.categoryFilter && productFeature.categoryId !== request.categoryFilter) {
-          return false;
+          if (productFeature.categoryId !== request.categoryFilter) {
+            return false;
+          }
         }
 
         return true;
