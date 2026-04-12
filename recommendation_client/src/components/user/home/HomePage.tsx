@@ -806,16 +806,11 @@ function HomePageContent() {
                     </div>
                   ))
                 : personalizedProducts.map((product) => (
-                    <div key={product.id} className="space-y-2">
+                    <div key={product.id}>
                       <ProductCard
                         product={product}
                         onProductClick={() => trackPersonalizedRecommendationClick(product)}
                       />
-                      {personalizedReasons[product.id] ? (
-                        <p className="px-1 text-xs font-medium uppercase tracking-[0.14em] text-[#8a5a00]">
-                          {personalizedReasons[product.id]}
-                        </p>
-                      ) : null}
                     </div>
                   ))}
             </div>
