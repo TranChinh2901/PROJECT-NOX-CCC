@@ -31,5 +31,7 @@ export const createGeminiClient = (config: {
 export const resolveGeminiRuntimeConfig = () => ({
   apiKey: loadedEnv.gemini.apiKey?.trim(),
   model: loadedEnv.gemini.model ?? DEFAULT_GEMINI_MODEL,
+  embeddingModel: loadedEnv.gemini.embeddingModel,
+  embeddingOutputDimensionality: loadedEnv.gemini.embeddingOutputDimensionality,
   baseUrl: normalizeChatbotBaseUrl(loadedEnv.gemini.baseUrl),
 });

@@ -80,6 +80,9 @@ export class Product {
   @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
   deleted_at?: Date;
 
+  @Column({ type: 'json', nullable: true, select: false })
+  embedding?: number[];
+
   @OneToMany(() => ProductVariant, variant => variant.product)
   variants?: ProductVariant[];
 

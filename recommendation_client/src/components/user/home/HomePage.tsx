@@ -15,19 +15,32 @@ import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { 
   ArrowRight,
-  BadgeCheck,
-  Search, 
+  CheckCircle,
+  FadersHorizontal,
+  Lightning,
+  MagnifyingGlass,
   ShieldCheck,
-  Filter,
-  Sparkles,
+  Sparkle,
   Truck,
-  Zap,
-} from 'lucide-react';
+  WarningCircle,
+} from '@phosphor-icons/react';
 
 const featuredDeals = [
-  { title: 'Giảm đến 30% Laptop', subtitle: 'Tiết kiệm cho thiết bị cao cấp', color: '#CA8A04', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&h=400&fit=crop' },
-  { title: 'Bộ Sưu Tập Âm Thanh Mới', subtitle: 'Trải nghiệm âm thanh sống động', color: '#3B82F6', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=400&fit=crop' },
-  { title: 'Phụ Kiện Gaming', subtitle: 'Nâng cấp thiết bị của bạn', color: '#8B5CF6', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=400&fit=crop' },
+  {
+    title: 'Laptop làm việc đã lọc sẵn',
+    subtitle: 'Model pin bền, tản ổn và màn hình đủ sạch cho lịch làm việc dài.',
+    image: 'https://picsum.photos/seed/technova-workstation/1200/900',
+  },
+  {
+    title: 'Âm thanh cá nhân cho ngày di chuyển',
+    subtitle: 'Tai nghe, loa gọn và phụ kiện đi kèm được gom theo ngữ cảnh sử dụng.',
+    image: 'https://picsum.photos/seed/technova-audio-bay/1200/900',
+  },
+  {
+    title: 'Góc gaming tối giản nhưng đúng lực',
+    subtitle: 'Bộ phụ kiện có độ hoàn thiện tốt, không kéo bạn vào những món trang trí dư thừa.',
+    image: 'https://picsum.photos/seed/technova-gaming-surface/1200/900',
+  },
 ];
 
 const expertiseSignals = [
@@ -37,7 +50,7 @@ const expertiseSignals = [
     description: 'Chọn đúng thiết bị cho học tập, sáng tạo và gaming thay vì mua theo quảng cáo.',
   },
   {
-    icon: Zap,
+    icon: Lightning,
     title: 'Danh mục chọn lọc',
     description: 'Ưu tiên model hiệu năng ổn định, thông số rõ ràng và mức giá dễ so sánh.',
   },
@@ -49,10 +62,13 @@ const expertiseSignals = [
 ];
 
 const bannerMetrics = [
-  { value: '48h', label: 'vòng quay deal mới' },
-  { value: 'Top 5%', label: 'thiết bị được chọn lọc' },
-  { value: '1:1', label: 'hỗ trợ chọn cấu hình' },
+  { value: '36h', label: 'chu kỳ làm mới deal' },
+  { value: '47.2%', label: 'mẫu đã qua vòng cắt giảm' },
+  { value: '312', label: 'cấu hình được so sánh mỗi tuần' },
 ];
+
+const getFallbackProductImage = (productId: number) =>
+  `https://picsum.photos/seed/technova-product-${productId}/900/900`;
 
 const findCategoryInTree = (
   categories: Category[],
@@ -533,10 +549,25 @@ function HomePageContent() {
 
   if (loading && isInitialLoad) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#CA8A04] border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-600">Đang tải sản phẩm...</p>
+      <div className="min-h-[100dvh] bg-[#f5f1e8] px-4">
+        <div className="mx-auto flex min-h-[100dvh] max-w-7xl items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-[0_30px_80px_-45px_rgba(28,25,23,0.35)] backdrop-blur">
+            <div className="h-3 w-28 rounded-full bg-[#e8dcc6]" />
+            <div className="mt-5 h-12 w-4/5 rounded-2xl bg-[#f2ebe0]" />
+            <div className="mt-3 h-12 w-3/5 rounded-2xl bg-[#f2ebe0]" />
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="rounded-[1.5rem] border border-[#eee4d3] bg-[#fbf8f2] p-4">
+                  <div className="h-4 w-14 rounded-full bg-[#eadfcd]" />
+                  <div className="mt-4 h-8 w-16 rounded-xl bg-[#ede4d7]" />
+                  <div className="mt-3 h-3 w-20 rounded-full bg-[#efe6da]" />
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[#8a5a00]">
+              Đang chuẩn bị danh mục
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -544,28 +575,30 @@ function HomePageContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-            <span className="text-3xl">⚠️</span>
+      <div className="min-h-[100dvh] bg-[#f5f1e8] px-4">
+        <div className="mx-auto flex min-h-[100dvh] max-w-7xl items-center justify-center">
+          <div className="max-w-md rounded-[2rem] border border-[#ead7d3] bg-white p-8 text-center shadow-[0_30px_80px_-45px_rgba(28,25,23,0.35)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f8ece9] text-[#a14f3b]">
+              <WarningCircle className="h-8 w-8" />
+            </div>
+            <h3 className="mt-5 text-2xl font-heading font-semibold tracking-tight text-[#1c1917]">
+              Có lỗi khi tải trang chủ
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-[#6b665d]">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-[#1c1917] px-6 py-3 text-sm font-semibold text-white transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+            >
+              Tải lại dữ liệu
+            </button>
           </div>
-          <h3 className="text-xl font-heading font-bold text-gray-900 mb-2">
-            Có lỗi xảy ra
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-[#CA8A04] text-white rounded-lg hover:bg-[#B47B04] transition-colors"
-          >
-            Thử lại
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 mt-10 sm:mt-10">
+    <div className="mt-10 min-h-screen bg-[#f5f1e8] sm:mt-10">
       <Suspense fallback={null}>
         <HomeSearchParamsSync
           onQueryChange={setSearchQuery}
@@ -583,7 +616,7 @@ function HomePageContent() {
         />
       ))}
       
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.16),_transparent_30%),linear-gradient(135deg,_#fdfcf8_0%,_#f7f7f5_42%,_#ffffff_100%)] pb-8 pt-8 sm:pt-20 lg:pt-24">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(202,138,4,0.14),_transparent_32%),linear-gradient(135deg,_#faf6ef_0%,_#f4efe6_48%,_#f8f7f3_100%)] pb-10 pt-8 sm:pt-20 lg:min-h-[100dvh] lg:pt-24">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CA8A04]/5 blur-[150px]" />
           <div className="hero-grid absolute inset-0 opacity-50" />
@@ -594,29 +627,33 @@ function HomePageContent() {
         <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] xl:gap-10">
             <div className="w-full">
-              <h1 className="text-4xl font-heading font-bold leading-tight text-gray-900 sm:text-5xl lg:text-[3.35rem]">
-                Chọn đúng thiết bị dễ hơn.
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8a5a00]">
+                TechNova Selection Desk
+              </p>
+              <h1 className="mt-4 text-4xl font-heading font-semibold tracking-tighter text-[#171412] sm:text-5xl lg:text-[3.7rem] lg:leading-[0.96]">
+                Chọn đúng thiết bị mà không phải
                 <span className="block text-[#8a5a00]">
-                  Mọi thứ cần xem đã được sắp sẵn cho bạn.
+                  lội qua một biển thông số lặp lại.
                 </span>
               </h1>
 
-              <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
-                Từ laptop, audio đến phụ kiện gaming, TechNova gom sẵn những mẫu đáng mua,
-                trình bày rõ thông số và ưu đãi để bạn đi nhanh tới lựa chọn phù hợp.
+              <p className="mt-5 max-w-[62ch] text-base leading-7 text-[#5f5a52] sm:text-lg">
+                Trang chủ này hoạt động như một bàn lọc mua sắm: chia rõ nhóm sản phẩm, làm nổi
+                những mẫu có tỷ lệ giá trị tốt và giữ lại đủ ngữ cảnh để bạn quyết nhanh mà không
+                mất phương hướng.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
                 <a
                   href="#catalog"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#111827] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-transform hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#171412] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_36px_-18px_rgba(23,20,18,0.48)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
                 >
                   Khám phá sản phẩm
                   <ArrowRight className="h-4 w-4" />
                 </a>
                 <a
                   href="/service"
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/85 px-5 py-3 text-sm font-semibold text-gray-800 backdrop-blur transition-colors hover:border-[#CA8A04] hover:text-[#8a5a00]"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d8c8ae] bg-white/80 px-5 py-3 text-sm font-semibold text-[#2f2a24] backdrop-blur transition-all duration-300 hover:border-[#ca8a04] hover:text-[#8a5a00] active:scale-[0.98]"
                 >
                   Xem dịch vụ tư vấn
                 </a>
@@ -626,10 +663,10 @@ function HomePageContent() {
                 {bannerMetrics.map((metric) => (
                   <GlassCard
                     key={metric.label}
-                    className="border-white/60 bg-white/80 p-4 shadow-[0_10px_30px_rgba(17,24,39,0.05)] backdrop-blur"
+                    className="border-white/70 bg-white/80 p-4 shadow-[0_20px_40px_-28px_rgba(28,25,23,0.26)] backdrop-blur"
                   >
-                    <div className="text-3xl font-heading font-bold text-slate-900">{metric.value}</div>
-                    <p className="mt-1 text-sm text-slate-500">{metric.label}</p>
+                    <div className="text-3xl font-heading font-semibold tracking-tight text-[#171412]">{metric.value}</div>
+                    <p className="mt-1 text-sm text-[#6f675c]">{metric.label}</p>
                   </GlassCard>
                 ))}
               </div>
@@ -664,8 +701,8 @@ function HomePageContent() {
                   </div>
 
                   <div className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur-md shadow-lg">
-                    <BadgeCheck className="h-4 w-4 text-[#fbbf24]" />
-                    Featured Deal
+                    <CheckCircle className="h-4 w-4 text-[#f4c96a]" />
+                    Lựa chọn đang nổi
                   </div>
 
                   <div className="absolute right-6 top-6 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-bold tracking-[0.2em] text-white/90 backdrop-blur-md">
@@ -676,8 +713,8 @@ function HomePageContent() {
 
                   <div className="absolute inset-x-0 bottom-0 z-20 p-7 sm:p-8">
                     <div className="transform transition-all duration-700">
-                      <p className="mb-4 inline-block rounded-full bg-[#CA8A04]/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#fde047] border border-[#CA8A04]/30 backdrop-blur-sm">
-                        TechNova Pick
+                      <p className="mb-4 inline-block rounded-full border border-[#ca8a04]/30 bg-[#ca8a04]/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#fde68a] backdrop-blur-sm">
+                        Đề cử theo ngữ cảnh
                       </p>
                       
                       <div className="relative h-[110px]">
@@ -690,11 +727,11 @@ function HomePageContent() {
                                 : 'opacity-0 translate-y-4 pointer-events-none'
                             }`}
                           >
-                            <h2 className="text-[1.9rem] font-heading font-bold leading-tight text-white drop-shadow-lg sm:text-[2.35rem]">
+                            <h2 className="text-[1.9rem] font-heading font-semibold tracking-tight text-white drop-shadow-lg sm:text-[2.35rem]">
                               {deal.title}
                             </h2>
                             <p className="mt-3 text-sm leading-relaxed text-slate-200 drop-shadow-md line-clamp-2">
-                              {deal.subtitle}. Thay vì banner tĩnh, mỗi khung hình nhấn vào một ngữ cảnh mua hàng khác nhau để trang chủ có nhịp và có chủ đích.
+                              {deal.subtitle} Mỗi khung hình giữ cùng một bảng màu và chỉ thay đổi hoàn cảnh mua hàng để phần hero có nhịp nhưng không bị ồn.
                             </p>
                           </div>
                         ))}
@@ -729,14 +766,14 @@ function HomePageContent() {
               return (
                 <GlassCard
                   key={signal.title}
-                  className="group border-white/70 bg-white/80 p-5 shadow-[0_14px_44px_rgba(17,24,39,0.06)] backdrop-blur transition-transform hover:-translate-y-1"
+                  className="group border-white/70 bg-white/80 p-5 shadow-[0_18px_40px_-24px_rgba(28,25,23,0.2)] backdrop-blur transition-transform duration-300 hover:-translate-y-1"
                   style={{ animationDelay: `${index * 120}ms` }}
                 >
-                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#CA8A04]/10 text-[#8a5a00]">
+                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ca8a04]/10 text-[#8a5a00]">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-heading font-bold text-gray-900">{signal.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-600">{signal.description}</p>
+                  <h3 className="text-lg font-heading font-semibold tracking-tight text-[#171412]">{signal.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#625c54]">{signal.description}</p>
                 </GlassCard>
               );
             })}
@@ -744,15 +781,15 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="sticky top-28 z-40 border-b border-gray-200 bg-white/95 py-4 shadow-sm backdrop-blur-lg">
+      <section className="sticky top-28 z-40 border-b border-[#e6ddcf] bg-white/90 py-4 shadow-[0_12px_28px_-24px_rgba(28,25,23,0.42)] backdrop-blur-lg">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setSelectedCategory(null)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                 selectedCategory === null
-                  ? 'bg-[#CA8A04] text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#171412] text-white shadow-[0_12px_24px_-16px_rgba(23,20,18,0.5)]'
+                  : 'bg-[#f1ece3] text-[#4f4a43] hover:bg-[#e8dece]'
               }`}
             >
               <span className="text-sm font-medium">Tất Cả</span>
@@ -763,8 +800,8 @@ function HomePageContent() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                   selectedCategory === cat.id
-                    ? 'bg-[#CA8A04] text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-[#171412] text-white shadow-[0_12px_24px_-16px_rgba(23,20,18,0.5)]'
+                    : 'bg-[#f1ece3] text-[#4f4a43] hover:bg-[#e8dece]'
                 }`}
               >
                 <span className="text-sm font-medium">{cat.name}</span>
@@ -775,16 +812,16 @@ function HomePageContent() {
       </section>
 
       {(personalizedLoading || personalizedProducts.length > 0) && (
-        <section className="py-10">
+        <section className="py-12">
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-6">
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#8a5a00]">
                 {recommendationBlockTitle}
               </p>
-              <h2 className="mt-2 text-2xl font-heading font-bold text-gray-900">
+              <h2 className="mt-2 text-2xl font-heading font-semibold tracking-tight text-[#171412]">
                 {recommendationBlockSubtitle}
               </h2>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 max-w-[58ch] text-sm leading-6 text-[#625c54]">
                 {recommendationBlockDescription}
               </p>
             </div>
@@ -818,27 +855,30 @@ function HomePageContent() {
         </section>
       )}
 
-      <section id="catalog" className="py-12">
+      <section id="catalog" className="py-14">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-heading font-bold text-gray-900">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#8a5a00]">
+                Danh mục mở rộng
+              </p>
+              <h2 className="mt-2 text-2xl font-heading font-semibold tracking-tight text-[#171412]">
                 {selectedCategory === null
                   ? 'Tất Cả Sản Phẩm'
                   : findCategoryInTree(categories, (category) => category.id === selectedCategory)?.name}
               </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {filteredProducts.length} sản phẩm
-            </p>
-          </div>
+              <p className="mt-1 text-sm text-[#6f675c]">
+                {filteredProducts.length} sản phẩm
+              </p>
+            </div>
             
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <FadersHorizontal className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7f766a]" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="pl-10 pr-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 text-sm focus:border-[#CA8A04] focus:outline-none cursor-pointer shadow-sm"
+                  className="cursor-pointer rounded-full border border-[#ddd3c3] bg-white px-10 py-2 text-sm text-[#171412] shadow-sm focus:border-[#ca8a04] focus:outline-none"
                 >
                   <option value="featured">Nổi Bật</option>
                   <option value="price-low">Giá: Thấp đến Cao</option>
@@ -886,7 +926,7 @@ function HomePageContent() {
             <div className="mt-10 flex justify-center">
               <button
                 onClick={() => setVisibleCount((prev) => prev + INITIAL_VISIBLE_PRODUCTS)}
-                className="px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors"
+                className="rounded-full border border-[#d8c8ae] bg-white px-5 py-2.5 text-sm font-medium text-[#2f2a24] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#ca8a04] active:scale-[0.98]"
               >
                 Xem thêm
               </button>
@@ -894,14 +934,14 @@ function HomePageContent() {
           )}
 
           {!loading && filteredProducts.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                <Search className="w-8 h-8 text-gray-400" />
+            <div className="rounded-[2rem] border border-dashed border-[#d7ccb9] bg-white/70 px-6 py-16 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f2ebe0] text-[#8a5a00]">
+                <MagnifyingGlass className="h-8 w-8" />
               </div>
-              <h3 className="text-xl font-heading font-bold text-gray-900 mb-2">
+              <h3 className="mb-2 text-xl font-heading font-semibold tracking-tight text-[#171412]">
                 Không tìm thấy sản phẩm
               </h3>
-              <p className="text-gray-500">
+              <p className="text-[#6b665d]">
                 Hãy thử điều chỉnh tìm kiếm hoặc bộ lọc danh mục
               </p>
             </div>
@@ -938,7 +978,7 @@ function ProductCard({
 
   const primaryImage = product.images?.find(img => img.is_primary)?.image_url || 
                        product.images?.[0]?.image_url ||
-                       'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop';
+                       getFallbackProductImage(product.id);
   const destinationHref = buildProductPath(product);
   const categoryLabel = product.category?.name ?? 'Thiết bị chọn lọc';
   const soldCount = product.sold_count ?? 0;
@@ -948,7 +988,7 @@ function ProductCard({
       <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top,#fff7e6_0%,#f8f5ef_46%,#f3efe6_100%)]">
         {product.is_featured && (
           <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#171717] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-lg shadow-black/10 sm:left-4 sm:top-4 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.18em]">
-            <Sparkles className="h-3 w-3 text-[#f6c453] sm:h-3.5 sm:w-3.5" />
+            <Sparkle className="h-3 w-3 text-[#f6c453] sm:h-3.5 sm:w-3.5" />
             Nổi bật
           </div>
         )}
@@ -1006,7 +1046,7 @@ function ProductCard({
         </div>
 
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#7a6a4a] sm:mt-3 sm:gap-2 sm:text-xs">
-          <BadgeCheck className="h-3.5 w-3.5 text-[#c58a10]" />
+          <CheckCircle className="h-3.5 w-3.5 text-[#c58a10]" />
           <span>Đã bán {soldCount.toLocaleString('vi-VN')}</span>
         </div>
 

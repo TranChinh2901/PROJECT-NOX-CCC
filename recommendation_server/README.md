@@ -238,6 +238,7 @@ npm run migration:run
 # 4. Seed data
 npm run seed
 npm run seed:ecommerce
+npm run embed:products
 
 # 5. Start development server
 npm run dev
@@ -287,6 +288,14 @@ main.ts                   // Application entry point
 - **Error: `EADDRINUSE: address already in use :::5000`**
   - Kill the process: `npx kill-port 5000`
   - Or change `PORT` in `.env` to a different value (e.g., `5001`)
+
+## License
+
+This project is licensed under the MIT License.
+
+## Author
+
+-Tranchinh2901
 
 ## License
 

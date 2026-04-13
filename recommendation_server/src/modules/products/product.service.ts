@@ -14,6 +14,8 @@ import { AppError } from "@/common/error.response";
 import { HttpStatusCode } from "@/constants/status-code";
 import { ErrorCode } from "@/constants/error-code";
 import Fuse from "fuse.js";
+import { maybePlanStorefrontSearch } from "@/modules/products/product-search-planner";
+import { getEmbedding } from "@/utils/chatbot/chatbot-embeddings";
 
 export interface ProductFilterOptions {
   category_id?: number;
@@ -32,11 +34,15 @@ export interface ProductSearchContext {
   categoryIds?: number[];
   brandNames?: string[];
   queryVariants?: string[];
+  queryTokens?: string[];
+  distinctiveQueryTokens?: string[];
+  enforceQueryTokenMatch?: boolean;
   requiredTerms?: string[];
   preferredTerms?: string[];
   avoidTerms?: string[];
   strictCategory?: boolean;
   strictBrand?: boolean;
+  queryEmbedding?: number[];
 }
 
 type SearchableProductEntry = {
@@ -45,6 +51,21 @@ type SearchableProductEntry = {
   normalizedLeafCategoryName: string;
   normalizedBrandName: string;
   searchText: string;
+};
+
+type SearchCategoryNode = {
+  id: number;
+  parentId: number | null;
+  normalizedName: string;
+  normalizedLeafName: string;
+  normalizedAliases: string[];
+  normalizedLineageNames: string[];
+  normalizedLineagePath: string;
+};
+
+type TaxonomyMatchResult = {
+  categoryIds: number[];
+  matchedByAliasOnly: boolean;
 };
 
 const SEARCH_NOISE_PREFIXES = [
@@ -73,6 +94,35 @@ const SEARCH_QUERY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bdanh choi game\b/g, 'gaming'],
   [/\bcho game\b/g, 'gaming'],
 ];
+
+const STATIC_CATEGORY_ALIASES: Record<string, string[]> = {
+  'dien thoai': ['smartphone', 'phone', 'mobile', 'cellphone'],
+  laptop: ['may tinh', 'may tinh xach tay', 'notebook', 'computer'],
+  macbook: ['may tinh', 'laptop apple'],
+  'pc gaming': ['may tinh', 'gaming pc', 'desktop', 'pc', 'may bo', 'computer'],
+  'pc van phong': ['may tinh', 'desktop van phong', 'pc van phong', 'may bo van phong'],
+  'mini pc': ['may tinh', 'mini computer', 'mini desktop'],
+  'may tinh bang': ['tablet'],
+  'tai nghe': ['headphone', 'headset', 'earbuds', 'airpods', 'nghe nhac', 'am nhac', 'thiet bi nghe nhac'],
+  loa: ['speaker', 'loa bluetooth', 'nghe nhac', 'am nhac', 'thiet bi nghe nhac'],
+  'dong ho thong minh': ['smartwatch', 'watch'],
+  'sac pin du phong': ['charger', 'cu sac', 'power bank', 'pin du phong'],
+  'man hinh': ['monitor', 'display', 'screen'],
+};
+
+const NON_DISTINCTIVE_QUERY_TOKENS = new Set([
+  'may',
+  'san',
+  'pham',
+  'thiet',
+  'bi',
+  'cong',
+  'nghe',
+  'cho',
+  'toi',
+  'tim',
+  'mua',
+]);
 
 const normalizeSearchText = (value: unknown): string =>
   String(value ?? '')
@@ -141,7 +191,212 @@ const normalizeSearchValues = (values: string[] | undefined): string[] =>
     ),
   );
 
-const buildSearchableProductEntry = (product: Product): SearchableProductEntry => {
+const buildSearchQueryTokens = (query: string): string[] =>
+  Array.from(
+    new Set(
+      normalizeSearchText(query)
+        .split(' ')
+        .map((value) => value.trim())
+        .filter((value) => value.length >= 2),
+    ),
+  );
+
+const buildDistinctiveSearchTokens = (query: string): string[] =>
+  buildSearchQueryTokens(query).filter((value) => !NON_DISTINCTIVE_QUERY_TOKENS.has(value));
+
+const searchableTextContainsTerm = (searchableText: string, term: string): boolean => {
+  const normalizedTerm = normalizeSearchText(term);
+  if (!normalizedTerm) {
+    return false;
+  }
+
+  return ` ${searchableText} `.includes(` ${normalizedTerm} `);
+};
+
+const buildCategorySearchNodeMap = (categories: Category[]): Map<number, SearchCategoryNode> => {
+  const normalizedBaseNodes = new Map(
+    categories.map((category) => [
+      category.id,
+      {
+        id: category.id,
+        parentId: category.parent_id ?? null,
+        normalizedName: normalizeSearchText(category.name),
+        normalizedLeafName: normalizeSearchText(getLeafCategoryName(category.name)),
+        normalizedAliases: Array.from(
+          new Set(
+            [
+              ...(STATIC_CATEGORY_ALIASES[normalizeSearchText(category.name)] ?? []),
+              ...(STATIC_CATEGORY_ALIASES[normalizeSearchText(getLeafCategoryName(category.name))] ?? []),
+            ]
+              .map((alias) => normalizeSearchText(alias))
+              .filter((alias) => alias.length >= 2),
+          ),
+        ),
+      },
+    ]),
+  );
+  const lineageCache = new Map<number, string[]>();
+
+  const collectLineageNames = (categoryId: number, visited: Set<number> = new Set()): string[] => {
+    const cachedLineage = lineageCache.get(categoryId);
+    if (cachedLineage) {
+      return cachedLineage;
+    }
+
+    const categoryNode = normalizedBaseNodes.get(categoryId);
+    if (!categoryNode || visited.has(categoryId)) {
+      return [];
+    }
+
+    const nextVisited = new Set(visited).add(categoryId);
+    const parentLineage = categoryNode.parentId !== null
+      ? collectLineageNames(categoryNode.parentId, nextVisited)
+      : [];
+    const lineage = Array.from(
+      new Set(
+        [...parentLineage, categoryNode.normalizedName, categoryNode.normalizedLeafName].filter(
+          (value) => value.length >= 2,
+        ),
+      ),
+    );
+
+    lineageCache.set(categoryId, lineage);
+
+    return lineage;
+  };
+
+  return new Map(
+    categories.map((category) => {
+      const normalizedBaseNode = normalizedBaseNodes.get(category.id)!;
+      const normalizedLineageNames = collectLineageNames(category.id);
+
+      return [
+        category.id,
+        {
+          ...normalizedBaseNode,
+          normalizedLineageNames,
+          normalizedLineagePath: normalizedLineageNames.join(' ').trim(),
+        },
+      ];
+    }),
+  );
+};
+
+const collectDescendantCategoryIds = (
+  categoryNodeMap: Map<number, SearchCategoryNode>,
+  matchedCategoryIds: number[],
+): number[] => {
+  const childIdsByParentId = new Map<number, number[]>();
+
+  for (const categoryNode of categoryNodeMap.values()) {
+    if (categoryNode.parentId === null) {
+      continue;
+    }
+
+    const childIds = childIdsByParentId.get(categoryNode.parentId) ?? [];
+    childIds.push(categoryNode.id);
+    childIdsByParentId.set(categoryNode.parentId, childIds);
+  }
+
+  const descendantIds = new Set<number>(matchedCategoryIds);
+  const queue = [...matchedCategoryIds];
+
+  while (queue.length > 0) {
+    const currentCategoryId = queue.shift();
+    if (currentCategoryId === undefined) {
+      continue;
+    }
+
+    for (const childCategoryId of childIdsByParentId.get(currentCategoryId) ?? []) {
+      if (descendantIds.has(childCategoryId)) {
+        continue;
+      }
+
+      descendantIds.add(childCategoryId);
+      queue.push(childCategoryId);
+    }
+  }
+
+  return Array.from(descendantIds);
+};
+
+const collectTaxonomyMatchedCategoryIds = (
+  categoryNodeMap: Map<number, SearchCategoryNode>,
+  normalizedQuery: string,
+): TaxonomyMatchResult => {
+  const directlyMatchedCategoryIds = Array.from(categoryNodeMap.values())
+    .filter((categoryNode) =>
+      [categoryNode.normalizedName, categoryNode.normalizedLeafName].some(
+        (value) => value.length >= 2 && normalizedQuery.includes(value),
+      ),
+    )
+    .map((categoryNode) => categoryNode.id);
+  const aliasMatchedCategoryIds = directlyMatchedCategoryIds.length > 0
+    ? []
+    : Array.from(categoryNodeMap.values())
+        .filter((categoryNode) =>
+          categoryNode.normalizedAliases.some(
+            (alias) => alias.length >= 2 && normalizedQuery.includes(alias),
+          ),
+        )
+        .map((categoryNode) => categoryNode.id);
+  const matchedCategoryIds = directlyMatchedCategoryIds.length > 0
+    ? directlyMatchedCategoryIds
+    : aliasMatchedCategoryIds;
+
+  if (matchedCategoryIds.length === 0) {
+    return {
+      categoryIds: [],
+      matchedByAliasOnly: false,
+    };
+  }
+
+  const directlyMatchedCategoryIdSet = new Set(matchedCategoryIds);
+  const childIdsByParentId = new Map<number, number[]>();
+
+  for (const categoryNode of categoryNodeMap.values()) {
+    if (categoryNode.parentId === null) {
+      continue;
+    }
+
+    const childIds = childIdsByParentId.get(categoryNode.parentId) ?? [];
+    childIds.push(categoryNode.id);
+    childIdsByParentId.set(categoryNode.parentId, childIds);
+  }
+
+  const hasDirectlyMatchedDescendant = (categoryId: number): boolean => {
+    const queue = [...(childIdsByParentId.get(categoryId) ?? [])];
+
+    while (queue.length > 0) {
+      const childCategoryId = queue.shift();
+      if (childCategoryId === undefined) {
+        continue;
+      }
+
+      if (directlyMatchedCategoryIdSet.has(childCategoryId)) {
+        return true;
+      }
+
+      queue.push(...(childIdsByParentId.get(childCategoryId) ?? []));
+    }
+
+    return false;
+  };
+
+  const preferredMatchedCategoryIds = matchedCategoryIds.filter(
+    (categoryId) => !hasDirectlyMatchedDescendant(categoryId),
+  );
+
+  return {
+    categoryIds: collectDescendantCategoryIds(categoryNodeMap, preferredMatchedCategoryIds),
+    matchedByAliasOnly: directlyMatchedCategoryIds.length === 0 && aliasMatchedCategoryIds.length > 0,
+  };
+};
+
+const buildSearchableProductEntry = (
+  product: Product,
+  categoryNode?: SearchCategoryNode,
+): SearchableProductEntry => {
   const leafCategoryName = getLeafCategoryName(product.category?.name);
   const searchTextParts = [
     product.name,
@@ -151,6 +406,8 @@ const buildSearchableProductEntry = (product: Product): SearchableProductEntry =
     product.brand?.name,
     product.category?.name,
     leafCategoryName,
+    categoryNode?.normalizedLineagePath,
+    ...(categoryNode?.normalizedLineageNames ?? []),
     ...(product.variants ?? []).flatMap((variant) => [variant.color, variant.size, variant.material]),
   ]
     .map((value) => normalizeSearchText(value))
@@ -176,6 +433,19 @@ const collectMatchingLeafCategories = (
         .filter((leafCategoryName) => leafCategoryName.length >= 2 && normalizedQuery.includes(leafCategoryName)),
     ),
   );
+
+const cosineSimilarity = (vecA: number[], vecB: number[]): number => {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+};
 
 const runSearch = (
   entries: SearchableProductEntry[],
@@ -203,6 +473,8 @@ const runSearch = (
   const preferredTerms = normalizeSearchValues(context?.preferredTerms);
   const avoidTerms = normalizeSearchValues(context?.avoidTerms);
   const preferredBrands = normalizeSearchValues(context?.brandNames);
+  const queryTokens = normalizeSearchValues(context?.queryTokens);
+  const distinctiveQueryTokens = normalizeSearchValues(context?.distinctiveQueryTokens);
 
   for (const queryVariant of queryVariants) {
     const searchResults = fuse.search(queryVariant);
@@ -211,15 +483,36 @@ const runSearch = (
       const productId = result.item.product.id;
       let nextScore = result.score ?? Number.POSITIVE_INFINITY;
       const searchableText = result.item.searchText;
+      const matchedQueryTokens = queryTokens.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
 
-      const missingRequiredTerms = requiredTerms.filter((term) => !searchableText.includes(term)).length;
-      const matchedPreferredTerms = preferredTerms.filter((term) => searchableText.includes(term)).length;
-      const matchedAvoidTerms = avoidTerms.filter((term) => searchableText.includes(term)).length;
+      const missingRequiredTerms = requiredTerms.filter((term) => !searchableTextContainsTerm(searchableText, term)).length;
+      const matchedPreferredTerms = preferredTerms.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+      const matchedAvoidTerms = avoidTerms.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
       const brandMatched = preferredBrands.includes(result.item.normalizedBrandName);
+
+      const matchedDistinctiveQueryTokens = distinctiveQueryTokens.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+
+      if (
+        context?.enforceQueryTokenMatch !== false &&
+        distinctiveQueryTokens.length > 0 &&
+        matchedDistinctiveQueryTokens === 0
+      ) {
+        continue;
+      }
+
+      if (
+        context?.strictCategory &&
+        context.enforceQueryTokenMatch !== false &&
+        queryTokens.length > 0 &&
+        matchedQueryTokens === 0
+      ) {
+        continue;
+      }
 
       nextScore += missingRequiredTerms * 0.35;
       nextScore -= matchedPreferredTerms * 0.08;
       nextScore += matchedAvoidTerms * 0.2;
+      nextScore += Math.max(0, queryTokens.length - matchedQueryTokens) * 0.04;
 
       if (brandMatched) {
         nextScore -= 0.12;
@@ -232,6 +525,76 @@ const runSearch = (
           entry: result.item,
           score: nextScore,
         });
+      }
+    }
+  }
+
+  const hasTextualMatches = bestMatchesByProductId.size > 0;
+
+  // 2. Semantic search
+  if (context?.queryEmbedding) {
+    for (const entry of entries) {
+      if (!entry.product.embedding) continue;
+      
+      const sim = cosineSimilarity(context.queryEmbedding, entry.product.embedding);
+      if (sim > 0.65) {
+        const productId = entry.product.id;
+        const searchableText = entry.searchText;
+        const matchedQueryTokens = queryTokens.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+        const missingRequiredTerms = requiredTerms.filter((term) => !searchableTextContainsTerm(searchableText, term)).length;
+        const matchedPreferredTerms = preferredTerms.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+        const matchedAvoidTerms = avoidTerms.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+        const brandMatched = preferredBrands.includes(entry.normalizedBrandName);
+
+        const matchedDistinctiveQueryTokens = distinctiveQueryTokens.filter((term) => searchableTextContainsTerm(searchableText, term)).length;
+
+        if (
+          hasTextualMatches &&
+          context?.enforceQueryTokenMatch !== false &&
+          queryTokens.length > 0 &&
+          matchedQueryTokens === 0 &&
+          matchedDistinctiveQueryTokens === 0
+        ) {
+          continue;
+        }
+
+        if (sim < 0.75) {
+          if (
+            context?.enforceQueryTokenMatch !== false &&
+            distinctiveQueryTokens.length > 0 &&
+            matchedDistinctiveQueryTokens === 0
+          ) {
+            continue;
+          }
+
+          if (
+            context?.strictCategory &&
+            context.enforceQueryTokenMatch !== false &&
+            queryTokens.length > 0 &&
+            matchedQueryTokens === 0
+          ) {
+            continue;
+          }
+        }
+
+        let nextScore = (1.0 - sim) * 2; 
+        nextScore += missingRequiredTerms * 0.35;
+        nextScore -= matchedPreferredTerms * 0.08;
+        nextScore += matchedAvoidTerms * 0.2;
+        nextScore += Math.max(0, queryTokens.length - matchedQueryTokens) * 0.04;
+
+        if (brandMatched) {
+          nextScore -= 0.12;
+        }
+
+        const currentBest = bestMatchesByProductId.get(productId);
+
+        if (!currentBest || nextScore < currentBest.score) {
+          bestMatchesByProductId.set(productId, {
+            entry,
+            score: nextScore,
+          });
+        }
       }
     }
   }
@@ -519,42 +882,122 @@ export class ProductService {
       return { data: [], suggestions: [] };
     }
 
-    const products = await this.productRepository.find({
-      where: { is_active: true },
-      relations: ['category', 'brand', 'variants', 'images']
-    });
+    let queryEmbedding: number[] | undefined;
+    try {
+      queryEmbedding = await getEmbedding(query);
+    } catch (e) {
+      // Gracefully continue without semantic search if API key missing or network fails
+    }
 
-    const searchableEntries = products.map((product) => buildSearchableProductEntry(product));
+    const products = await this.productRepository.createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.variants', 'variants')
+      .leftJoinAndSelect('product.images', 'images')
+      .addSelect('product.embedding')
+      .where('product.is_active = :isActive', { isActive: true })
+      .getMany();
+
+    const categories = (
+      await this.categoryRepository.find({
+        where: { is_active: true },
+      })
+    ) ?? [];
+    const categoryNodeMap = buildCategorySearchNodeMap(categories);
+
+    const searchableEntries = products.map((product) =>
+      buildSearchableProductEntry(product, categoryNodeMap.get(product.category?.id ?? -1)),
+    );
     const explicitCategoryIds = Array.from(new Set((context.categoryIds ?? []).filter((value) => Number.isInteger(value))));
+    const taxonomyMatch = explicitCategoryIds.length > 0
+      ? { categoryIds: [], matchedByAliasOnly: false }
+      : collectTaxonomyMatchedCategoryIds(categoryNodeMap, normalizedQuery);
+    const preferredCategoryIds = explicitCategoryIds.length > 0
+      ? explicitCategoryIds
+      : taxonomyMatch.categoryIds;
     const explicitBrandNames = normalizeSearchValues(context.brandNames);
-    const matchedLeafCategories = explicitCategoryIds.length > 0
+    const matchedLeafCategories = preferredCategoryIds.length > 0
       ? searchableEntries
-          .filter((entry) => explicitCategoryIds.includes(entry.product.category?.id ?? -1))
+          .filter((entry) => preferredCategoryIds.includes(entry.product.category?.id ?? -1))
           .map((entry) => entry.normalizedLeafCategoryName)
       : collectMatchingLeafCategories(searchableEntries, normalizedQuery);
-    const categoryPreferredEntries = explicitCategoryIds.length > 0
-      ? searchableEntries.filter((entry) => explicitCategoryIds.includes(entry.product.category?.id ?? -1))
+    const categoryPreferredEntries = preferredCategoryIds.length > 0
+      ? searchableEntries.filter((entry) => preferredCategoryIds.includes(entry.product.category?.id ?? -1))
       : matchedLeafCategories.length > 0
         ? searchableEntries.filter((entry) => matchedLeafCategories.includes(entry.normalizedLeafCategoryName))
         : searchableEntries;
     const brandPreferredEntries = explicitBrandNames.length > 0
       ? categoryPreferredEntries.filter((entry) => explicitBrandNames.includes(entry.normalizedBrandName))
       : categoryPreferredEntries;
-    const preferredEntries = brandPreferredEntries.length > 0
-      ? brandPreferredEntries
-      : context.strictBrand
+    const plannedSearchContext = explicitCategoryIds.length === 0 && preferredCategoryIds.length === 0
+      ? await maybePlanStorefrontSearch(
+          query,
+          categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            leafName: getLeafCategoryName(category.name),
+          })),
+          { categoryMatchedByHeuristics: preferredCategoryIds.length > 0 },
+        )
+      : null;
+    const plannedCategoryIds = plannedSearchContext?.categoryIds ?? [];
+    const effectiveCategoryIds = preferredCategoryIds.length > 0 ? preferredCategoryIds : plannedCategoryIds;
+    const effectiveMatchedLeafCategories = effectiveCategoryIds.length > 0
+      ? searchableEntries
+          .filter((entry) => effectiveCategoryIds.includes(entry.product.category?.id ?? -1))
+          .map((entry) => entry.normalizedLeafCategoryName)
+      : matchedLeafCategories;
+    const effectiveCategoryPreferredEntries = effectiveCategoryIds.length > 0
+      ? searchableEntries.filter((entry) => effectiveCategoryIds.includes(entry.product.category?.id ?? -1))
+      : categoryPreferredEntries;
+    const effectiveBrandPreferredEntries = explicitBrandNames.length > 0
+      ? effectiveCategoryPreferredEntries.filter((entry) => explicitBrandNames.includes(entry.normalizedBrandName))
+      : effectiveCategoryPreferredEntries;
+    const preferredEntries = effectiveBrandPreferredEntries.length > 0
+      ? effectiveBrandPreferredEntries
+      : context.strictBrand || plannedSearchContext?.strictBrand
         ? []
-        : categoryPreferredEntries;
+        : effectiveCategoryPreferredEntries;
+    const strictCategory = context.strictCategory || preferredCategoryIds.length > 0 || Boolean(plannedSearchContext?.strictCategory && plannedCategoryIds.length > 0);
+    const normalizedSearchQuery = applySearchQueryReplacements(stripSearchNoisePrefix(normalizedQuery) || normalizedQuery);
+    const queryTokens = buildSearchQueryTokens(query);
+    const distinctiveQueryTokens = buildDistinctiveSearchTokens(normalizedSearchQuery);
+    const enforceQueryTokenMatch = !taxonomyMatch.matchedByAliasOnly;
     const queryVariants = Array.from(
       new Set([
-        ...buildSearchQueryVariants(query, matchedLeafCategories),
+        ...buildSearchQueryVariants(query, effectiveMatchedLeafCategories),
         ...normalizeSearchValues(context.queryVariants),
-      ]),
+        plannedSearchContext?.rewrittenQuery,
+        ...(plannedSearchContext?.queryVariants ?? []),
+      ].filter((value): value is string => Boolean(value))),
     );
-    const rankedEntries = runSearch(preferredEntries, queryVariants, limit, context);
-    const fallbackEntries = rankedEntries.length > 0 || preferredEntries === searchableEntries || context.strictCategory
+    const rankedEntries = runSearch(preferredEntries, queryVariants, limit, {
+      ...context,
+      brandNames: [...(context.brandNames ?? []), ...(plannedSearchContext?.brandNames ?? [])],
+      requiredTerms: [...(context.requiredTerms ?? []), ...(plannedSearchContext?.requiredTerms ?? [])],
+      preferredTerms: [...(context.preferredTerms ?? []), ...(plannedSearchContext?.preferredTerms ?? [])],
+      avoidTerms: [...(context.avoidTerms ?? []), ...(plannedSearchContext?.avoidTerms ?? [])],
+      queryTokens,
+      distinctiveQueryTokens,
+      enforceQueryTokenMatch,
+      strictCategory,
+      queryEmbedding,
+    });
+    
+    const fallbackEntries = (rankedEntries.length > 0 || preferredEntries === searchableEntries || strictCategory)
       ? rankedEntries
-      : runSearch(searchableEntries, queryVariants, limit, context);
+      : runSearch(searchableEntries, queryVariants, limit, {
+          ...context,
+          brandNames: [...(context.brandNames ?? []), ...(plannedSearchContext?.brandNames ?? [])],
+          requiredTerms: [...(context.requiredTerms ?? []), ...(plannedSearchContext?.requiredTerms ?? [])],
+          preferredTerms: [...(context.preferredTerms ?? []), ...(plannedSearchContext?.preferredTerms ?? [])],
+          avoidTerms: [...(context.avoidTerms ?? []), ...(plannedSearchContext?.avoidTerms ?? [])],
+          queryTokens,
+          distinctiveQueryTokens,
+          enforceQueryTokenMatch,
+          strictCategory: false,
+          queryEmbedding,
+        });
     const matchedProducts = fallbackEntries.map((entry) => entry.product);
 
     const suggestions = Array.from(

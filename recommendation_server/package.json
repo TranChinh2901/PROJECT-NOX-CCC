@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/main.ts",
   "scripts": {
+    "embed:products": "ts-node -r tsconfig-paths/register src/scripts/generate-product-embeddings.ts",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-users-roles.ts",
     "seed:ecommerce": "ts-node -r tsconfig-paths/register src/scripts/seed-ecommerce.ts",
     "export:recommendation-dataset": "ts-node -r tsconfig-paths/register src/scripts/export-recommendation-dataset.ts",

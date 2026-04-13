@@ -1,0 +1,120 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class AddProductEmbedding1776049824940 implements MigrationInterface {
+    name = 'AddProductEmbedding1776049824940'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE \`products\` ADD \`embedding\` json NULL`);
+        await queryRunner.query(`ALTER TABLE \`user_sessions\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`users\` CHANGE \`is_verified\` \`is_verified\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`user_addresses\` CHANGE \`is_default\` \`is_default\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`categories\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`brands\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`product_images\` CHANGE \`is_primary\` \`is_primary\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`product_variants\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`warehouses\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`warehouses\` CHANGE \`is_default\` \`is_default\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`review_helpful\` CHANGE \`is_helpful\` \`is_helpful\` tinyint NOT NULL`);
+        await queryRunner.query(`ALTER TABLE \`reviews\` CHANGE \`is_verified_purchase\` \`is_verified_purchase\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`reviews\` CHANGE \`is_approved\` \`is_approved\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`products\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`products\` CHANGE \`is_featured\` \`is_featured\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`wishlists\` CHANGE \`is_default\` \`is_default\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`wishlists\` CHANGE \`is_public\` \`is_public\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`promotions\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`recommendation_cache\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_read_archived_created\` ON \`notifications\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_read_created\` ON \`notifications\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_priority_read_created\` ON \`notifications\``);
+        await queryRunner.query(`ALTER TABLE \`notifications\` CHANGE \`is_read\` \`is_read\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notifications\` CHANGE \`is_archived\` \`is_archived\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_in_app_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_email_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_quiet_hours_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`in_app_enabled\` \`in_app_enabled\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`email_enabled\` \`email_enabled\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`push_enabled\` \`push_enabled\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`sms_enabled\` \`sms_enabled\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`order_updates\` \`order_updates\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`promotions\` \`promotions\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`recommendations\` \`recommendations\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`reviews\` \`reviews\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`price_alerts\` \`price_alerts\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`newsletter\` \`newsletter\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`system_updates\` \`system_updates\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`quiet_hours_enabled\` \`quiet_hours_enabled\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`email_digest_enabled\` \`email_digest_enabled\` tinyint NOT NULL DEFAULT 0`);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_templates_type_active\` ON \`notification_templates\``);
+        await queryRunner.query(`ALTER TABLE \`notification_templates\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_subscriptions_topic_active\` ON \`notification_subscriptions\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_subscriptions_user_active\` ON \`notification_subscriptions\``);
+        await queryRunner.query(`ALTER TABLE \`notification_subscriptions\` CHANGE \`is_active\` \`is_active\` tinyint NOT NULL DEFAULT 1`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_priority_read_created\` ON \`notifications\` (\`user_id\`, \`priority\`, \`is_read\`, \`created_at\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_read_created\` ON \`notifications\` (\`user_id\`, \`is_read\`, \`created_at\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_read_archived_created\` ON \`notifications\` (\`user_id\`, \`is_read\`, \`is_archived\`, \`created_at\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_quiet_hours_enabled\` ON \`notification_preferences\` (\`user_id\`, \`quiet_hours_enabled\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_in_app_enabled\` ON \`notification_preferences\` (\`user_id\`, \`in_app_enabled\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_email_enabled\` ON \`notification_preferences\` (\`user_id\`, \`email_enabled\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_templates_type_active\` ON \`notification_templates\` (\`type\`, \`is_active\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_subscriptions_user_active\` ON \`notification_subscriptions\` (\`user_id\`, \`is_active\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_subscriptions_topic_active\` ON \`notification_subscriptions\` (\`topic_type\`, \`topic_id\`, \`is_active\`)`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DROP INDEX \`IDX_notification_subscriptions_topic_active\` ON \`notification_subscriptions\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_subscriptions_user_active\` ON \`notification_subscriptions\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_templates_type_active\` ON \`notification_templates\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_email_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_in_app_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notification_preferences_user_quiet_hours_enabled\` ON \`notification_preferences\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_read_archived_created\` ON \`notifications\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_read_created\` ON \`notifications\``);
+        await queryRunner.query(`DROP INDEX \`IDX_notifications_user_priority_read_created\` ON \`notifications\``);
+        await queryRunner.query(`ALTER TABLE \`notification_subscriptions\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_subscriptions_user_active\` ON \`notification_subscriptions\` (\`user_id\`, \`is_active\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_subscriptions_topic_active\` ON \`notification_subscriptions\` (\`topic_type\`, \`topic_id\`, \`is_active\`)`);
+        await queryRunner.query(`ALTER TABLE \`notification_templates\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_templates_type_active\` ON \`notification_templates\` (\`type\`, \`is_active\`)`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`email_digest_enabled\` \`email_digest_enabled\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`quiet_hours_enabled\` \`quiet_hours_enabled\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`system_updates\` \`system_updates\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`newsletter\` \`newsletter\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`price_alerts\` \`price_alerts\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`reviews\` \`reviews\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`recommendations\` \`recommendations\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`promotions\` \`promotions\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`order_updates\` \`order_updates\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`sms_enabled\` \`sms_enabled\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`push_enabled\` \`push_enabled\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`email_enabled\` \`email_enabled\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`notification_preferences\` CHANGE \`in_app_enabled\` \`in_app_enabled\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_quiet_hours_enabled\` ON \`notification_preferences\` (\`user_id\`, \`quiet_hours_enabled\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_email_enabled\` ON \`notification_preferences\` (\`user_id\`, \`email_enabled\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notification_preferences_user_in_app_enabled\` ON \`notification_preferences\` (\`user_id\`, \`in_app_enabled\`)`);
+        await queryRunner.query(`ALTER TABLE \`notifications\` CHANGE \`is_archived\` \`is_archived\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`notifications\` CHANGE \`is_read\` \`is_read\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_priority_read_created\` ON \`notifications\` (\`user_id\`, \`priority\`, \`is_read\`, \`created_at\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_read_created\` ON \`notifications\` (\`user_id\`, \`is_read\`, \`created_at\`)`);
+        await queryRunner.query(`CREATE INDEX \`IDX_notifications_user_read_archived_created\` ON \`notifications\` (\`user_id\`, \`is_read\`, \`is_archived\`, \`created_at\`)`);
+        await queryRunner.query(`ALTER TABLE \`recommendation_cache\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`promotions\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`wishlists\` CHANGE \`is_public\` \`is_public\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`wishlists\` CHANGE \`is_default\` \`is_default\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`products\` CHANGE \`is_featured\` \`is_featured\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`products\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`reviews\` CHANGE \`is_approved\` \`is_approved\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`reviews\` CHANGE \`is_verified_purchase\` \`is_verified_purchase\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`review_helpful\` CHANGE \`is_helpful\` \`is_helpful\` tinyint(1) NOT NULL`);
+        await queryRunner.query(`ALTER TABLE \`warehouses\` CHANGE \`is_default\` \`is_default\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`warehouses\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`product_variants\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`product_images\` CHANGE \`is_primary\` \`is_primary\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`brands\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`categories\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`user_addresses\` CHANGE \`is_default\` \`is_default\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`users\` CHANGE \`is_verified\` \`is_verified\` tinyint(1) NOT NULL DEFAULT 0`);
+        await queryRunner.query(`ALTER TABLE \`user_sessions\` CHANGE \`is_active\` \`is_active\` tinyint(1) NOT NULL DEFAULT 1`);
+        await queryRunner.query(`ALTER TABLE \`products\` DROP COLUMN \`embedding\``);
+    }
+
+}

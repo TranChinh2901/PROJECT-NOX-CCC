@@ -60,7 +60,20 @@ export const loadedEnv = {
   gemini: {
     apiKey: firstDefined(process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY),
     model: firstDefinedOr('gemini-3-flash-preview', process.env.GEMINI_MODEL),
+    embeddingModel: firstDefinedOr('gemini-embedding-2-preview', process.env.GEMINI_EMBEDDING_MODEL),
+    embeddingOutputDimensionality: (() => {
+      const rawValue = firstDefined(process.env.GEMINI_EMBEDDING_OUTPUT_DIMENSIONALITY);
+      if (!rawValue) {
+        return undefined;
+      }
+
+      const parsed = Number(rawValue);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+    })(),
     baseUrl: firstDefined(process.env.GEMINI_BASE_URL)?.replace(/\/$/, ''),
+    storefrontSearchEnabled: firstDefinedOr('false', process.env.GEMINI_STOREFRONT_SEARCH_ENABLED) === 'true',
+    storefrontSearchTimeoutMs: toNumber(process.env.GEMINI_STOREFRONT_SEARCH_TIMEOUT_MS, 1200),
+    storefrontSearchMinConfidence: Number(firstDefinedOr('0.7', process.env.GEMINI_STOREFRONT_SEARCH_MIN_CONFIDENCE)),
     chatbotInstructions: firstDefinedOr(
       [
         'Bạn là trợ lý mua sắm AI của TechNova.',
