@@ -53,6 +53,34 @@ type SearchableProductEntry = {
   searchText: string;
 };
 
+const isMissingProductEmbeddingColumnError = (error: unknown) => {
+  const candidate = error as {
+    code?: string;
+    message?: string;
+    sqlMessage?: string;
+    driverError?: {
+      code?: string;
+      message?: string;
+      sqlMessage?: string;
+    };
+  };
+  const message = [
+    candidate.message,
+    candidate.sqlMessage,
+    candidate.driverError?.message,
+    candidate.driverError?.sqlMessage,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    candidate.code === 'ER_BAD_FIELD_ERROR' ||
+    candidate.driverError?.code === 'ER_BAD_FIELD_ERROR' ||
+    message.includes('product.embedding') ||
+    (message.includes('Unknown column') && message.includes('embedding'))
+  );
+};
+
 type SearchCategoryNode = {
   id: number;
   parentId: number | null;
@@ -889,14 +917,31 @@ export class ProductService {
       // Gracefully continue without semantic search if API key missing or network fails
     }
 
-    const products = await this.productRepository.createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.brand', 'brand')
-      .leftJoinAndSelect('product.variants', 'variants')
-      .leftJoinAndSelect('product.images', 'images')
-      .addSelect('product.embedding')
-      .where('product.is_active = :isActive', { isActive: true })
-      .getMany();
+    const buildProductSearchQuery = () =>
+      this.productRepository.createQueryBuilder('product')
+        .leftJoinAndSelect('product.category', 'category')
+        .leftJoinAndSelect('product.brand', 'brand')
+        .leftJoinAndSelect('product.variants', 'variants')
+        .leftJoinAndSelect('product.images', 'images')
+        .where('product.is_active = :isActive', { isActive: true });
+
+    let products: Product[];
+    try {
+      const productQuery = buildProductSearchQuery();
+
+      if (queryEmbedding) {
+        productQuery.addSelect('product.embedding');
+      }
+
+      products = await productQuery.getMany();
+    } catch (error) {
+      if (!queryEmbedding || !isMissingProductEmbeddingColumnError(error)) {
+        throw error;
+      }
+
+      queryEmbedding = undefined;
+      products = await buildProductSearchQuery().getMany();
+    }
 
     const categories = (
       await this.categoryRepository.find({

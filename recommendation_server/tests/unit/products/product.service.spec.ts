@@ -671,6 +671,56 @@ describe('ProductService', () => {
     ]));
   });
 
+  it('falls back to text search when the database has no product embedding column', async () => {
+    const headphoneCategory = createSearchCategory(81, 'Tai Nghe');
+    const headphoneProduct = createMockProduct({
+      id: 1051,
+      category_id: 81,
+      name: 'Tai Nghe Sony WH-1000XM6',
+      description: 'Tai nghe chống ồn dành cho nghe nhạc và làm việc.',
+      category: headphoneCategory,
+    });
+    const missingEmbeddingColumnError = Object.assign(
+      new Error("Unknown column 'product.embedding' in 'field list'"),
+      {
+        code: 'ER_BAD_FIELD_ERROR',
+        driverError: {
+          code: 'ER_BAD_FIELD_ERROR',
+          sqlMessage: "Unknown column 'product.embedding' in 'field list'",
+        },
+      },
+    );
+    const firstQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockRejectedValue(missingEmbeddingColumnError),
+    };
+    const retryQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([headphoneProduct]),
+    };
+
+    categoryRepository.find.mockResolvedValue([headphoneCategory]);
+    mockedGetEmbedding.mockResolvedValue([0.85, 0.25, 0.1, 0.9]);
+    productRepository.createQueryBuilder = jest
+      .fn()
+      .mockReturnValueOnce(firstQueryBuilder)
+      .mockReturnValueOnce(retryQueryBuilder);
+    productVariantRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+    inventoryRepository.createQueryBuilder.mockReturnValue(createRawManyQueryBuilder([]));
+
+    const result = await service.searchProducts('tai nghe sony', 5);
+
+    expect(firstQueryBuilder.addSelect).toHaveBeenCalledWith('product.embedding');
+    expect(retryQueryBuilder.addSelect).not.toHaveBeenCalled();
+    expect(result.data).toEqual([
+      expect.objectContaining({ id: 1051, name: 'Tai Nghe Sony WH-1000XM6' }),
+    ]);
+  });
+
   it('keeps lexical audio matches when semantic-only matches exist on unrelated embedded products', async () => {
     const speakerCategory = createSearchCategory(90, 'Loa');
     const headphoneCategory = createSearchCategory(91, 'Tai Nghe');
