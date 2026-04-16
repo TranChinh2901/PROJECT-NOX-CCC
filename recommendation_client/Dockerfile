@@ -15,9 +15,7 @@ COPY . .
 
 ARG NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
-
 RUN pnpm run build
-
 FROM node:20-alpine AS runner
 WORKDIR /app
 
