@@ -1,0 +1,18 @@
+services:
+  server:
+    image: ${SERVER_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - .env.server
+    ports:
+      - "${SERVER_PORT:-5000}:5000"
+
+  client:
+    image: ${CLIENT_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
