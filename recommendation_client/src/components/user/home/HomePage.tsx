@@ -551,22 +551,9 @@ function HomePageContent() {
     return (
       <div className="min-h-[100dvh] bg-[#f5f1e8] px-4">
         <div className="mx-auto flex min-h-[100dvh] max-w-7xl items-center justify-center">
-          <div className="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-[0_30px_80px_-45px_rgba(28,25,23,0.35)] backdrop-blur">
-            <div className="h-3 w-28 rounded-full bg-[#e8dcc6]" />
-            <div className="mt-5 h-12 w-4/5 rounded-2xl bg-[#f2ebe0]" />
-            <div className="mt-3 h-12 w-3/5 rounded-2xl bg-[#f2ebe0]" />
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="rounded-[1.5rem] border border-[#eee4d3] bg-[#fbf8f2] p-4">
-                  <div className="h-4 w-14 rounded-full bg-[#eadfcd]" />
-                  <div className="mt-4 h-8 w-16 rounded-xl bg-[#ede4d7]" />
-                  <div className="mt-3 h-3 w-20 rounded-full bg-[#efe6da]" />
-                </div>
-              ))}
-            </div>
-            <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[#8a5a00]">
-              Đang chuẩn bị danh mục
-            </p>
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#d8c8aa] border-t-[#8a5a00]" />
+            <p className="text-sm font-medium text-[#6b665d]">Đang tải...</p>
           </div>
         </div>
       </div>
