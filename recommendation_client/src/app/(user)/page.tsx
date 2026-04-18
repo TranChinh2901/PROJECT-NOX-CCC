@@ -1,12 +1,5 @@
-import HomePages from "@/components/user/home/HomePage"
+import HomePage from '@/components/user/home/HomePage';
 
-
-const page = () => {
-  return (
-    <div>
-      <HomePages />
-    </div>
-  )
+export default function Page() {
+  return <HomePage />;
 }
-
-export default page

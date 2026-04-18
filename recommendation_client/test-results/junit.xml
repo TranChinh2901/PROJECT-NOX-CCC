@@ -1,0 +1,10 @@
+<testsuites id="" name="" tests="3" failures="0" skipped="0" errors="0" time="2.58002">
+<testsuite name="homepage.spec.ts" timestamp="2026-04-18T09:04:29.744Z" hostname="chromium" tests="3" failures="0" skipped="0" time="3.786" errors="0">
+<testcase name="Homepage › links the hero CTA to the catalog section" classname="homepage.spec.ts" time="1.307">
+</testcase>
+<testcase name="Homepage › renders a bounded initial catalog grid" classname="homepage.spec.ts" time="1.152">
+</testcase>
+<testcase name="Homepage › loads more catalog products on demand" classname="homepage.spec.ts" time="1.327">
+</testcase>
+</testsuite>
+</testsuites>
