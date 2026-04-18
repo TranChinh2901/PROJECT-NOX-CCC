@@ -17,7 +17,6 @@ import {
   ChevronRight,
   Heart,
   Laptop,
-  Minus,
   Plus,
   Search,
   ShoppingCart,
@@ -75,7 +74,7 @@ const heroBanners = [
     ctaHref: '/?category=laptop#catalog',
     bg: 'from-[#0d1117] via-[#161b22] to-[#0d1117]',
     accent: '#CA8A04',
-    imageSeed: 'workspace-professional-setup',
+    imageSrc: '/hero/workspace.jpg',
     size: 'large',
   },
 ];
@@ -88,7 +87,7 @@ const heroSideCards = [
     cta: 'Khám phá',
     ctaHref: '/?category=am-thanh#catalog',
     bg: 'from-[#0a1628] to-[#1a2d4a]',
-    imageSeed: 'headphones-music-dark',
+    imageSrc: '/hero/audio.jpg',
   },
   {
     id: 3,
@@ -97,17 +96,13 @@ const heroSideCards = [
     cta: 'Nâng cấp →',
     ctaHref: '/?category=gaming#catalog',
     bg: 'from-[#1a0a2e] to-[#2d1b4a]',
-    imageSeed: 'gaming-setup-rgb',
+    imageSrc: '/hero/gaming.jpg',
   },
 ];
 
 // ─── Helper functions ───────────────────────────────────────────
 function getFallbackProductImage(productId: number) {
   return `https://picsum.photos/seed/technova-product-${productId}/900/900`;
-}
-
-function getFallbackBannerImage(seed: string) {
-  return `https://picsum.photos/seed/${seed}/1200/600`;
 }
 
 function findCategoryInTree(
@@ -370,7 +365,7 @@ function ProductCard({
 function HeroSection() {
   const banner = heroBanners[0];
   return (
-    <section className="px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+    <section className="mt-6 px-4 pb-8 pt-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px]">
         <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
           {/* Main banner */}
@@ -379,7 +374,7 @@ function HeroSection() {
           >
             <div className="absolute inset-0">
               <Image
-                src={getFallbackBannerImage(banner.imageSeed)}
+                src={banner.imageSrc}
                 alt={banner.title}
                 fill
                 priority
@@ -416,7 +411,7 @@ function HeroSection() {
               >
                 <div className="absolute inset-0">
                   <Image
-                    src={getFallbackBannerImage(card.imageSeed)}
+                    src={card.imageSrc}
                     alt={card.title}
                     fill
                     sizes="340px"
