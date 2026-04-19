@@ -31,7 +31,6 @@ import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { Skeleton } from '@/components/common/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { categoryApi, productApi, recommendationApi } from '@/lib/api';
 import { buildProductPath, formatPrice } from '@/lib/utils';
@@ -188,7 +187,6 @@ function ProductCardSkeleton() {
         <Skeleton height="18px" className="w-4/5" />
         <Skeleton height="14px" className="w-2/3" />
         <Skeleton height="20px" className="w-1/2" />
-        <Skeleton height="36px" className="w-full" />
       </div>
     </div>
   );
@@ -221,7 +219,6 @@ function ProductCard({
   product: Product;
   onProductClick?: () => void;
 }) {
-  const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
   const primaryImage =
@@ -244,23 +241,8 @@ function ProductCard({
   const fakeRating = Math.min(5, 3.5 + (soldCount % 20) / 26.7);
   const fakeReviewCount = Math.floor(soldCount / 3) + 4;
 
-  // Find first active variant for add-to-cart
+  // Find first active variant for wishlist actions
   const firstVariant: ProductVariant | undefined = product.variants?.find((v) => v.is_active);
-
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!firstVariant) {
-      toast.error('Sản phẩm không có phiên bản khả dụng');
-      return;
-    }
-    try {
-      await addToCart({ variant_id: firstVariant.id, quantity: 1 }, product, firstVariant);
-      toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
-    } catch {
-      toast.error('Không thể thêm vào giỏ hàng');
-    }
-  };
 
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -346,16 +328,6 @@ function ProductCard({
             Đã bán {soldCount.toLocaleString('vi-VN')}
           </p>
         )}
-
-        {/* CTA */}
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          className="mt-auto mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600 active:scale-95"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Thêm vào giỏ
-        </button>
       </div>
     </article>
   );
