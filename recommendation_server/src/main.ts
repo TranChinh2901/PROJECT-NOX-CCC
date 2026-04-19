@@ -7,6 +7,7 @@ import { exceptionHandler } from "@/middlewares/exception-filter";
 import { loadedEnv } from "@/config/load-env";
 import { requestLogger } from "@/middlewares/logger-filter";
 import { logger } from "@/utils/logger";
+import { isRequestOriginAllowed } from "@/utils/origin";
 import { attachNotificationWebSocketGateway } from "@/modules/notification/infrastructure/NotificationWebSocketGateway";
 import { RecommendationRefreshScheduler } from "@/modules/ai/infrastructure/jobs/RecommendationRefreshScheduler";
 
@@ -24,20 +25,10 @@ const recommendationRefreshScheduler = new RecommendationRefreshScheduler({
   algorithm: loadedEnv.recommendation.algorithm,
 });
 
-const allowedOrigins = (process.env.CORS_ORIGIN || [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001',
-].join(','))
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isRequestOriginAllowed(origin)) {
         callback(null, true);
         return;
       }

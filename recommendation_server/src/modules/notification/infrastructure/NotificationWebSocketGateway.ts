@@ -6,6 +6,7 @@ import type { RawData } from 'ws';
 import authService from '@/modules/auth/auth.service';
 import { container } from '../di/container';
 import { logger } from '@/utils/logger';
+import { isRequestOriginAllowed } from '@/utils/origin';
 
 type AuthenticatedSocketRequest = IncomingMessage & {
   user?: {
@@ -56,19 +57,7 @@ const createSocketEmitter = (socket: WebSocket) => ({
 
 const getRequestOriginAllowed = (request: IncomingMessage): boolean => {
   const origin = request.headers.origin;
-  if (!origin) return true;
-
-  const allowedOrigins = (process.env.CORS_ORIGIN || [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-  ].join(','))
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  return allowedOrigins.includes(origin);
+  return Array.isArray(origin) ? false : isRequestOriginAllowed(origin);
 };
 
 const normalizeNotificationIds = (payload: ClientMessage['payload']): number[] => {
