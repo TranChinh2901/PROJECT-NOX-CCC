@@ -23,6 +23,54 @@ export class AuthHelper {
     name: 'Admin User',
   };
 
+  static hasRuntimeCredentials(): boolean {
+    return Boolean(process.env.QA_EMAIL && process.env.QA_PASSWORD);
+  }
+
+  static getRuntimeUser(): TestUser {
+    const email = process.env.QA_EMAIL;
+    const password = process.env.QA_PASSWORD;
+
+    if (!email || !password) {
+      throw new Error(
+        'Runtime-secret login requires QA_EMAIL and QA_PASSWORD environment variables.',
+      );
+    }
+
+    return {
+      email,
+      password,
+      name: process.env.QA_NAME || 'QA Runtime User',
+    };
+  }
+
+  static async loginWithRuntimeCredentials(page: Page): Promise<void> {
+    const runtimeUser = this.getRuntimeUser();
+
+    await page.goto('/account/login?redirect=/');
+
+    await page.fill('input[name="email"]', runtimeUser.email);
+    await page.fill('input[name="password"]', runtimeUser.password);
+    await page.click('button[type="submit"]');
+
+    try {
+      await page.waitForURL(/\/($|\?)/, { timeout: 15000 });
+    } catch {
+      const loginError = page.locator('form p.text-sm.text-red-600').first();
+
+      if ((await loginError.count()) > 0 && (await loginError.isVisible())) {
+        const message = (await loginError.textContent())?.trim();
+        throw new Error(
+          `Runtime-secret login failed before homepage redirect${message ? `: ${message}` : '.'}`,
+        );
+      }
+
+      throw new Error(
+        'Runtime-secret login did not reach the homepage within 15 seconds.',
+      );
+    }
+  }
+
   static async login(page: Page, user: TestUser = this.DEFAULT_USER): Promise<void> {
     await page.goto('/account/login');
 

@@ -9,12 +9,12 @@ export interface IRecommendationRepository {
   /**
    * Find cached recommendations for a user
    */
-  findByUserId(userId: number): Promise<Recommendation[]>;
+  findByUserId(userId: number, algorithm?: string): Promise<Recommendation[]>;
 
   /**
    * Save recommendations to cache
    */
-  save(userId: number, recommendations: Recommendation[]): Promise<void>;
+  save(userId: number, recommendations: Recommendation[], algorithm?: string): Promise<void>;
 
   /**
    * Delete expired recommendations
@@ -24,5 +24,9 @@ export interface IRecommendationRepository {
   /**
    * Check if user has fresh cached recommendations
    */
-  hasFreshRecommendations(userId: number, maxAgeMinutes: number): Promise<boolean>;
+  hasFreshRecommendations(
+    userId: number,
+    maxAgeMinutes: number,
+    algorithm?: string
+  ): Promise<boolean>;
 }

@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import {
+  IRecommendationArtifactMetadataProvider,
   IRecommendationEngine,
   RecommendationRequest,
   RecommendationStrategy,
@@ -26,8 +27,10 @@ type OfflineModelPayload = {
   similarItemsByProduct?: Record<string, OfflineSimilarEntry[]>;
 };
 
-export class OfflineModelRecommendationEngine implements IRecommendationEngine {
+export class OfflineModelRecommendationEngine
+  implements IRecommendationEngine, IRecommendationArtifactMetadataProvider {
   private cachedModel?: OfflineModelPayload;
+  private cachedModelPath?: string;
 
   constructor(
     private readonly modelPath: string
@@ -95,18 +98,42 @@ export class OfflineModelRecommendationEngine implements IRecommendationEngine {
       );
   }
 
+  async isArtifactFresh(maxAgeMinutes: number): Promise<boolean> {
+    const model = await this.loadModel();
+    const metadataGeneratedAt = model.metadata?.generatedAt;
+
+    if (typeof metadataGeneratedAt === 'string') {
+      const generatedAt = new Date(metadataGeneratedAt);
+      if (!Number.isNaN(generatedAt.getTime())) {
+        return Date.now() - generatedAt.getTime() <= maxAgeMinutes * 60 * 1000;
+      }
+    }
+
+    const { stat } = await import('fs/promises');
+    const fileStats = await stat(this.resolveModelPath());
+    return Date.now() - fileStats.mtime.getTime() <= maxAgeMinutes * 60 * 1000;
+  }
+
   private async loadModel(): Promise<OfflineModelPayload> {
     if (this.cachedModel) {
       return this.cachedModel;
     }
 
-    const resolvedModelPath = path.isAbsolute(this.modelPath)
-      ? this.modelPath
-      : path.resolve(process.cwd(), this.modelPath);
+    const resolvedModelPath = this.resolveModelPath();
 
     const rawModel = await readFile(resolvedModelPath, 'utf8');
     this.cachedModel = JSON.parse(rawModel) as OfflineModelPayload;
     return this.cachedModel;
+  }
+
+  private resolveModelPath(): string {
+    if (!this.cachedModelPath) {
+      this.cachedModelPath = path.isAbsolute(this.modelPath)
+        ? this.modelPath
+        : path.resolve(process.cwd(), this.modelPath);
+    }
+
+    return this.cachedModelPath;
   }
 
   private normalizeScore(score: number): number {

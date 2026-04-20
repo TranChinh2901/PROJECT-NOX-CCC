@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Product } from '@/modules/products/entity/product';
+import { Product } from '../../../products/entity/product';
 import { TypeORMProductFeatureRepository } from './TypeORMProductFeatureRepository';
 
 describe('TypeORMProductFeatureRepository', () => {
@@ -26,6 +26,61 @@ describe('TypeORMProductFeatureRepository', () => {
         reviewCount: 3,
         purchaseCount: 0,
       });
+    });
+  });
+
+  describe('eligibility filters', () => {
+    it('filters inactive and deleted products in getById', async () => {
+      const getOne = jest.fn().mockResolvedValue(null);
+      const queryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne,
+      };
+
+      const repository = Object.create(TypeORMProductFeatureRepository.prototype) as any;
+      repository.repository = {
+        createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      };
+
+      const result = await repository.getById(11);
+
+      expect(result).toBeNull();
+      expect(queryBuilder.where).toHaveBeenCalledWith('product.id = :productId', {
+        productId: 11,
+      });
+      expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(
+        1,
+        'product.is_active = :isActive',
+        { isActive: true }
+      );
+      expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(2, 'product.deleted_at IS NULL');
+    });
+
+    it('filters inactive and deleted products in getByIds', async () => {
+      const getMany = jest.fn().mockResolvedValue([]);
+      const queryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        whereInIds: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany,
+      };
+
+      const repository = Object.create(TypeORMProductFeatureRepository.prototype) as any;
+      repository.repository = {
+        createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      };
+
+      await repository.getByIds([2, 4, 6]);
+
+      expect(queryBuilder.whereInIds).toHaveBeenCalledWith([2, 4, 6]);
+      expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(
+        1,
+        'product.is_active = :isActive',
+        { isActive: true }
+      );
+      expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(2, 'product.deleted_at IS NULL');
     });
   });
 
@@ -59,10 +114,16 @@ describe('TypeORMProductFeatureRepository', () => {
 
       await repository.findSimilar(5, 6);
 
+      expect(repository.repository.findOne).toHaveBeenCalledWith({
+        where: { id: 5, is_active: true, deleted_at: expect.anything() },
+        relations: ['category', 'brand', 'reviews'],
+      });
       expect(andWhere).toHaveBeenCalledWith('product.base_price BETWEEN :priceMin AND :priceMax', {
         priceMin: 700,
         priceMax: 1300,
       });
+      expect(andWhere).toHaveBeenCalledWith('product.is_active = :isActive', { isActive: true });
+      expect(andWhere).toHaveBeenCalledWith('product.deleted_at IS NULL');
       expect(orderBy).toHaveBeenCalledWith('ABS(product.base_price - :targetPrice)', 'ASC');
       expect(setParameter).toHaveBeenCalledWith('targetPrice', 1000);
     });

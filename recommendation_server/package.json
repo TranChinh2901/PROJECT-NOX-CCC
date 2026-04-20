@@ -10,6 +10,8 @@
     "train:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/train-recommendation-baseline.ts",
     "evaluate:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/evaluate-recommendation-baseline.ts",
     "precompute:recommendation-cache": "ts-node -r tsconfig-paths/register src/scripts/precompute-recommendation-cache.ts",
+    "evidence:recommendation-launch-readiness": "ts-node -r tsconfig-paths/register src/scripts/generate-recommendation-launch-readiness-evidence.ts --out ../.sisyphus/evidence/task-7-readiness.json",
+    "verify:recommendation-api-branches": "ts-node -r tsconfig-paths/register src/scripts/verify-recommendation-api-branches.ts",
     "refresh:recommendation-pipeline": "ts-node -r tsconfig-paths/register src/scripts/refresh-recommendation-pipeline.ts",
     "sync:product-images": "ts-node -r tsconfig-paths/register src/scripts/sync-product-images-to-cloudinary.ts",
     "test:api": "ts-node -r tsconfig-paths/register src/scripts/test-api.ts",

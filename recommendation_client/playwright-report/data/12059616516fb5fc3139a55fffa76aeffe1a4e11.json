@@ -1,0 +1,42 @@
+{
+  "authMode": "qa-runtime-secret",
+  "state": "visible",
+  "path": "/",
+  "cardCount": 4,
+  "hrefs": [
+    "/product/jbl-live-beam-3-hi-res-fbwi4e",
+    "/product/samsung-galaxy-buds3-pro-wireless-charging-4r6kol",
+    "/product/huawei-sound-joy-2-travel-pack-jis3hz",
+    "/product/jbl-charge-6-special-color-mqm5mw"
+  ],
+  "cards": [
+    {
+      "href": "/product/jbl-live-beam-3-hi-res-fbwi4e",
+      "title": "JBL Live Beam 3 Hi-Res",
+      "hasImage": true,
+      "hasPrice": true,
+      "reason": "✦ sản phẩm nổi bật"
+    },
+    {
+      "href": "/product/samsung-galaxy-buds3-pro-wireless-charging-4r6kol",
+      "title": "Samsung Galaxy Buds3 Pro Wireless Charging",
+      "hasImage": true,
+      "hasPrice": true,
+      "reason": "✦ sản phẩm nổi bật"
+    },
+    {
+      "href": "/product/huawei-sound-joy-2-travel-pack-jis3hz",
+      "title": "Huawei Sound Joy 2 Travel Pack",
+      "hasImage": true,
+      "hasPrice": true,
+      "reason": "✦ sản phẩm nổi bật"
+    },
+    {
+      "href": "/product/jbl-charge-6-special-color-mqm5mw",
+      "title": "JBL Charge 6 Special Color",
+      "hasImage": true,
+      "hasPrice": true,
+      "reason": "✦ sản phẩm nổi bật"
+    }
+  ]
+}

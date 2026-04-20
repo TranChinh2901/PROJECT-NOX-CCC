@@ -5,6 +5,7 @@ import {
 } from '../../domain/repositories/IProductFeatureRepository';
 import { Product } from '../../../products/entity/product';
 import { AppDataSource } from '@/config/database.config';
+import { IsNull } from 'typeorm';
 
 /**
  * Adapter: TypeORM Product Feature Repository
@@ -21,10 +22,15 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
   }
 
   async getById(productId: number): Promise<DomainProductFeature | null> {
-    const product = await this.repository.findOne({
-      where: { id: productId },
-      relations: ['category', 'brand', 'reviews'],
-    });
+    const product = await this.repository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.reviews', 'reviews')
+      .where('product.id = :productId', { productId })
+      .andWhere('product.is_active = :isActive', { isActive: true })
+      .andWhere('product.deleted_at IS NULL')
+      .getOne();
 
     if (!product) return null;
 
@@ -38,6 +44,8 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
       .leftJoinAndSelect('product.brand', 'brand')
       .leftJoinAndSelect('product.reviews', 'reviews')
       .whereInIds(productIds)
+      .andWhere('product.is_active = :isActive', { isActive: true })
+      .andWhere('product.deleted_at IS NULL')
       .getMany();
 
     return products.map((p) => this.toDomainFeature(p));
@@ -45,7 +53,7 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
 
   async getByCategory(categoryId: number, limit: number): Promise<DomainProductFeature[]> {
     const products = await this.repository.find({
-      where: { category_id: categoryId },
+      where: { category_id: categoryId, is_active: true, deleted_at: IsNull() },
       relations: ['category', 'brand', 'reviews'],
       take: limit,
     });
@@ -76,7 +84,7 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
   async findSimilar(productId: number, limit: number): Promise<DomainProductFeature[]> {
     // Get the target product first
     const targetProduct = await this.repository.findOne({
-      where: { id: productId },
+      where: { id: productId, is_active: true, deleted_at: IsNull() },
       relations: ['category', 'brand', 'reviews'],
     });
 
@@ -96,6 +104,8 @@ export class TypeORMProductFeatureRepository implements IProductFeatureRepositor
         categoryId: targetProduct.category_id,
       })
       .andWhere('product.id != :productId', { productId })
+      .andWhere('product.is_active = :isActive', { isActive: true })
+      .andWhere('product.deleted_at IS NULL')
       .limit(limit);
 
     if (targetPrice > 0) {

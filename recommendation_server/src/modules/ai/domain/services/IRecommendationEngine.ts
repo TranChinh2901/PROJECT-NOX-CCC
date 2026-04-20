@@ -51,3 +51,7 @@ export interface IRecommendationEngine {
    */
   getStrategy(): RecommendationStrategy;
 }
+
+export interface IRecommendationArtifactMetadataProvider {
+  isArtifactFresh(maxAgeMinutes: number): Promise<boolean>;
+}

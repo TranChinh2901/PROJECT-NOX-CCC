@@ -73,13 +73,13 @@ describe('TypeORMRecommendationRepository', () => {
 
     const recommendationRepository = new TypeORMRecommendationRepository();
 
-    await expect(recommendationRepository.hasFreshRecommendations(55, 60)).resolves.toBe(true);
+    await expect(recommendationRepository.hasFreshRecommendations(55, 60, 'offline_model')).resolves.toBe(true);
     expect(repositoryMock.findOne).toHaveBeenCalledWith({
       where: {
         user_id: 55,
         is_active: true,
         recommendation_type: RecommendationType.PERSONALIZED,
-        algorithm: 'content_based',
+        algorithm: 'offline_model',
       },
       order: {
         generated_at: 'DESC',

@@ -18,22 +18,23 @@ import { RecommendationType } from '../../enum/recommendation.enum';
 export class TypeORMRecommendationRepository implements IRecommendationRepository {
   private repository: Repository<RecommendationCache>;
   private readonly recommendationType = RecommendationType.PERSONALIZED;
-  private readonly algorithm: string;
+  private readonly defaultAlgorithm: string;
 
   constructor() {
     this.repository = AppDataSource.getRepository(RecommendationCache);
-    this.algorithm = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase() === 'offline_model'
+    this.defaultAlgorithm = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase() === 'offline_model'
       ? 'offline_model'
       : 'content_based';
   }
 
-  async findByUserId(userId: number): Promise<Recommendation[]> {
+  async findByUserId(userId: number, algorithm?: string): Promise<Recommendation[]> {
+    const resolvedAlgorithm = this.resolveAlgorithm(algorithm);
     const cacheEntries = await this.repository.find({
       where: {
         user_id: userId,
         is_active: true,
         recommendation_type: this.recommendationType,
-        algorithm: this.algorithm,
+        algorithm: resolvedAlgorithm,
       },
       order: {
         generated_at: 'DESC',
@@ -59,8 +60,9 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
     return recommendations;
   }
 
-  async save(userId: number, recommendations: Recommendation[]): Promise<void> {
-    const cacheKey = this.buildCacheKey(userId);
+  async save(userId: number, recommendations: Recommendation[], algorithm?: string): Promise<void> {
+    const resolvedAlgorithm = this.resolveAlgorithm(algorithm);
+    const cacheKey = this.buildCacheKey(userId, resolvedAlgorithm);
     const generatedAt = new Date();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -70,7 +72,7 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
         user_id: userId,
         is_active: true,
         recommendation_type: this.recommendationType,
-        algorithm: this.algorithm,
+        algorithm: resolvedAlgorithm,
       },
       { is_active: false }
     );
@@ -79,7 +81,7 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
       cache_key: cacheKey,
       user_id: userId,
       recommendation_type: this.recommendationType,
-      algorithm: this.algorithm,
+      algorithm: resolvedAlgorithm,
       recommended_products: recommendations.map((r) => r.toJSON()) as any[],
       generated_at: generatedAt,
       expires_at: expiresAt,
@@ -100,14 +102,19 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
     return result.affected || 0;
   }
 
-  async hasFreshRecommendations(userId: number, maxAgeMinutes: number): Promise<boolean> {
+  async hasFreshRecommendations(
+    userId: number,
+    maxAgeMinutes: number,
+    algorithm?: string
+  ): Promise<boolean> {
+    const resolvedAlgorithm = this.resolveAlgorithm(algorithm);
     const freshSince = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
     const latestCache = await this.repository.findOne({
       where: {
         user_id: userId,
         is_active: true,
         recommendation_type: this.recommendationType,
-        algorithm: this.algorithm,
+        algorithm: resolvedAlgorithm,
       },
       order: {
         generated_at: 'DESC',
@@ -119,8 +126,12 @@ export class TypeORMRecommendationRepository implements IRecommendationRepositor
       : false;
   }
 
-  private buildCacheKey(userId: number): string {
-    return `user:${userId}:type:personalized:algo:${this.algorithm}`;
+  private buildCacheKey(userId: number, algorithm: string): string {
+    return `user:${userId}:type:personalized:algo:${algorithm}`;
+  }
+
+  private resolveAlgorithm(algorithm?: string): string {
+    return algorithm || this.defaultAlgorithm;
   }
 
   private normalizeScore(score: unknown): number {

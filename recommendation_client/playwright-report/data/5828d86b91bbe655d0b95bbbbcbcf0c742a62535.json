@@ -1,0 +1,38 @@
+{
+  "authMode": "qa-runtime-secret",
+  "state": "visible",
+  "currentPath": "/product/jbl-live-beam-3-hi-res-fbwi4e",
+  "cardCount": 4,
+  "hrefs": [
+    "/product/jbl-live-beam-3-anc-plmkxg",
+    "/product/jbl-live-beam-3-smart-case-1g3mva",
+    "/product/samsung-galaxy-buds3-pro-live-translate-gibyzp",
+    "/product/samsung-galaxy-buds3-pro-wireless-charging-4r6kol"
+  ],
+  "cards": [
+    {
+      "href": "/product/jbl-live-beam-3-anc-plmkxg",
+      "title": "JBL Live Beam 3 ANC",
+      "hasImage": true,
+      "hasPrice": true
+    },
+    {
+      "href": "/product/jbl-live-beam-3-smart-case-1g3mva",
+      "title": "JBL Live Beam 3 Smart Case",
+      "hasImage": true,
+      "hasPrice": true
+    },
+    {
+      "href": "/product/samsung-galaxy-buds3-pro-live-translate-gibyzp",
+      "title": "Samsung Galaxy Buds3 Pro Live Translate",
+      "hasImage": true,
+      "hasPrice": true
+    },
+    {
+      "href": "/product/samsung-galaxy-buds3-pro-wireless-charging-4r6kol",
+      "title": "Samsung Galaxy Buds3 Pro Wireless Charging",
+      "hasImage": true,
+      "hasPrice": true
+    }
+  ]
+}

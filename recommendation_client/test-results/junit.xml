@@ -1,10 +1,30 @@
-<testsuites id="" name="" tests="3" failures="0" skipped="0" errors="0" time="2.58002">
-<testsuite name="homepage.spec.ts" timestamp="2026-04-18T09:04:29.744Z" hostname="chromium" tests="3" failures="0" skipped="0" time="3.786" errors="0">
-<testcase name="Homepage › links the hero CTA to the catalog section" classname="homepage.spec.ts" time="1.307">
+<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="3.9642990000000005">
+<testsuite name="homepage.spec.ts" timestamp="2026-04-20T08:15:39.498Z" hostname="chromium" tests="4" failures="0" skipped="0" time="8.372" errors="0">
+<testcase name="Homepage › links the hero CTA to the catalog section" classname="homepage.spec.ts" time="1.854">
 </testcase>
-<testcase name="Homepage › renders a bounded initial catalog grid" classname="homepage.spec.ts" time="1.152">
+<testcase name="Homepage › renders a bounded initial catalog grid" classname="homepage.spec.ts" time="1.869">
 </testcase>
-<testcase name="Homepage › loads more catalog products on demand" classname="homepage.spec.ts" time="1.327">
+<testcase name="Homepage › loads more catalog products on demand" classname="homepage.spec.ts" time="2.272">
+</testcase>
+<testcase name="Homepage launch verification › verifies recommendation cards render safely for launch review" classname="homepage.spec.ts" time="2.377">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|homepage-Homepage-launch-v-ffc3b-er-safely-for-launch-review-chromium/attachments/homepage-recommendations-json-e98486be9adec3ab8e391d616437582b4878b214.json]]
+
+[[ATTACHMENT|homepage-Homepage-launch-v-ffc3b-er-safely-for-launch-review-chromium/attachments/homepage-recommendations-png-d2abcfcda91ddb3fd11bf63daa179f56d7d80238.png]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="pdp-recommendations.spec.ts" timestamp="2026-04-20T08:15:39.498Z" hostname="chromium" tests="1" failures="0" skipped="0" time="2.806" errors="0">
+<testcase name="Product detail launch verification › verifies similar items exclude the current product and link to alternates" classname="pdp-recommendations.spec.ts" time="2.806">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|pdp-recommendations-Produc-60fee-duct-and-link-to-alternates-chromium/attachments/pdp-similar-items-json-b587bd922c44ab11448c6b8e1563b056295485f3.json]]
+
+[[ATTACHMENT|pdp-recommendations-Produc-60fee-duct-and-link-to-alternates-chromium/attachments/pdp-similar-items-png-2e9397659b41fad15ad9439bbb5ba6c0a9fe9b40.png]]
+]]>
+</system-out>
 </testcase>
 </testsuite>
 </testsuites>

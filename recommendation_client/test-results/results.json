@@ -11,7 +11,7 @@
     "grepInvert": null,
     "maxFailures": 0,
     "metadata": {
-      "actualWorkers": 3
+      "actualWorkers": 5
     },
     "preserveOutput": "always",
     "projects": [
@@ -20,7 +20,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 3
+          "actualWorkers": 5
         },
         "id": "chromium",
         "name": "chromium",
@@ -36,7 +36,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 3
+          "actualWorkers": 5
         },
         "id": "firefox",
         "name": "firefox",
@@ -52,7 +52,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 3
+          "actualWorkers": 5
         },
         "id": "webkit",
         "name": "webkit",
@@ -68,7 +68,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 3
+          "actualWorkers": 5
         },
         "id": "mobile-chrome",
         "name": "mobile-chrome",
@@ -84,7 +84,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 3
+          "actualWorkers": 5
         },
         "id": "mobile-safari",
         "name": "mobile-safari",
@@ -150,7 +150,7 @@
         {
           "title": "Homepage",
           "file": "homepage.spec.ts",
-          "line": 3,
+          "line": 27,
           "column": 6,
           "specs": [
             {
@@ -169,12 +169,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1307,
+                      "duration": 1854,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-04-18T09:04:30.550Z",
+                      "startTime": "2026-04-20T08:15:40.414Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -184,7 +184,7 @@
               ],
               "id": "84e7eb052e8cbae1c9f0-e279f611d4efbd95f49b",
               "file": "homepage.spec.ts",
-              "line": 4,
+              "line": 28,
               "column": 7
             },
             {
@@ -203,12 +203,12 @@
                       "workerIndex": 1,
                       "parallelIndex": 1,
                       "status": "passed",
-                      "duration": 1152,
+                      "duration": 1869,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-04-18T09:04:30.545Z",
+                      "startTime": "2026-04-20T08:15:40.433Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -218,7 +218,7 @@
               ],
               "id": "84e7eb052e8cbae1c9f0-f19d622980d38f79e266",
               "file": "homepage.spec.ts",
-              "line": 15,
+              "line": 39,
               "column": 7
             },
             {
@@ -237,12 +237,12 @@
                       "workerIndex": 2,
                       "parallelIndex": 2,
                       "status": "passed",
-                      "duration": 1327,
+                      "duration": 2272,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-04-18T09:04:30.548Z",
+                      "startTime": "2026-04-20T08:15:40.383Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -252,7 +252,122 @@
               ],
               "id": "84e7eb052e8cbae1c9f0-57619ddd6aed3f4680c7",
               "file": "homepage.spec.ts",
-              "line": 22,
+              "line": 55,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Homepage launch verification",
+          "file": "homepage.spec.ts",
+          "line": 78,
+          "column": 6,
+          "specs": [
+            {
+              "title": "verifies recommendation cards render safely for launch review",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2377,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-20T08:15:40.385Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "homepage-recommendations.json",
+                          "contentType": "application/json",
+                          "path": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_client/test-results/homepage-Homepage-launch-v-ffc3b-er-safely-for-launch-review-chromium/attachments/homepage-recommendations-json-e98486be9adec3ab8e391d616437582b4878b214.json"
+                        },
+                        {
+                          "name": "homepage-recommendations.png",
+                          "contentType": "image/png",
+                          "path": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_client/test-results/homepage-Homepage-launch-v-ffc3b-er-safely-for-launch-review-chromium/attachments/homepage-recommendations-png-d2abcfcda91ddb3fd11bf63daa179f56d7d80238.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "84e7eb052e8cbae1c9f0-6a39844db8d4c214a977",
+              "file": "homepage.spec.ts",
+              "line": 79,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "pdp-recommendations.spec.ts",
+      "file": "pdp-recommendations.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Product detail launch verification",
+          "file": "pdp-recommendations.spec.ts",
+          "line": 13,
+          "column": 6,
+          "specs": [
+            {
+              "title": "verifies similar items exclude the current product and link to alternates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 2806,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-20T08:15:40.409Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "pdp-similar-items.json",
+                          "contentType": "application/json",
+                          "path": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_client/test-results/pdp-recommendations-Produc-60fee-duct-and-link-to-alternates-chromium/attachments/pdp-similar-items-json-b587bd922c44ab11448c6b8e1563b056295485f3.json"
+                        },
+                        {
+                          "name": "pdp-similar-items.png",
+                          "contentType": "image/png",
+                          "path": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_client/test-results/pdp-recommendations-Produc-60fee-duct-and-link-to-alternates-chromium/attachments/pdp-similar-items-png-2e9397659b41fad15ad9439bbb5ba6c0a9fe9b40.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fbca29f0646c87062b96-e5f6c0726ced10203e4c",
+              "file": "pdp-recommendations.spec.ts",
+              "line": 14,
               "column": 7
             }
           ]
@@ -262,9 +377,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-04-18T09:04:29.411Z",
-    "duration": 2580.02,
-    "expected": 3,
+    "startTime": "2026-04-20T08:15:39.390Z",
+    "duration": 3964.2990000000004,
+    "expected": 5,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

@@ -43,6 +43,8 @@ class AIModuleContainer {
 
   // Services (domain)
   private _recommendationEngine?: IRecommendationEngine;
+  private _contentRecommendationEngine?: IRecommendationEngine;
+  private _offlineRecommendationEngine?: IRecommendationEngine;
 
   // Use Cases (application)
   private _getRecommendationsUseCase?: GetRecommendationsUseCase;
@@ -100,16 +102,32 @@ class AIModuleContainer {
       const engineMode = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase();
 
       if (engineMode === 'offline_model') {
-        this._recommendationEngine = new OfflineModelRecommendationEngine(
-          process.env.RECOMMENDATION_MODEL_PATH || 'exports/recommendation-baseline-model.json'
-        );
+        this._recommendationEngine = this.getOfflineRecommendationEngine();
       } else {
-        this._recommendationEngine = new ContentBasedEngine(
-          this.getProductFeatureRepository()
-        );
+        this._recommendationEngine = this.getContentRecommendationEngine();
       }
     }
     return this._recommendationEngine;
+  }
+
+  getContentRecommendationEngine(): IRecommendationEngine {
+    if (!this._contentRecommendationEngine) {
+      this._contentRecommendationEngine = new ContentBasedEngine(
+        this.getProductFeatureRepository()
+      );
+    }
+
+    return this._contentRecommendationEngine;
+  }
+
+  getOfflineRecommendationEngine(): IRecommendationEngine {
+    if (!this._offlineRecommendationEngine) {
+      this._offlineRecommendationEngine = new OfflineModelRecommendationEngine(
+        process.env.RECOMMENDATION_MODEL_PATH || 'exports/recommendation-baseline-model.json'
+      );
+    }
+
+    return this._offlineRecommendationEngine;
   }
 
   /**
@@ -121,7 +139,8 @@ class AIModuleContainer {
         this.getRecommendationRepository(),
         this.getUserBehaviorRepository(),
         this.getProductFeatureRepository(),
-        this.getRecommendationEngine()
+        this.getContentRecommendationEngine(),
+        this.getOfflineRecommendationEngine()
       );
     }
     return this._getRecommendationsUseCase;
@@ -147,6 +166,8 @@ class AIModuleContainer {
     this._userBehaviorRepository = undefined;
     this._productFeatureRepository = undefined;
     this._recommendationEngine = undefined;
+    this._contentRecommendationEngine = undefined;
+    this._offlineRecommendationEngine = undefined;
     this._getRecommendationsUseCase = undefined;
     this._trackUserBehaviorUseCase = undefined;
   }

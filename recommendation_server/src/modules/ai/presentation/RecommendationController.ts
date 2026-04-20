@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
-import { access, stat } from 'fs/promises';
 import { container } from '../di/container';
 import { AppResponse } from '@/common/success.response';
 import { HttpStatusCode } from '@/constants/status-code';
-import path from 'path';
 import { AppDataSource } from '@/config/database.config';
 import { RecommendationCache } from '../entity/recommendation-cache';
 import { UserBehaviorLog } from '../entity/user-behavior-log';
 import { UserActionType } from '../enum/user-behavior.enum';
 import { AuthenticatedRequest } from '@/middlewares/auth.middleware';
+import {
+  getConfiguredRecommendationEngineMode,
+  inspectOfflineRecommendationArtifacts,
+} from '../infrastructure/runtime/RecommendationArtifactHealth';
 
 /**
  * Presentation Layer: Recommendation Controller
@@ -24,6 +26,93 @@ import { AuthenticatedRequest } from '@/middlewares/auth.middleware';
 export class RecommendationController {
   private readonly validStrategies = ['collaborative', 'content', 'hybrid', 'popularity'];
 
+  private buildPublicStatusResponse(offlineArtifactHealth: Awaited<
+    ReturnType<typeof inspectOfflineRecommendationArtifacts>
+  >,
+  configuredEngineMode: ReturnType<typeof getConfiguredRecommendationEngineMode>,
+  effectiveEngineMode: ReturnType<typeof getConfiguredRecommendationEngineMode>,
+  activeCacheRows: Array<{ algorithm: string; count: string }>,
+  staleCacheRows: Array<{ algorithm: string; count: string }>,
+  latestCacheEntry: RecommendationCache | null,
+  totalBehaviorLogs: number,
+  impressionLogs: number,
+  nonImpressionViewLogs: number) {
+    return {
+      engine: {
+        configuredMode: configuredEngineMode,
+        effectiveMode: effectiveEngineMode,
+        strategy:
+          effectiveEngineMode === 'offline_model' ? 'collaborative_filtering' : 'content_based',
+        rollback: {
+          active: offlineArtifactHealth.rollback.active,
+          forced: offlineArtifactHealth.rollback.forced,
+          preferredMode: offlineArtifactHealth.rollback.preferredMode,
+        },
+        readiness: {
+          state: offlineArtifactHealth.state === 'healthy' ? 'ready' : 'degraded',
+          reasons: offlineArtifactHealth.reasons,
+        },
+      },
+      modelFile: {
+        exists: offlineArtifactHealth.exists,
+        sizeBytes: offlineArtifactHealth.sizeBytes,
+        updatedAt: offlineArtifactHealth.updatedAt,
+        metadataGeneratedAt: offlineArtifactHealth.metadataGeneratedAt,
+        freshnessWindowMinutes: offlineArtifactHealth.freshnessWindowMinutes,
+        ageMinutes: offlineArtifactHealth.ageMinutes,
+        state: offlineArtifactHealth.state,
+        isFresh: offlineArtifactHealth.isFresh,
+        reasons: offlineArtifactHealth.reasons,
+      },
+      artifactCoverage: offlineArtifactHealth.coverage,
+      cacheSummary: {
+        exists: offlineArtifactHealth.cacheSummary.exists,
+        generatedAt: offlineArtifactHealth.cacheSummary.generatedAt,
+        ageMinutes: offlineArtifactHealth.cacheSummary.ageMinutes,
+        algorithm: offlineArtifactHealth.cacheSummary.algorithm,
+        ttlHours: offlineArtifactHealth.cacheSummary.ttlHours,
+        userCount: offlineArtifactHealth.cacheSummary.userCount,
+        insertedEntries: offlineArtifactHealth.cacheSummary.insertedEntries,
+        userCoverageRatio: offlineArtifactHealth.cacheSummary.userCoverageRatio,
+        productsWithSimilarItems: offlineArtifactHealth.cacheSummary.productsWithSimilarItems,
+        similarItemCoverageRatio: offlineArtifactHealth.cacheSummary.similarItemCoverageRatio,
+      },
+      cache: {
+        activeByAlgorithm: activeCacheRows.map((row) => ({
+          algorithm: row.algorithm,
+          count: Number(row.count),
+        })),
+        staleByAlgorithm: staleCacheRows.map((row) => ({
+          algorithm: row.algorithm,
+          count: Number(row.count),
+        })),
+        latestActiveEntry: latestCacheEntry
+          ? {
+              algorithm: latestCacheEntry.algorithm,
+              recommendationType: latestCacheEntry.recommendation_type,
+              generatedAt: latestCacheEntry.generated_at.toISOString(),
+              expiresAt: latestCacheEntry.expires_at.toISOString(),
+              isActive: latestCacheEntry.is_active,
+            }
+          : null,
+      },
+      behaviorLogs: {
+        total: totalBehaviorLogs,
+        impressionViews: impressionLogs,
+        userInitiatedViews: nonImpressionViewLogs,
+      },
+      scheduler: {
+        enabled: process.env.RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED === 'true',
+        runOnStart: process.env.RECOMMENDATION_PIPELINE_RUN_ON_START === 'true',
+        refreshIntervalMinutes: Number(
+          process.env.RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES || 360
+        ),
+        offlineFreshnessWindowMinutes: offlineArtifactHealth.freshnessWindowMinutes,
+        forcedContentFallback: offlineArtifactHealth.rollback.forced,
+      },
+    };
+  }
+
   /**
    * GET /api/recommendations/status
    *
@@ -31,39 +120,24 @@ export class RecommendationController {
    */
   async getStatus(_req: Request, res: Response): Promise<Response> {
     try {
-      const engineMode = process.env.RECOMMENDATION_ENGINE?.trim().toLowerCase() || 'content_based';
-      const configuredModelPath = process.env.RECOMMENDATION_MODEL_PATH || 'exports/recommendation-baseline-model.json';
-      const resolvedModelPath = path.isAbsolute(configuredModelPath)
-        ? configuredModelPath
-        : path.resolve(process.cwd(), configuredModelPath);
-
-      let modelFile = {
-        configuredPath: configuredModelPath,
-        resolvedPath: resolvedModelPath,
-        exists: false,
-        sizeBytes: 0,
-        updatedAt: null as string | null,
-      };
-
-      try {
-        await access(resolvedModelPath);
-        const fileStats = await stat(resolvedModelPath);
-        modelFile = {
-          configuredPath: configuredModelPath,
-          resolvedPath: resolvedModelPath,
-          exists: true,
-          sizeBytes: fileStats.size,
-          updatedAt: fileStats.mtime.toISOString(),
-        };
-      } catch {
-        modelFile.exists = false;
-      }
+      const configuredEngineMode = getConfiguredRecommendationEngineMode();
+      const offlineArtifactHealth = await inspectOfflineRecommendationArtifacts();
+      const effectiveEngineMode = offlineArtifactHealth.rollback.active
+        ? offlineArtifactHealth.rollback.preferredMode
+        : configuredEngineMode;
 
       const recommendationCacheRepository = AppDataSource.getRepository(RecommendationCache);
       const behaviorLogRepository = AppDataSource.getRepository(UserBehaviorLog);
       const now = new Date();
 
-      const [activeCacheRows, latestCacheEntry, totalBehaviorLogs, impressionLogs, nonImpressionViewLogs] =
+      const [
+        activeCacheRows,
+        staleCacheRows,
+        latestCacheEntry,
+        totalBehaviorLogs,
+        impressionLogs,
+        nonImpressionViewLogs,
+      ] =
         await Promise.all([
           recommendationCacheRepository
             .createQueryBuilder('cache')
@@ -71,6 +145,14 @@ export class RecommendationController {
             .addSelect('COUNT(*)', 'count')
             .where('cache.is_active = :isActive', { isActive: true })
             .andWhere('cache.expires_at >= :now', { now })
+            .groupBy('cache.algorithm')
+            .getRawMany<{ algorithm: string; count: string }>(),
+          recommendationCacheRepository
+            .createQueryBuilder('cache')
+            .select('cache.algorithm', 'algorithm')
+            .addSelect('COUNT(*)', 'count')
+            .where('cache.is_active = :isActive', { isActive: true })
+            .andWhere('cache.expires_at < :now', { now })
             .groupBy('cache.algorithm')
             .getRawMany<{ algorithm: string; count: string }>(),
           recommendationCacheRepository.findOne({
@@ -99,40 +181,17 @@ export class RecommendationController {
       return new AppResponse({
         statusCode: HttpStatusCode.OK,
         message: 'Recommendation system status retrieved successfully',
-        data: {
-          engine: {
-            mode: engineMode,
-            strategy: container.getRecommendationEngine().getStrategy(),
-          },
-          modelFile,
-          cache: {
-            activeByAlgorithm: activeCacheRows.map((row) => ({
-              algorithm: row.algorithm,
-              count: Number(row.count),
-            })),
-            latestActiveEntry: latestCacheEntry
-              ? {
-                  id: latestCacheEntry.id,
-                  algorithm: latestCacheEntry.algorithm,
-                  recommendationType: latestCacheEntry.recommendation_type,
-                  userId: latestCacheEntry.user_id ?? null,
-                  generatedAt: latestCacheEntry.generated_at.toISOString(),
-                  expiresAt: latestCacheEntry.expires_at.toISOString(),
-                  isActive: latestCacheEntry.is_active,
-                }
-              : null,
-          },
-          behaviorLogs: {
-            total: totalBehaviorLogs,
-            impressionViews: impressionLogs,
-            userInitiatedViews: nonImpressionViewLogs,
-          },
-          scheduler: {
-            enabled: process.env.RECOMMENDATION_PIPELINE_SCHEDULER_ENABLED === 'true',
-            runOnStart: process.env.RECOMMENDATION_PIPELINE_RUN_ON_START === 'true',
-            refreshIntervalMinutes: Number(process.env.RECOMMENDATION_PIPELINE_REFRESH_INTERVAL_MINUTES || 360),
-          },
-        },
+        data: this.buildPublicStatusResponse(
+          offlineArtifactHealth,
+          configuredEngineMode,
+          effectiveEngineMode,
+          activeCacheRows,
+          staleCacheRows,
+          latestCacheEntry,
+          totalBehaviorLogs,
+          impressionLogs,
+          nonImpressionViewLogs
+        ),
       }).sendResponse(res);
     } catch (error: any) {
       console.error('Error getting recommendation status:', error);
@@ -280,19 +339,14 @@ export class RecommendationController {
 
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-      // Get recommendation engine from DI container
-      const engine = container.getRecommendationEngine();
+      const useCase = container.getRecommendationsUseCase();
 
-      // Get similar products
-      const recommendations = await engine.getSimilarProducts(productId, limit);
+      const result = await useCase.executeSimilarProducts(productId, limit);
 
       return new AppResponse({
         statusCode: HttpStatusCode.OK,
         message: 'Similar products retrieved successfully',
-        data: {
-          productId,
-          recommendations: recommendations.map((r) => r.toJSON()),
-        },
+        data: result,
       }).sendResponse(res);
     } catch (error: any) {
       console.error('Error getting similar products:', error);

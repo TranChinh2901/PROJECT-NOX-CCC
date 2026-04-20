@@ -14,6 +14,7 @@ type OfflineModelRecommendation = {
 type OfflineModelPayload = {
   metadata?: Record<string, unknown>;
   recommendationsByUser?: Record<string, OfflineModelRecommendation[]>;
+  similarItemsByProduct?: Record<string, Array<{ productId: number; score: number }>>;
 };
 
 type PrecomputeSummary = {
@@ -23,6 +24,13 @@ type PrecomputeSummary = {
   ttlHours: number;
   userCount: number;
   insertedEntries: number;
+  modelGeneratedAt: string | null;
+  modelUserCount: number;
+  usersWithRecommendations: number;
+  userCoverageRatio: number;
+  modelItemCount: number;
+  productsWithSimilarItems: number;
+  similarItemCoverageRatio: number;
 };
 
 const DEFAULT_INPUT_PATH = path.join(
@@ -57,6 +65,19 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseFiniteNumber = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const roundRatio = (numerator: number, denominator: number): number => {
+  if (denominator <= 0) {
+    return 0;
+  }
+
+  return Number((numerator / denominator).toFixed(6));
+};
+
 async function loadModel(inputPath: string): Promise<OfflineModelPayload> {
   const resolvedPath = path.isAbsolute(inputPath)
     ? inputPath
@@ -72,6 +93,7 @@ async function precomputeRecommendationCache(): Promise<void> {
   const ttlHours = toNumber(parseFlag('--ttl-hours'), DEFAULT_TTL_HOURS);
   const model = await loadModel(inputPath);
   const recommendationsByUser = model.recommendationsByUser || {};
+  const similarItemsByProduct = model.similarItemsByProduct || {};
 
   await AppDataSource.initialize();
 
@@ -82,6 +104,19 @@ async function precomputeRecommendationCache(): Promise<void> {
     const userIds = Object.keys(recommendationsByUser)
       .map((userId) => Number(userId))
       .filter((userId) => Number.isInteger(userId) && userId > 0);
+    const usersWithRecommendations = Object.values(recommendationsByUser).filter(
+      (recommendations) => Array.isArray(recommendations) && recommendations.length > 0
+    ).length;
+    const modelUserCount = parseFiniteNumber(model.metadata?.userCount, userIds.length);
+    const productsWithSimilarItems = Object.values(similarItemsByProduct).filter(
+      (recommendations) => Array.isArray(recommendations) && recommendations.length > 0
+    ).length;
+    const modelItemCount = parseFiniteNumber(
+      model.metadata?.itemCount,
+      Object.keys(similarItemsByProduct).length
+    );
+    const modelGeneratedAt =
+      typeof model.metadata?.generatedAt === 'string' ? model.metadata.generatedAt : null;
 
     if (userIds.length === 0) {
       throw new Error('Model does not contain any recommendationsByUser entries.');
@@ -134,6 +169,13 @@ async function precomputeRecommendationCache(): Promise<void> {
       ttlHours,
       userCount: userIds.length,
       insertedEntries: cacheEntries.length,
+      modelGeneratedAt,
+      modelUserCount,
+      usersWithRecommendations,
+      userCoverageRatio: roundRatio(usersWithRecommendations, modelUserCount),
+      modelItemCount,
+      productsWithSimilarItems,
+      similarItemCoverageRatio: roundRatio(productsWithSimilarItems, modelItemCount),
     };
 
     await mkdir(path.dirname(summaryPath), { recursive: true });
