@@ -1,8 +1,24 @@
 {
-  "generatedAt": "2026-04-12T15:24:59.852Z",
-  "inputDataset": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-training-data.csv",
-  "inputModel": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-baseline-model.json",
+  "generatedAt": "2026-04-26T00:52:36.078Z",
+  "inputDataset": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-training-data.csv",
+  "inputModel": "/home/voducchinh/github/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-baseline-model.json",
+  "algorithmTag": "item-item-baseline",
+  "modelMetadata": {
+    "generatedAt": "2026-04-12T15:24:48.165Z",
+    "sourceDataset": "/home/tran-viet-chinh/Downloads/PROJECT-NOX-CCC/recommendation_server/exports/recommendation-training-data.csv",
+    "topKSimilarItems": 20,
+    "topNRecommendations": 10,
+    "userCount": 100,
+    "itemCount": 198
+  },
+  "datasetWindow": {
+    "earliestInteractionAt": "2026-04-04T09:30:23.000Z",
+    "latestInteractionAt": "2026-04-09T15:40:59.000Z",
+    "spanDays": 5.257361
+  },
   "topK": 10,
+  "topN": 10,
+  "lookbackDays": 180,
   "holdoutCount": 1,
   "evaluatedUsers": 91,
   "skippedUsers": 9,
@@ -12,5 +28,23 @@
   "recallAtK": 0.868132,
   "hitRateAtK": 0.868132,
   "mrrAtK": 0.709179,
-  "coverageAtK": 0.964467
+  "coverageAtK": 0.964467,
+  "ndcgAtK": 0.745626,
+  "mapAtK": 0.709179,
+  "categoryCoverageAtK": 1,
+  "brandCoverageAtK": 1,
+  "noveltyAtK": 5.147264,
+  "intraListDiversityAtK": 0.922173,
+  "coldStartUserSlice": {
+    "evaluatedUsers": 22,
+    "holdoutItems": 22,
+    "hitRateAtK": 0.727273,
+    "recallAtK": 0.727273
+  },
+  "coldStartProductSlice": {
+    "evaluatedUsers": 20,
+    "holdoutItems": 20,
+    "hitRateAtK": 0.9,
+    "recallAtK": 0.9
+  }
 }

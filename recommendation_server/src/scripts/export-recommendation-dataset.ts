@@ -2,7 +2,12 @@ import 'reflect-metadata';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 import { AppDataSource } from '@/config/database.config';
+import {
+  RECOMMENDATION_ACTION_WEIGHTS,
+  SUPPORTED_RECOMMENDATION_ACTION_TYPES,
+} from '@/modules/ai/domain/recommendation-action-weights';
 import { UserBehaviorLog } from '@/modules/ai/entity/user-behavior-log';
+import { UserActionType } from '@/modules/ai/enum/user-behavior.enum';
 
 type AggregatedInteractionRow = {
   user_id: number;
@@ -18,16 +23,6 @@ type AggregatedInteractionRow = {
   interaction_score: number;
   last_interaction_at: string;
 };
-
-const ACTION_WEIGHTS: Record<string, number> = {
-  view: 1,
-  click: 1,
-  add_to_cart: 3,
-  wishlist_add: 4,
-  purchase: 6,
-  review_view: 2,
-};
-const SUPPORTED_ACTION_TYPES = Object.keys(ACTION_WEIGHTS);
 
 const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_OUTPUT_PATH = path.join(
@@ -110,7 +105,7 @@ async function exportRecommendationDataset(): Promise<void> {
       .andWhere('log.product_id IS NOT NULL')
       .andWhere('log.created_at >= :since', { since })
       .andWhere('log.action_type IN (:...actionTypes)', {
-        actionTypes: SUPPORTED_ACTION_TYPES,
+        actionTypes: SUPPORTED_RECOMMENDATION_ACTION_TYPES,
       })
       .andWhere(
         "(log.action_type != :viewAction OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) != :impressionEvent)",
@@ -135,11 +130,11 @@ async function exportRecommendationDataset(): Promise<void> {
       const reviewCount = toNumber(row.review_count);
 
       const interactionScore =
-        viewCount * ACTION_WEIGHTS.view +
-        addToCartCount * ACTION_WEIGHTS.add_to_cart +
-        wishlistCount * ACTION_WEIGHTS.wishlist_add +
-        purchaseCount * ACTION_WEIGHTS.purchase +
-        reviewCount * ACTION_WEIGHTS.review_view;
+        viewCount * RECOMMENDATION_ACTION_WEIGHTS[UserActionType.VIEW] +
+        addToCartCount * RECOMMENDATION_ACTION_WEIGHTS[UserActionType.ADD_TO_CART] +
+        wishlistCount * RECOMMENDATION_ACTION_WEIGHTS[UserActionType.WISHLIST_ADD] +
+        purchaseCount * RECOMMENDATION_ACTION_WEIGHTS[UserActionType.PURCHASE] +
+        reviewCount * RECOMMENDATION_ACTION_WEIGHTS[UserActionType.REVIEW_VIEW];
 
       return {
         user_id: toNumber(row.user_id),

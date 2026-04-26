@@ -124,8 +124,8 @@ describe('generate-recommendation-launch-readiness-evidence', () => {
       })
     );
 
-    expect(JSON.stringify(evidence)).not.toContain('11');
-    expect(JSON.stringify(evidence)).not.toContain('21');
+    expect(evidence.cacheHealth.latestHomepage).not.toHaveProperty('recommended_products');
+    expect(evidence.cacheHealth.latestPdp).not.toHaveProperty('recommended_products');
     expect(JSON.stringify(evidence)).not.toContain('product_id');
     expect(AppDataSource.getRepository).toHaveBeenCalledWith(RecommendationCache);
   });

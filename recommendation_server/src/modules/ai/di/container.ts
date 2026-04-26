@@ -23,6 +23,7 @@ import { TypeORMUserBehaviorRepository } from '../infrastructure/repositories/Ty
 import { TypeORMProductFeatureRepository } from '../infrastructure/repositories/TypeORMProductFeatureRepository';
 import { ContentBasedEngine } from '../infrastructure/ml-engines/ContentBasedEngine';
 import { OfflineModelRecommendationEngine } from '../infrastructure/ml-engines/OfflineModelRecommendationEngine';
+import { EmbeddingSimilarityEngine } from '../infrastructure/ml-engines/EmbeddingSimilarityEngine';
 
 import { GetRecommendationsUseCase } from '../application/use-cases/GetRecommendationsUseCase';
 import { TrackUserBehaviorUseCase } from '../application/use-cases/TrackUserBehaviorUseCase';
@@ -45,6 +46,7 @@ class AIModuleContainer {
   private _recommendationEngine?: IRecommendationEngine;
   private _contentRecommendationEngine?: IRecommendationEngine;
   private _offlineRecommendationEngine?: IRecommendationEngine;
+  private _embeddingRecommendationEngine?: IRecommendationEngine;
 
   // Use Cases (application)
   private _getRecommendationsUseCase?: GetRecommendationsUseCase;
@@ -130,6 +132,16 @@ class AIModuleContainer {
     return this._offlineRecommendationEngine;
   }
 
+  getEmbeddingRecommendationEngine(): IRecommendationEngine {
+    if (!this._embeddingRecommendationEngine) {
+      this._embeddingRecommendationEngine = new EmbeddingSimilarityEngine(
+        this.getProductFeatureRepository()
+      );
+    }
+
+    return this._embeddingRecommendationEngine;
+  }
+
   /**
    * Get or create GetRecommendationsUseCase
    */
@@ -140,7 +152,8 @@ class AIModuleContainer {
         this.getUserBehaviorRepository(),
         this.getProductFeatureRepository(),
         this.getContentRecommendationEngine(),
-        this.getOfflineRecommendationEngine()
+        this.getOfflineRecommendationEngine(),
+        this.getEmbeddingRecommendationEngine()
       );
     }
     return this._getRecommendationsUseCase;
@@ -168,6 +181,7 @@ class AIModuleContainer {
     this._recommendationEngine = undefined;
     this._contentRecommendationEngine = undefined;
     this._offlineRecommendationEngine = undefined;
+    this._embeddingRecommendationEngine = undefined;
     this._getRecommendationsUseCase = undefined;
     this._trackUserBehaviorUseCase = undefined;
   }

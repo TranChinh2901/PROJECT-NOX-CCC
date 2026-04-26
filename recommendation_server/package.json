@@ -9,6 +9,7 @@
     "export:recommendation-dataset": "ts-node -r tsconfig-paths/register src/scripts/export-recommendation-dataset.ts",
     "train:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/train-recommendation-baseline.ts",
     "evaluate:recommendation-baseline": "ts-node -r tsconfig-paths/register src/scripts/evaluate-recommendation-baseline.ts",
+    "shadow:recommendation-similar": "ts-node -r tsconfig-paths/register src/scripts/compare-recommendation-similar-sources.ts",
     "precompute:recommendation-cache": "ts-node -r tsconfig-paths/register src/scripts/precompute-recommendation-cache.ts",
     "evidence:recommendation-launch-readiness": "ts-node -r tsconfig-paths/register src/scripts/generate-recommendation-launch-readiness-evidence.ts --out ../.sisyphus/evidence/task-7-readiness.json",
     "verify:recommendation-api-branches": "ts-node -r tsconfig-paths/register src/scripts/verify-recommendation-api-branches.ts",

@@ -1,10 +1,11 @@
 import 'reflect-metadata';
 import path from 'path';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import { AppDataSource } from '@/config/database.config';
 import { RecommendationCache } from '@/modules/ai/entity/recommendation-cache';
 import { RecommendationType } from '@/modules/ai/enum/recommendation.enum';
 import { inspectOfflineRecommendationArtifacts } from '@/modules/ai/infrastructure/runtime/RecommendationArtifactHealth';
+import { EvaluationSummary } from './evaluate-recommendation-baseline';
 
 type CacheBucket = {
   algorithm: string;
@@ -23,6 +24,33 @@ type LatestCacheSnapshot = {
   generatedAt: string;
   expiresAt: string;
   cacheHitCount: number;
+};
+
+type EvaluationMetricSnapshot = {
+  generatedAt: string;
+  algorithmTag: string;
+  topK: number;
+  topN: number | null;
+  evaluatedUsers: number;
+  precisionAtK: number;
+  recallAtK: number;
+  hitRateAtK: number;
+  ndcgAtK: number;
+  mapAtK: number;
+  categoryCoverageAtK: number;
+  brandCoverageAtK: number;
+  noveltyAtK: number;
+  intraListDiversityAtK: number;
+  coldStartUserHitRateAtK: number;
+  coldStartProductHitRateAtK: number;
+};
+
+type EvaluationDeltaSnapshot = {
+  precisionAtK: number;
+  recallAtK: number;
+  hitRateAtK: number;
+  ndcgAtK: number;
+  mapAtK: number;
 };
 
 export type RecommendationLaunchReadinessEvidence = {
@@ -48,6 +76,12 @@ export type RecommendationLaunchReadinessEvidence = {
     latestHomepage: LatestCacheSnapshot | null;
     latestPdp: LatestCacheSnapshot | null;
   };
+  evaluation: {
+    current: EvaluationMetricSnapshot | null;
+    previous: EvaluationMetricSnapshot | null;
+    deltaFromPrevious: EvaluationDeltaSnapshot | null;
+    historyCount: number;
+  };
   safety: {
     containsIdentifiers: false;
     containsSecrets: false;
@@ -60,6 +94,16 @@ export const DEFAULT_OUTPUT_PATH = path.resolve(
   '.sisyphus',
   'evidence',
   'task-7-readiness.json'
+);
+export const DEFAULT_EVALUATION_PATH = path.resolve(
+  process.cwd(),
+  'exports',
+  'recommendation-evaluation.json'
+);
+export const DEFAULT_EVALUATION_HISTORY_PATH = path.resolve(
+  process.cwd(),
+  'exports',
+  'recommendation-evaluation-history.json'
 );
 
 const parseFlag = (flagName: string): string | undefined => {
@@ -78,6 +122,87 @@ const parseFlag = (flagName: string): string | undefined => {
 
 const toResultCount = (recommendedProducts: object[] | null | undefined): number =>
   Array.isArray(recommendedProducts) ? recommendedProducts.length : 0;
+
+const roundMetric = (value: number): number => Number(value.toFixed(6));
+
+const readJsonIfPresent = async <T>(filePath: string): Promise<T | null> => {
+  try {
+    return JSON.parse(await readFile(filePath, 'utf8')) as T;
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const toEvaluationMetricSnapshot = (
+  summary: EvaluationSummary | null
+): EvaluationMetricSnapshot | null => {
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    generatedAt: summary.generatedAt,
+    algorithmTag: summary.algorithmTag ?? 'unknown',
+    topK: summary.topK,
+    topN: summary.topN ?? null,
+    evaluatedUsers: summary.evaluatedUsers,
+    precisionAtK: summary.precisionAtK,
+    recallAtK: summary.recallAtK,
+    hitRateAtK: summary.hitRateAtK,
+    ndcgAtK: summary.ndcgAtK ?? 0,
+    mapAtK: summary.mapAtK ?? 0,
+    categoryCoverageAtK: summary.categoryCoverageAtK ?? 0,
+    brandCoverageAtK: summary.brandCoverageAtK ?? 0,
+    noveltyAtK: summary.noveltyAtK ?? 0,
+    intraListDiversityAtK: summary.intraListDiversityAtK ?? 0,
+    coldStartUserHitRateAtK: summary.coldStartUserSlice?.hitRateAtK ?? 0,
+    coldStartProductHitRateAtK: summary.coldStartProductSlice?.hitRateAtK ?? 0,
+  };
+};
+
+const toEvaluationDeltaSnapshot = (
+  current: EvaluationMetricSnapshot | null,
+  previous: EvaluationMetricSnapshot | null
+): EvaluationDeltaSnapshot | null => {
+  if (!current || !previous) {
+    return null;
+  }
+
+  return {
+    precisionAtK: roundMetric(current.precisionAtK - previous.precisionAtK),
+    recallAtK: roundMetric(current.recallAtK - previous.recallAtK),
+    hitRateAtK: roundMetric(current.hitRateAtK - previous.hitRateAtK),
+    ndcgAtK: roundMetric(current.ndcgAtK - previous.ndcgAtK),
+    mapAtK: roundMetric(current.mapAtK - previous.mapAtK),
+  };
+};
+
+const loadEvaluationEvidence = async (
+  evaluationPath: string,
+  evaluationHistoryPath: string
+): Promise<RecommendationLaunchReadinessEvidence['evaluation']> => {
+  const [currentSummary, rawHistory] = await Promise.all([
+    readJsonIfPresent<EvaluationSummary>(evaluationPath),
+    readJsonIfPresent<EvaluationSummary[]>(evaluationHistoryPath),
+  ]);
+  const history = Array.isArray(rawHistory) ? rawHistory : [];
+  const previousSummary =
+    history.length > 1 ? history[history.length - 2] : null;
+  const current = toEvaluationMetricSnapshot(currentSummary);
+  const previous = toEvaluationMetricSnapshot(previousSummary);
+
+  return {
+    current,
+    previous,
+    deltaFromPrevious: toEvaluationDeltaSnapshot(current, previous),
+    historyCount: history.length,
+  };
+};
 
 const loadLatestSnapshot = async (
   recommendationType: RecommendationType
@@ -109,6 +234,10 @@ export async function buildLaunchReadinessEvidence(): Promise<RecommendationLaun
   const artifactHealth = await inspectOfflineRecommendationArtifacts();
   const repository = AppDataSource.getRepository(RecommendationCache);
   const now = new Date();
+  const evaluation = await loadEvaluationEvidence(
+    DEFAULT_EVALUATION_PATH,
+    DEFAULT_EVALUATION_HISTORY_PATH
+  );
 
   const [activeByAlgorithm, staleByAlgorithm, activeByRecommendationType, homepageSnapshot, pdpSnapshot, activeCacheHitCount] =
     await Promise.all([
@@ -176,6 +305,7 @@ export async function buildLaunchReadinessEvidence(): Promise<RecommendationLaun
       latestHomepage: homepageSnapshot,
       latestPdp: pdpSnapshot,
     },
+    evaluation,
     safety: {
       containsIdentifiers: false,
       containsSecrets: false,

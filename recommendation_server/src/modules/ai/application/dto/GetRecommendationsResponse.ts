@@ -1,4 +1,10 @@
-export type RecommendationDecisionSource = 'offline' | 'hybrid' | 'content' | 'fallback' | 'hidden';
+export type RecommendationDecisionSource =
+  | 'offline'
+  | 'hybrid'
+  | 'embedding'
+  | 'content'
+  | 'fallback'
+  | 'hidden';
 
 export interface RecommendationDecisionMetadata {
   source: RecommendationDecisionSource;

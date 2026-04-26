@@ -10,6 +10,7 @@ import { AppDataSource } from '@/config/database.config';
 import { UserActionType } from '../../../ai/enum/user-behavior.enum';
 import { UserSession } from '@/modules/users/entity/user-session';
 import { DeviceType } from '@/modules/users/enum/user-session.enum';
+import { getRecommendationActionWeight } from '../../domain/recommendation-action-weights';
 
 /**
  * Adapter: TypeORM User Behavior Repository
@@ -21,14 +22,6 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
   private sessionRepository: Repository<UserSession>;
   private readonly nonImpressionViewClause =
     "(log.action_type != :viewAction OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(log.metadata, '$.event')) != :impressionEvent)";
-  private readonly preferenceWeightByAction: Partial<Record<UserActionType, number>> = {
-    [UserActionType.VIEW]: 1,
-    [UserActionType.CLICK]: 2,
-    [UserActionType.ADD_TO_CART]: 4,
-    [UserActionType.PURCHASE]: 6,
-    [UserActionType.WISHLIST_ADD]: 5,
-    [UserActionType.REVIEW_VIEW]: 3,
-  };
 
   constructor() {
     this.repository = AppDataSource.getRepository(UserBehaviorLog);
@@ -280,7 +273,7 @@ export class TypeORMUserBehaviorRepository implements IUserBehaviorRepository {
   }
 
   private getPreferenceWeight(actionType: UserActionType): number {
-    return this.preferenceWeightByAction[actionType] || 1;
+    return getRecommendationActionWeight(actionType);
   }
 
   private async resolveSession(userId: number, startedAt: Date): Promise<UserSession> {

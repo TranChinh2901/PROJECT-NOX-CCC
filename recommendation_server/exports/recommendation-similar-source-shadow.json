@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-04-26T01:11:44.121Z",
+  "sampleSize": 0,
+  "requestedSampleSize": 25,
+  "limit": 10,
+  "contentNonEmptyCount": 0,
+  "embeddingNonEmptyCount": 0,
+  "bothNonEmptyCount": 0,
+  "contentOnlyCount": 0,
+  "embeddingOnlyCount": 0,
+  "averageOverlapAtK": 0,
+  "averageContentTopScore": 0,
+  "averageEmbeddingTopScore": 0,
+  "safety": {
+    "containsProductIds": false
+  }
+}

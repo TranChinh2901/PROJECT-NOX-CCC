@@ -114,4 +114,43 @@ describe('TypeORMUserBehaviorRepository', () => {
     expect(preference.priceRangeMin).toBe(1000);
     expect(preference.priceRangeMax).toBe(1000);
   });
+
+  it('uses the canonical action weights when deriving user preferences', async () => {
+    const queryBuilder = createQueryBuilderMock();
+    queryBuilder.getMany.mockResolvedValue([
+      {
+        action_type: UserActionType.ADD_TO_CART,
+        product: {
+          category_id: 10,
+          brand_id: 100,
+          base_price: 100,
+        },
+      },
+      {
+        action_type: UserActionType.REVIEW_VIEW,
+        product: {
+          category_id: 10,
+          brand_id: 100,
+          base_price: 100,
+        },
+      },
+      {
+        action_type: UserActionType.WISHLIST_ADD,
+        product: {
+          category_id: 20,
+          brand_id: 200,
+          base_price: 1000,
+        },
+      },
+    ]);
+    behaviorRepositoryMock.createQueryBuilder.mockReturnValue(queryBuilder);
+
+    const repository = new TypeORMUserBehaviorRepository();
+    const preference = await repository.deriveUserPreferences(9);
+
+    expect(preference.preferredCategories).toEqual([10, 20]);
+    expect(preference.preferredBrands).toEqual([100, 200]);
+    expect(preference.priceRangeMin).toBe(100);
+    expect(preference.priceRangeMax).toBe(1000);
+  });
 });
