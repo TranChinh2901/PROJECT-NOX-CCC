@@ -36,6 +36,8 @@ describe('chatbot query planner', () => {
     mockedResolveGeminiRuntimeConfig.mockReturnValue({
       apiKey: 'test-key',
       model: 'gemini-3-flash-preview',
+      embeddingModel: 'gemini-embedding-2-preview',
+      embeddingOutputDimensionality: undefined,
       baseUrl: undefined,
     });
   });

@@ -93,7 +93,7 @@ describe('GetRecommendationsUseCase', () => {
     });
   });
 
-  it('normalizes offline and content scores before blending so neither source dominates by raw range', async () => {
+  it('normalizes source scores before unified scoring so neither source dominates by raw range', async () => {
     const recommendationRepository = createRecommendationRepository();
     const behaviorRepository = createBehaviorRepository();
     const productFeatureRepository = createProductFeatureRepository();
@@ -162,10 +162,10 @@ describe('GetRecommendationsUseCase', () => {
       202,
     ]);
     expect(result.recommendations.map((recommendation) => recommendation.score)).toEqual([
-      0.6,
-      0.4,
-      0.3,
-      0.2,
+      0.5955,
+      0.5799,
+      0.5055,
+      0.4899,
     ]);
     expect(result.recommendations.every((recommendation) => recommendation.score >= 0 && recommendation.score <= 1)).toBe(true);
     expect(result.strategy).toBe(RecommendationStrategy.HYBRID);
@@ -237,6 +237,118 @@ describe('GetRecommendationsUseCase', () => {
       expect.any(Array),
       'offline_model'
     );
+  });
+
+  it('boosts homepage candidates that match recent session intent without exceeding the cap', async () => {
+    const recommendationRepository = createRecommendationRepository();
+    const behaviorRepository = createBehaviorRepository();
+    const productFeatureRepository = createProductFeatureRepository();
+    const contentRecommendationEngine = createRecommendationEngine();
+    const offlineRecommendationEngine = createOfflineRecommendationEngine();
+    const useCase = new GetRecommendationsUseCase(
+      recommendationRepository,
+      behaviorRepository,
+      productFeatureRepository,
+      contentRecommendationEngine,
+      offlineRecommendationEngine
+    );
+
+    recommendationRepository.hasFreshRecommendations.mockResolvedValue(false);
+    behaviorRepository.deriveUserPreferences.mockResolvedValue(
+      UserPreference.create(1, [], [], 0, Number.MAX_SAFE_INTEGER)
+    );
+    behaviorRepository.getPopularProducts.mockResolvedValue([2001, 2002]);
+    behaviorRepository.getBehaviorHistory
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeLog(1001, BehaviorType.VIEW)]);
+    productFeatureRepository.getByIds
+      .mockResolvedValueOnce([
+        { ...makeProductFeature(2001), categoryId: 42, brandId: 420, price: 1000 },
+        { ...makeProductFeature(2002), categoryId: 50, brandId: 500, price: 4000 },
+      ])
+      .mockResolvedValueOnce([
+        { ...makeProductFeature(1001), categoryId: 42, brandId: 420, price: 1000 },
+      ]);
+    productFeatureRepository.getFallbackProducts.mockResolvedValue([
+      { ...makeProductFeature(2001), categoryId: 42, brandId: 420, price: 1000 },
+      { ...makeProductFeature(2002), categoryId: 50, brandId: 500, price: 4000 },
+    ]);
+    offlineRecommendationEngine.generateRecommendations.mockResolvedValue([]);
+    contentRecommendationEngine.generateRecommendations.mockResolvedValue([
+      Recommendation.create(2001, 0.5, 'content session match'),
+      Recommendation.create(2002, 0.62, 'content generic match'),
+    ]);
+
+    const result = await useCase.execute({ userId: 1, limit: 2 });
+
+    expect(result.recommendations.map((recommendation) => recommendation.productId)).toEqual([
+      2001,
+      2002,
+    ]);
+    expect(result.recommendations[0].score).toBeGreaterThan(result.recommendations[1].score);
+    expect(result.recommendations[0].reason).toContain('matches recent session intent');
+    expect(result.decision).toEqual({
+      source: 'content',
+      branch: 'content_only',
+      fallbackReason: 'offline-artifact-unavailable',
+      hidden: false,
+    });
+  });
+
+  it('keeps excluded products out even when they match recent session intent', async () => {
+    const recommendationRepository = createRecommendationRepository();
+    const behaviorRepository = createBehaviorRepository();
+    const productFeatureRepository = createProductFeatureRepository();
+    const contentRecommendationEngine = createRecommendationEngine();
+    const offlineRecommendationEngine = createOfflineRecommendationEngine();
+    const useCase = new GetRecommendationsUseCase(
+      recommendationRepository,
+      behaviorRepository,
+      productFeatureRepository,
+      contentRecommendationEngine,
+      offlineRecommendationEngine
+    );
+
+    recommendationRepository.hasFreshRecommendations.mockResolvedValue(false);
+    behaviorRepository.deriveUserPreferences.mockResolvedValue(
+      UserPreference.create(1, [], [], 0, Number.MAX_SAFE_INTEGER)
+    );
+    behaviorRepository.getPopularProducts.mockResolvedValue([2001, 2002]);
+    behaviorRepository.getBehaviorHistory
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeLog(1001, BehaviorType.VIEW)]);
+    productFeatureRepository.getByIds
+      .mockResolvedValueOnce([
+        { ...makeProductFeature(2001), categoryId: 42, brandId: 420, price: 1000 },
+        { ...makeProductFeature(2002), categoryId: 50, brandId: 500, price: 4000 },
+      ])
+      .mockResolvedValueOnce([
+        { ...makeProductFeature(1001), categoryId: 42, brandId: 420, price: 1000 },
+      ]);
+    productFeatureRepository.getFallbackProducts.mockResolvedValue([
+      { ...makeProductFeature(2001), categoryId: 42, brandId: 420, price: 1000 },
+      { ...makeProductFeature(2002), categoryId: 50, brandId: 500, price: 4000 },
+    ]);
+    offlineRecommendationEngine.generateRecommendations.mockResolvedValue([]);
+    contentRecommendationEngine.generateRecommendations.mockResolvedValue([
+      Recommendation.create(2001, 0.95, 'excluded session match'),
+      Recommendation.create(2002, 0.5, 'eligible generic match'),
+    ]);
+
+    const result = await useCase.execute({
+      userId: 1,
+      limit: 2,
+      excludeProductIds: [2001],
+    });
+
+    expect(result.recommendations.map((recommendation) => recommendation.productId)).toEqual([
+      2002,
+    ]);
+    expect(result.recommendations[0].reason).not.toContain('matches recent session intent');
   });
 
   it('returns active offline cache without duplicates or excluded ids', async () => {
@@ -443,7 +555,10 @@ describe('GetRecommendationsUseCase', () => {
       301,
       302,
     ]);
-    expect(result.recommendations.map((recommendation) => recommendation.score)).toEqual([1, 1]);
+    expect(result.recommendations.map((recommendation) => recommendation.score)).toEqual([
+      0.570096,
+      0.570096,
+    ]);
     expect(result.decision).toEqual({
       source: 'hybrid',
       branch: 'blend_offline_and_content',
@@ -609,6 +724,57 @@ describe('GetRecommendationsUseCase', () => {
       fallbackReason: 'offline-rollback-forced',
       hidden: false,
     });
+  });
+
+  it('uses embedding similar products for PDP when offline serving is unavailable', async () => {
+    const recommendationRepository = createRecommendationRepository();
+    const behaviorRepository = createBehaviorRepository();
+    const productFeatureRepository = createProductFeatureRepository();
+    const contentRecommendationEngine = createRecommendationEngine();
+    const offlineRecommendationEngine = createOfflineRecommendationEngine();
+    const embeddingRecommendationEngine = createRecommendationEngine();
+    const useCase = new GetRecommendationsUseCase(
+      recommendationRepository,
+      behaviorRepository,
+      productFeatureRepository,
+      contentRecommendationEngine,
+      offlineRecommendationEngine,
+      embeddingRecommendationEngine
+    );
+
+    (inspectOfflineRecommendationArtifacts as jest.Mock).mockResolvedValue({
+      freshnessWindowMinutes: 60,
+      state: 'stale',
+      rollback: {
+        forced: false,
+      },
+    });
+    productFeatureRepository.getById.mockResolvedValue(makeProductFeature(901));
+    productFeatureRepository.getByIds.mockResolvedValue([makeProductFeature(904)]);
+    productFeatureRepository.getFallbackProducts.mockResolvedValue([
+      makeProductFeature(902),
+      makeProductFeature(904),
+    ]);
+    embeddingRecommendationEngine.getSimilarProducts.mockResolvedValue([
+      Recommendation.create(904, 0.88, 'semantically similar'),
+    ]);
+    contentRecommendationEngine.getSimilarProducts.mockResolvedValue([
+      Recommendation.create(902, 0.7, 'content similar item'),
+    ]);
+
+    const result = await useCase.executeSimilarProducts(901, 2);
+
+    expect(offlineRecommendationEngine.getSimilarProducts).not.toHaveBeenCalled();
+    expect(embeddingRecommendationEngine.getSimilarProducts).toHaveBeenCalledWith(901, 2);
+    expect(contentRecommendationEngine.getSimilarProducts).toHaveBeenCalledWith(901, 2);
+    expect(result.recommendations.map((recommendation) => recommendation.productId)).toEqual([904]);
+    expect(result.decision).toEqual({
+      source: 'embedding',
+      branch: 'embedding_only',
+      fallbackReason: 'offline-artifact-stale',
+      hidden: false,
+    });
+    expect(result.strategy).toBe(RecommendationStrategy.CONTENT_BASED);
   });
 
   it('prefers healthy precomputed similar items when they resolve to eligible products', async () => {

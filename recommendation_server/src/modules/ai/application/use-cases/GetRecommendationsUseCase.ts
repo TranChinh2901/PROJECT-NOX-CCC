@@ -21,6 +21,18 @@ import { GetSimilarProductsResponseDTO } from '../dto/GetSimilarProductsResponse
 import { IRecommendationArtifactMetadataProvider } from '../../domain/services/IRecommendationEngine';
 import { inspectOfflineRecommendationArtifacts } from '../../infrastructure/runtime/RecommendationArtifactHealth';
 import { logRecommendationTrace } from '../../infrastructure/monitoring/RecommendationObservability';
+import {
+  buildSessionIntentProfile,
+  createEmptySessionIntent,
+  SessionIntentProfile,
+} from '../../domain/recommendation-session-intent';
+import { UserPreference } from '../../domain/entities/UserPreference';
+import {
+  RecommendationCandidate,
+  RecommendationCandidateSource,
+} from '../services/RecommendationCandidate';
+import { RecommendationCandidateScorer } from '../services/RecommendationCandidateScorer';
+import { RecommendationReRanker } from '../services/RecommendationReRanker';
 
 type CandidateResult = {
   recommendations: Recommendation[];
@@ -54,7 +66,10 @@ export class GetRecommendationsUseCase {
     private readonly productFeatureRepository: IProductFeatureRepository,
     private readonly contentRecommendationEngine: IRecommendationEngine,
     private readonly offlineRecommendationEngine: IRecommendationEngine &
-      Partial<IRecommendationArtifactMetadataProvider>
+      Partial<IRecommendationArtifactMetadataProvider>,
+    private readonly embeddingRecommendationEngine?: IRecommendationEngine,
+    private readonly candidateScorer: RecommendationCandidateScorer = new RecommendationCandidateScorer(),
+    private readonly recommendationReRanker: RecommendationReRanker = new RecommendationReRanker()
   ) {}
 
   /**
@@ -123,6 +138,7 @@ export class GetRecommendationsUseCase {
       Math.max(limit * 3, 20),
       request.categoryFilter
     );
+    const sessionIntent = await this.deriveSessionIntent(userId);
     const engineProductFeatures = candidateProductFeatures.length > 0
       ? candidateProductFeatures
       : fallbackProducts;
@@ -162,6 +178,10 @@ export class GetRecommendationsUseCase {
       fallbackProducts,
       excludedProductIds,
       limit,
+      userPreference,
+      sessionIntent,
+      knownFeatures: [...candidateProductFeatures, ...fallbackProducts],
+      diversifyVisibleSetSize: HOMEPAGE_VISIBLE_SET_SIZE,
     });
     const finalizedRecommendations = await this.finalizeHomepageRecommendations(
       resolution.recommendations,
@@ -261,7 +281,7 @@ export class GetRecommendationsUseCase {
           )
         : activeOfflineRecommendations.decision.fallbackReason;
 
-    const [offlineCandidates, contentCandidates] = await Promise.all([
+    const [offlineCandidates, embeddingCandidates, contentCandidates] = await Promise.all([
       offlineServingDisabledReason
         ? Promise.resolve({
             recommendations: [],
@@ -274,26 +294,45 @@ export class GetRecommendationsUseCase {
             excludedProductIds,
             'offline-artifact-unavailable'
           ),
+      this.embeddingRecommendationEngine
+        ? this.safeGetSimilarProducts(
+            this.embeddingRecommendationEngine,
+            productId,
+            limit,
+            excludedProductIds,
+            'embedding-engine-unavailable'
+          )
+        : Promise.resolve(undefined),
       this.safeGetSimilarProducts(
         this.contentRecommendationEngine,
         productId,
         limit,
         excludedProductIds,
-            'content-engine-unavailable'
-          ),
+        'content-engine-unavailable'
+      ),
     ]);
-    const [finalizedOfflineCandidates, finalizedContentCandidates] = await Promise.all([
+    const [
+      finalizedOfflineCandidates,
+      finalizedEmbeddingCandidates,
+      finalizedContentCandidates,
+    ] = await Promise.all([
       this.finalizeSimilarCandidates(offlineCandidates, excludedProductIds, limit),
+      embeddingCandidates
+        ? this.finalizeSimilarCandidates(embeddingCandidates, excludedProductIds, limit)
+        : Promise.resolve(undefined),
       this.finalizeSimilarCandidates(contentCandidates, excludedProductIds, limit),
     ]);
     const resolution = this.resolveDecisionTree({
       activeOfflineRecommendations: finalizedActiveOfflineRecommendations,
       activeOfflineUnavailableReason,
       offlineCandidates: finalizedOfflineCandidates,
+      embeddingCandidates: finalizedEmbeddingCandidates,
       contentCandidates: finalizedContentCandidates,
       fallbackProducts,
       excludedProductIds,
       limit,
+      targetProduct,
+      knownFeatures: fallbackProducts,
     });
     const strategy = this.getStrategyForSource(resolution.decision.source);
 
@@ -335,6 +374,35 @@ export class GetRecommendationsUseCase {
     const combined = [...new Set([...popularProducts, ...userViewedProducts])];
 
     return combined.slice(0, 200); // Limit candidates
+  }
+
+  private async deriveSessionIntent(userId: number): Promise<SessionIntentProfile> {
+    try {
+      const recentLogs = await this.userBehaviorRepository.getBehaviorHistory(userId, 20, [
+        BehaviorType.VIEW,
+        BehaviorType.SEARCH,
+      ]);
+
+      if (!Array.isArray(recentLogs) || recentLogs.length === 0) {
+        return createEmptySessionIntent();
+      }
+
+      const productIds = Array.from(
+        new Set(
+          recentLogs
+            .map((log) => log.productId)
+            .filter((productId): productId is number => Number.isInteger(productId))
+        )
+      );
+      const productFeatures =
+        productIds.length > 0
+          ? ((await this.productFeatureRepository.getByIds(productIds)) || [])
+          : [];
+
+      return buildSessionIntentProfile(recentLogs, productFeatures);
+    } catch {
+      return createEmptySessionIntent();
+    }
   }
 
   private buildFallbackRecommendations(
@@ -696,10 +764,16 @@ export class GetRecommendationsUseCase {
     activeOfflineRecommendations: Recommendation[];
     activeOfflineUnavailableReason?: string;
     offlineCandidates: CandidateResult;
+    embeddingCandidates?: CandidateResult;
     contentCandidates: CandidateResult;
     fallbackProducts: ProductFeature[];
     excludedProductIds: number[];
     limit: number;
+    userPreference?: UserPreference;
+    sessionIntent?: SessionIntentProfile;
+    targetProduct?: ProductFeature;
+    knownFeatures?: ProductFeature[];
+    diversifyVisibleSetSize?: number;
   }): DecisionTreeResolution {
     const fallbackRecommendations = this.buildFallbackRecommendations(
       params.fallbackProducts,
@@ -718,19 +792,43 @@ export class GetRecommendationsUseCase {
       };
     }
 
+    const hasEmbeddingCandidates = Boolean(params.embeddingCandidates?.recommendations.length);
+    const contentLikeCandidates = hasEmbeddingCandidates
+      ? params.embeddingCandidates!
+      : params.contentCandidates;
+    const contentLikeSource: RecommendationDecisionSource = hasEmbeddingCandidates
+      ? 'embedding'
+      : 'content';
+    const contentLikeUnavailableReason = hasEmbeddingCandidates
+      ? undefined
+      : this.combineReasons(
+          params.embeddingCandidates?.unavailableReason,
+          params.contentCandidates.unavailableReason
+        );
+
     if (
       params.offlineCandidates.recommendations.length > 0 &&
-      params.contentCandidates.recommendations.length > 0
+      contentLikeCandidates.recommendations.length > 0
     ) {
       return {
-        recommendations: this.blendRecommendations(
-          params.offlineCandidates.recommendations,
-          params.contentCandidates.recommendations,
-          params.limit
-        ),
+        recommendations: this.scoreAndRankCandidates({
+          candidates: [
+            ...this.toCandidates('offline', params.offlineCandidates.recommendations, params.knownFeatures),
+            ...this.toCandidates(contentLikeSource, contentLikeCandidates.recommendations, params.knownFeatures),
+          ],
+          excludedProductIds: params.excludedProductIds,
+          limit: params.limit,
+          userPreference: params.userPreference,
+          sessionIntent: params.sessionIntent,
+          targetProduct: params.targetProduct,
+          diversifyVisibleSetSize: params.diversifyVisibleSetSize,
+        }),
         decision: {
           source: 'hybrid',
-          branch: 'blend_offline_and_content',
+          branch:
+            contentLikeSource === 'embedding'
+              ? 'blend_offline_and_embedding'
+              : 'blend_offline_and_content',
           fallbackReason:
             params.activeOfflineUnavailableReason || 'active-offline-precomputed-unavailable',
           hidden: false,
@@ -740,25 +838,43 @@ export class GetRecommendationsUseCase {
 
     if (params.offlineCandidates.recommendations.length > 0) {
       return {
-        recommendations: params.offlineCandidates.recommendations,
+        recommendations: this.scoreAndRankCandidates({
+          candidates: this.toCandidates('offline', params.offlineCandidates.recommendations, params.knownFeatures),
+          excludedProductIds: params.excludedProductIds,
+          limit: params.limit,
+          userPreference: params.userPreference,
+          sessionIntent: params.sessionIntent,
+          targetProduct: params.targetProduct,
+          diversifyVisibleSetSize: params.diversifyVisibleSetSize,
+        }),
         decision: {
           source: 'offline',
           branch: 'offline_only',
           fallbackReason: this.combineReasons(
             params.activeOfflineUnavailableReason,
-            params.contentCandidates.unavailableReason || 'content-unavailable'
+            contentLikeUnavailableReason ||
+              params.contentCandidates.unavailableReason ||
+              'content-unavailable'
           ),
           hidden: false,
         },
       };
     }
 
-    if (params.contentCandidates.recommendations.length > 0) {
+    if (contentLikeCandidates.recommendations.length > 0) {
       return {
-        recommendations: params.contentCandidates.recommendations,
+        recommendations: this.scoreAndRankCandidates({
+          candidates: this.toCandidates(contentLikeSource, contentLikeCandidates.recommendations, params.knownFeatures),
+          excludedProductIds: params.excludedProductIds,
+          limit: params.limit,
+          userPreference: params.userPreference,
+          sessionIntent: params.sessionIntent,
+          targetProduct: params.targetProduct,
+          diversifyVisibleSetSize: params.diversifyVisibleSetSize,
+        }),
         decision: {
-          source: 'content',
-          branch: 'content_only',
+          source: contentLikeSource,
+          branch: contentLikeSource === 'embedding' ? 'embedding_only' : 'content_only',
           fallbackReason:
             params.offlineCandidates.unavailableReason ||
             params.activeOfflineUnavailableReason ||
@@ -770,12 +886,21 @@ export class GetRecommendationsUseCase {
 
     if (fallbackRecommendations.length > 0) {
       return {
-        recommendations: fallbackRecommendations,
+        recommendations: this.scoreAndRankCandidates({
+          candidates: this.toCandidates('fallback', fallbackRecommendations, params.fallbackProducts),
+          excludedProductIds: params.excludedProductIds,
+          limit: params.limit,
+          userPreference: params.userPreference,
+          sessionIntent: params.sessionIntent,
+          targetProduct: params.targetProduct,
+          diversifyVisibleSetSize: params.diversifyVisibleSetSize,
+        }),
         decision: {
           source: 'fallback',
           branch: 'deterministic_popularity_fallback',
           fallbackReason: this.combineReasons(
             params.offlineCandidates.unavailableReason || params.activeOfflineUnavailableReason,
+            params.embeddingCandidates?.unavailableReason,
             params.contentCandidates.unavailableReason || 'content-unavailable'
           ),
           hidden: false,
@@ -790,6 +915,7 @@ export class GetRecommendationsUseCase {
         branch: 'hide_module',
         fallbackReason: this.combineReasons(
           params.offlineCandidates.unavailableReason || params.activeOfflineUnavailableReason,
+          params.embeddingCandidates?.unavailableReason,
           params.contentCandidates.unavailableReason || 'content-unavailable',
           'fallback-unavailable'
         ),
@@ -798,104 +924,44 @@ export class GetRecommendationsUseCase {
     };
   }
 
-  private blendRecommendations(
-    offlineRecommendations: Recommendation[],
-    contentRecommendations: Recommendation[],
-    limit: number
-  ): Recommendation[] {
-    const offlineNormalizedScores = this.normalizeRecommendationScores(offlineRecommendations);
-    const contentNormalizedScores = this.normalizeRecommendationScores(contentRecommendations);
-    const blendedByProductId = new Map<number, { offline?: Recommendation; content?: Recommendation }>();
+  private scoreAndRankCandidates(params: {
+    candidates: RecommendationCandidate[];
+    excludedProductIds: number[];
+    limit: number;
+    userPreference?: UserPreference;
+    sessionIntent?: SessionIntentProfile;
+    targetProduct?: ProductFeature;
+    diversifyVisibleSetSize?: number;
+  }): Recommendation[] {
+    const scoredCandidates = this.candidateScorer.scoreCandidates(params.candidates, {
+      userPreference: params.userPreference,
+      sessionIntent: params.sessionIntent,
+      targetProduct: params.targetProduct,
+    });
 
-    for (const recommendation of offlineRecommendations) {
-      blendedByProductId.set(recommendation.productId, {
-        ...blendedByProductId.get(recommendation.productId),
-        offline: recommendation,
-      });
-    }
-
-    for (const recommendation of contentRecommendations) {
-      blendedByProductId.set(recommendation.productId, {
-        ...blendedByProductId.get(recommendation.productId),
-        content: recommendation,
-      });
-    }
-
-    return Array.from(blendedByProductId.entries())
-      .map(([productId, sources]) => {
-        const offlineScore = offlineNormalizedScores.get(productId) || 0;
-        const contentScore = contentNormalizedScores.get(productId) || 0;
-        const blendedScore = this.roundNormalizedScore(offlineScore * 0.6 + contentScore * 0.4);
-        const reason =
-          this.combineReasons(sources.offline?.reason, sources.content?.reason) ||
-          'blended offline and content recommendation';
-
-        return {
-          recommendation: Recommendation.create(productId, blendedScore, reason),
-          sourceCount: Number(Boolean(sources.offline)) + Number(Boolean(sources.content)),
-          offlineScore,
-          contentScore,
-        };
-      })
-      .sort((left, right) => {
-        const scoreDelta =
-          right.recommendation.score.toNumber() - left.recommendation.score.toNumber();
-        if (scoreDelta !== 0) {
-          return scoreDelta;
-        }
-
-        const sourceCountDelta = right.sourceCount - left.sourceCount;
-        if (sourceCountDelta !== 0) {
-          return sourceCountDelta;
-        }
-
-        const strongestSourceDelta =
-          Math.max(right.offlineScore, right.contentScore) -
-          Math.max(left.offlineScore, left.contentScore);
-        if (strongestSourceDelta !== 0) {
-          return strongestSourceDelta;
-        }
-
-        const offlineDelta = right.offlineScore - left.offlineScore;
-        if (offlineDelta !== 0) {
-          return offlineDelta;
-        }
-
-        const contentDelta = right.contentScore - left.contentScore;
-        if (contentDelta !== 0) {
-          return contentDelta;
-        }
-
-        return left.recommendation.productId - right.recommendation.productId;
-      })
-      .slice(0, limit)
-      .map(({ recommendation }) => recommendation);
+    return this.recommendationReRanker.reRank(scoredCandidates, {
+      excludedProductIds: params.excludedProductIds,
+      limit: params.limit,
+      diversifyVisibleSetSize: params.diversifyVisibleSetSize,
+    });
   }
 
-  private normalizeRecommendationScores(recommendations: Recommendation[]): Map<number, number> {
-    if (recommendations.length === 0) {
-      return new Map();
-    }
-
-    const scores = recommendations.map((recommendation) => ({
-      productId: recommendation.productId,
-      score: this.clampNormalizedScore(recommendation.score.toNumber()),
-    }));
-    const minScore = scores.reduce((currentMin, { score }) => Math.min(currentMin, score), 1);
-    const maxScore = scores.reduce((currentMax, { score }) => Math.max(currentMax, score), 0);
-
-    if (maxScore === minScore) {
-      return new Map(
-        scores.map(({ productId, score }) => [productId, score > 0 ? 1 : 0])
-      );
-    }
-
-    return new Map(
-      scores.map(({ productId, score }) => [
-        productId,
-        this.roundNormalizedScore((score - minScore) / (maxScore - minScore)),
-      ])
+  private toCandidates(
+    source: RecommendationCandidateSource,
+    recommendations: Recommendation[],
+    knownFeatures: ProductFeature[] = []
+  ): RecommendationCandidate[] {
+    const featureByProductId = new Map(
+      knownFeatures.map((productFeature) => [productFeature.productId, productFeature])
     );
+
+    return recommendations.map((recommendation) => ({
+      productId: recommendation.productId,
+      source,
+      sourceScore: recommendation.score.toNumber(),
+      reason: recommendation.reason,
+      feature: featureByProductId.get(recommendation.productId),
+    }));
   }
 
   private async finalizeHomepageRecommendations(
@@ -928,19 +994,12 @@ export class GetRecommendationsUseCase {
       return validRecommendations;
     }
 
-    const diversifiedVisibleSet = this.selectDiversifiedHomepageVisibleSet(
+    return this.recommendationReRanker.diversifyRecommendations(
       validRecommendations,
       featureByProductId,
-      visibleSetSize
+      visibleSetSize,
+      limit
     );
-    const selectedProductIds = new Set(
-      diversifiedVisibleSet.map((recommendation) => recommendation.productId)
-    );
-    const remainingRecommendations = validRecommendations.filter(
-      (recommendation) => !selectedProductIds.has(recommendation.productId)
-    );
-
-    return [...diversifiedVisibleSet, ...remainingRecommendations].slice(0, limit);
   }
 
   private async getHomepageFeatureMap(
@@ -1125,6 +1184,7 @@ export class GetRecommendationsUseCase {
       case 'hybrid':
         return RecommendationStrategy.HYBRID;
       case 'content':
+      case 'embedding':
         return RecommendationStrategy.CONTENT_BASED;
       case 'fallback':
       case 'hidden':
@@ -1140,6 +1200,7 @@ export class GetRecommendationsUseCase {
       case 'hybrid':
         return 'hybrid';
       case 'content':
+      case 'embedding':
         return 'content_based';
       case 'fallback':
       case 'hidden':
