@@ -368,6 +368,7 @@ export default function ProductManagement() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [isCreateMode, setIsCreateMode] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductEditForm>(emptyProductForm);
   const [variantForms, setVariantForms] = useState<Record<number, VariantEditForm>>({});
@@ -399,7 +400,7 @@ export default function ProductManagement() {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const primaryImageInputRef = useRef<HTMLInputElement | null>(null);
 
-  useBodyScrollLock(Boolean(editingProduct || showDeleteConfirm));
+  useBodyScrollLock(Boolean(editingProduct || isCreateMode || showDeleteConfirm));
 
   useEffect(() => {
     setCurrentPage(1);
@@ -523,6 +524,26 @@ export default function ProductManagement() {
     }
   }, [initializeEditModal]);
 
+  const openCreateModal = useCallback(() => {
+    setIsCreateMode(true);
+    setEditingProduct(null);
+    setProductForm({
+      ...emptyProductForm,
+      is_active: true,
+    });
+    setVariantForms({});
+    setNewVariantForm(emptyVariantForm);
+    setProductImages([]);
+    setSelectedImageId(null);
+    setProductModalError('');
+    setProductImageActionError('');
+    setVariantErrors({});
+    setNewVariantError('');
+    setIsCreatingVariant(false);
+    setSavingVariantId(null);
+    setDeletingVariantId(null);
+  }, []);
+
   const requestDeleteProduct = useCallback((productId: number) => {
     setDeleteProductError('');
     setShowDeleteConfirm(productId);
@@ -537,6 +558,7 @@ export default function ProductManagement() {
       isUploadingImages ||
       isDeletingImageId !== null
     ) return;
+    setIsCreateMode(false);
     setEditingProduct(null);
     setProductForm(emptyProductForm);
     setVariantForms({});
@@ -567,8 +589,8 @@ export default function ProductManagement() {
     }));
   };
 
-  const handleUpdateProduct = async () => {
-    if (!editingProduct) return;
+  const handleSaveProduct = async () => {
+    const isCreatingProduct = !editingProduct;
 
     if (!productForm.name.trim() || !productForm.slug.trim() || !productForm.sku.trim()) {
       setProductModalError('Tên, slug và SKU là bắt buộc.');
@@ -594,36 +616,76 @@ export default function ProductManagement() {
       setIsSavingProduct(true);
       setProductModalError('');
 
-      const updatedProduct = await adminApi.updateProduct(editingProduct.id, {
-        category_id: Number(productForm.category_id),
-        brand_id: productForm.brand_id === '' ? null : Number(productForm.brand_id),
-        name: productForm.name.trim(),
-        slug: productForm.slug.trim(),
-        sku: productForm.sku.trim(),
-        description: productForm.description.trim(),
-        short_description: productForm.short_description.trim() || null,
-        base_price: Number(productForm.base_price),
-        compare_at_price: toOptionalNumber(productForm.compare_at_price),
-        cost_price: toOptionalNumber(productForm.cost_price),
-        weight_kg: toOptionalNumber(productForm.weight_kg),
-        is_active: productForm.is_active,
-        is_featured: productForm.is_featured,
-      });
+      if (isCreatingProduct) {
+        const createdProduct = await adminApi.createProduct({
+          category_id: Number(productForm.category_id),
+          brand_id: productForm.brand_id === '' ? null : Number(productForm.brand_id),
+          name: productForm.name.trim(),
+          slug: productForm.slug.trim(),
+          sku: productForm.sku.trim(),
+          description: productForm.description.trim(),
+          short_description: productForm.short_description.trim() || null,
+          base_price: Number(productForm.base_price),
+          compare_at_price: toOptionalNumber(productForm.compare_at_price),
+          cost_price: toOptionalNumber(productForm.cost_price),
+          weight_kg: toOptionalNumber(productForm.weight_kg),
+          is_active: productForm.is_active,
+          is_featured: productForm.is_featured,
+        });
 
-      setProducts((currentProducts) => {
-        const nextProducts = currentProducts.map((product) =>
-          product.id === editingProduct.id ? updatedProduct : product,
-        );
-        recalculateStats(nextProducts);
-        return nextProducts;
-      });
+        setProducts((currentProducts) => {
+          const nextProducts = [createdProduct, ...currentProducts];
+          recalculateStats(nextProducts);
+          return nextProducts;
+        });
+        setStats((currentStats) => ({
+          ...currentStats,
+          total: currentStats.total + 1,
+        }));
+      } else {
+        const updatedProduct = await adminApi.updateProduct(editingProduct.id, {
+          category_id: Number(productForm.category_id),
+          brand_id: productForm.brand_id === '' ? null : Number(productForm.brand_id),
+          name: productForm.name.trim(),
+          slug: productForm.slug.trim(),
+          sku: productForm.sku.trim(),
+          description: productForm.description.trim(),
+          short_description: productForm.short_description.trim() || null,
+          base_price: Number(productForm.base_price),
+          compare_at_price: toOptionalNumber(productForm.compare_at_price),
+          cost_price: toOptionalNumber(productForm.cost_price),
+          weight_kg: toOptionalNumber(productForm.weight_kg),
+          is_active: productForm.is_active,
+          is_featured: productForm.is_featured,
+        });
+
+        setProducts((currentProducts) => {
+          const nextProducts = currentProducts.map((product) =>
+            product.id === editingProduct.id ? updatedProduct : product,
+          );
+          recalculateStats(nextProducts);
+          return nextProducts;
+        });
+      }
+
+      setIsCreateMode(false);
       setEditingProduct(null);
       setProductForm(emptyProductForm);
+      setProductImages([]);
+      setSelectedImageId(null);
+      setVariantForms({});
+      setNewVariantForm(emptyVariantForm);
       setProductModalError('');
+
+      toast.success(isCreatingProduct ? 'Thêm sản phẩm thành công.' : 'Cập nhật sản phẩm thành công.');
     } catch (error) {
-      console.error('Failed to update product:', error);
+      console.error('Failed to save product:', error);
       setProductModalError(
-        error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm. Vui lòng thử lại.',
+        error instanceof Error
+          ? error.message
+          : isCreatingProduct
+            ? 'Không thể thêm sản phẩm. Vui lòng thử lại.'
+            : 'Không thể cập nhật sản phẩm. Vui lòng thử lại.',
       );
     } finally {
       setIsSavingProduct(false);
@@ -1171,9 +1233,8 @@ export default function ProductManagement() {
             </button>
             <button
               type="button"
-              disabled
-              title="Tính năng thêm sản phẩm chưa khả dụng."
-              className="flex items-center space-x-2 px-4 py-2.5 bg-slate-300 text-slate-500 rounded-lg cursor-not-allowed"
+              onClick={openCreateModal}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-[#7366ff] text-white rounded-lg hover:bg-[#5d54cc] transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Thêm sản phẩm</span>
@@ -1283,15 +1344,17 @@ export default function ProductManagement() {
         />
       </div>
 
-      {/* Edit Product Modal */}
-      {editingProduct && (
+      {/* Create/Edit Product Modal */}
+      {(editingProduct || isCreateMode) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-none bg-black/50 p-4">
           <div className="glass-card max-h-[90vh] w-full max-w-5xl overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white p-6 backdrop-blur-sm">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold">Chỉnh sửa sản phẩm</h3>
+                <h3 className="text-xl font-bold">{isCreateMode ? 'Thêm sản phẩm' : 'Chỉnh sửa sản phẩm'}</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Tối ưu thông tin hiển thị và quản lý bộ ảnh ngay trong một màn hình.
+                  {isCreateMode
+                    ? 'Tạo sản phẩm mới trước, sau đó có thể mở lại để bổ sung ảnh và phiên bản.'
+                    : 'Tối ưu thông tin hiển thị và quản lý bộ ảnh ngay trong một màn hình.'}
                 </p>
               </div>
               <button
@@ -1306,13 +1369,14 @@ export default function ProductManagement() {
                   isDeletingImageId !== null
                 }
                 className="rounded-full border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Đóng hộp thoại chỉnh sửa sản phẩm"
+                aria-label={isCreateMode ? 'Đóng hộp thoại thêm sản phẩm' : 'Đóng hộp thoại chỉnh sửa sản phẩm'}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {!isCreateMode && (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -1481,7 +1545,9 @@ export default function ProductManagement() {
                   </p>
                 )}
               </div>
+              )}
 
+              {!isCreateMode && (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1890,6 +1956,7 @@ export default function ProductManagement() {
                   </div>
                 )}
               </div>
+              )}
 
               <div>
                 <label className="mb-2 block text-sm font-medium">Tên sản phẩm</label>
@@ -2074,11 +2141,11 @@ export default function ProductManagement() {
                 Hủy
               </button>
               <button
-                onClick={handleUpdateProduct}
+                onClick={handleSaveProduct}
                 disabled={isSavingProduct}
                 className="rounded bg-[#7366ff] px-4 py-2 text-white transition-colors hover:bg-[#5d54cc] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingProduct ? 'Đang lưu...' : 'Lưu thay đổi'}
+                {isSavingProduct ? 'Đang lưu...' : isCreateMode ? 'Tạo sản phẩm' : 'Lưu thay đổi'}
               </button>
             </div>
           </div>

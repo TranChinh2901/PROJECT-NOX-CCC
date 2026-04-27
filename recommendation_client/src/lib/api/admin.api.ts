@@ -176,6 +176,24 @@ export interface UpdateAdminProductDto {
   meta_description?: string | null;
 }
 
+export interface CreateAdminProductDto {
+  category_id: number;
+  brand_id?: number | null;
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  short_description?: string | null;
+  base_price: number;
+  compare_at_price?: number | null;
+  cost_price?: number | null;
+  weight_kg?: number | null;
+  is_active?: boolean;
+  is_featured?: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
+}
+
 export interface UploadAdminProductImagesDto {
   variant_id?: number;
   alt_text?: string;
@@ -295,6 +313,10 @@ export const adminApi = {
 
   async getProductById(productId: number): Promise<Product> {
     return await apiClient.get<Product>(`/admin/products/${productId}`);
+  },
+
+  async createProduct(data: CreateAdminProductDto): Promise<Product> {
+    return await apiClient.post<Product>('/admin/products', data);
   },
 
   async updateProduct(productId: number, data: UpdateAdminProductDto): Promise<Product> {
