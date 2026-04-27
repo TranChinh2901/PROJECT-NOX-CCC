@@ -1115,6 +1115,9 @@ export default function ProductManagement() {
     (firstVariant, secondVariant) =>
       Number(firstVariant.sort_order ?? 0) - Number(secondVariant.sort_order ?? 0),
   );
+  const editingProductName = editingProduct?.name || productForm.name || 'sản phẩm';
+  const editingProductSku = editingProduct?.sku || productForm.sku;
+  const editingProductBasePrice = Number(editingProduct?.base_price ?? 0);
   const hasPendingBasePriceChange =
     Boolean(editingProduct) &&
     productForm.base_price.trim() !== '' &&
@@ -1439,7 +1442,7 @@ export default function ProductManagement() {
                         <>
                           <Image
                             src={selectedProductImage.image_url}
-                            alt={selectedProductImage.alt_text || editingProduct.name}
+                            alt={selectedProductImage.alt_text || editingProductName}
                             fill
                             sizes="(min-width: 1024px) 45vw, 100vw"
                             className="object-contain p-6"
@@ -1491,7 +1494,7 @@ export default function ProductManagement() {
                               <div className="relative aspect-square bg-slate-50 p-3">
                                 <Image
                                   src={image.thumbnail_url || image.image_url}
-                                  alt={image.alt_text || editingProduct.name}
+                                  alt={image.alt_text || editingProductName}
                                   fill
                                   sizes="(min-width: 1024px) 10vw, (min-width: 640px) 18vw, 40vw"
                                   className="object-contain"
@@ -1514,7 +1517,7 @@ export default function ProductManagement() {
                               }}
                               disabled={isDeletingThisImage || isUploadingImages}
                               className="absolute right-2 top-2 rounded-full bg-white/95 p-1.5 text-red-500 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                              aria-label={`Xóa ảnh ${image.alt_text || editingProduct.name}`}
+                              aria-label={`Xóa ảnh ${image.alt_text || editingProductName}`}
                             >
                               {isDeletingThisImage ? (
                                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
@@ -1560,7 +1563,7 @@ export default function ProductManagement() {
                   </div>
                   {editingProductVariants.length > 0 && (
                     <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-                      SKU gốc: {editingProduct.sku}
+                      SKU gốc: {editingProductSku}
                     </span>
                   )}
                 </div>
@@ -1720,7 +1723,7 @@ export default function ProductManagement() {
                       const basePriceForPreview =
                         productForm.base_price.trim() !== '' && !Number.isNaN(Number(productForm.base_price))
                           ? Number(productForm.base_price)
-                          : Number(editingProduct.base_price || 0);
+                          : editingProductBasePrice;
                       const previewFinalPrice = Number.isNaN(adjustment)
                         ? Number(variant.final_price)
                         : basePriceForPreview + adjustment;

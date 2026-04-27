@@ -9,6 +9,8 @@
   --color-blue-glow: #3B82F6;
   --color-glass: rgba(255, 255, 255, 0.9);
   --color-glass-border: rgba(0, 0, 0, 0.08);
+  --font-heading: "Segoe UI", Arial, sans-serif;
+  --font-body: "Segoe UI", Arial, sans-serif;
   /* Admin Dashboard Design System - Home vibe (warm neutral + gold) */
   --admin-primary: 202 138 4; /* #CA8A04 - Brand Gold */
   --admin-primary-hover: 180 124 4; /* #B47B04 - Dark Gold */

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Manrope, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -7,20 +6,6 @@ import { CartProvider } from "@/contexts/CartContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
 import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
-
-const headingFont = Outfit({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
-  weight: ["500", "600", "700", "800"],
-});
-
-const bodyFont = Manrope({
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "TechNova - Cửa Hàng Công Nghệ Cao Cấp",
@@ -39,9 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body
-        className={`${headingFont.variable} ${bodyFont.variable} bg-background text-text font-body antialiased`}
-      >
+      <body className="bg-background text-text font-body antialiased">
         <AuthProvider>
           <NotificationProvider
             wsEndpoint={process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000'}
