@@ -5,6 +5,7 @@ import { Search, Plus, Edit, Trash2, FolderTree, Package, ChevronRight } from 'l
 import { GlassCard } from '@/components/ui/GlassCard';
 import { adminApi } from '@/lib/api/admin.api';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import type { Product } from '@/types';
 
 interface Category {
   id: number;
@@ -17,6 +18,87 @@ interface Category {
   updated_at: Date | string;
 }
 
+const PRODUCT_COUNT_PAGE_SIZE = 100;
+
+const calculateCategoryProductCounts = (categories: Category[], products: Product[]) => {
+  const directCounts = new Map<number, number>();
+
+  products.forEach((product) => {
+    const categoryId = product.category?.id ?? product.category_id;
+    if (typeof categoryId !== 'number') {
+      return;
+    }
+
+    directCounts.set(categoryId, (directCounts.get(categoryId) ?? 0) + 1);
+  });
+
+  const childIdsByParentId = new Map<number, number[]>();
+  categories.forEach((category) => {
+    if (typeof category.parent_id === 'number') {
+      const childIds = childIdsByParentId.get(category.parent_id) ?? [];
+      childIds.push(category.id);
+      childIdsByParentId.set(category.parent_id, childIds);
+    }
+  });
+
+  const totalCounts = new Map<number, number>();
+  const calculateTotal = (categoryId: number, visited = new Set<number>()): number => {
+    const cachedCount = totalCounts.get(categoryId);
+    if (cachedCount !== undefined) {
+      return cachedCount;
+    }
+
+    if (visited.has(categoryId)) {
+      return directCounts.get(categoryId) ?? 0;
+    }
+
+    const nextVisited = new Set(visited).add(categoryId);
+    const childTotal = (childIdsByParentId.get(categoryId) ?? []).reduce(
+      (sum, childId) => sum + calculateTotal(childId, nextVisited),
+      0,
+    );
+    const total = (directCounts.get(categoryId) ?? 0) + childTotal;
+    totalCounts.set(categoryId, total);
+    return total;
+  };
+
+  categories.forEach((category) => {
+    calculateTotal(category.id);
+  });
+
+  return totalCounts;
+};
+
+const enrichCategoriesWithProductCounts = async (sourceCategories: Category[]) => {
+  const firstPage = await adminApi.getAllProducts({
+    page: 1,
+    limit: PRODUCT_COUNT_PAGE_SIZE,
+  });
+  let products = [...firstPage.data];
+
+  if (firstPage.pagination.total_pages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: firstPage.pagination.total_pages - 1 }, (_, index) =>
+        adminApi.getAllProducts({
+          page: index + 2,
+          limit: PRODUCT_COUNT_PAGE_SIZE,
+        }),
+      ),
+    );
+    products = products.concat(...remainingPages.map((page) => page.data));
+  }
+
+  const productCounts = calculateCategoryProductCounts(sourceCategories, products);
+
+  return {
+    categories: sourceCategories.map((category) => ({
+      ...category,
+      products_count: productCounts.get(category.id) ?? category.products_count ?? 0,
+    })),
+    totalProducts: firstPage.pagination.total,
+  };
+};
+
 export default function CategoriesManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +108,7 @@ export default function CategoriesManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   useBodyScrollLock(Boolean(isCreating || editingCategory || showDeleteConfirm));
 
@@ -33,10 +116,20 @@ export default function CategoriesManagement() {
     try {
       setLoading(true);
       const response = await adminApi.getAllCategories().catch(() => generateMockCategories());
-      setCategories(response);
+      const enrichedCategories = await enrichCategoriesWithProductCounts(response).catch((error) => {
+        console.error('Failed to calculate category product counts:', error);
+        return {
+          categories: response,
+          totalProducts: response.reduce((sum, category) => sum + (category.products_count || 0), 0),
+        };
+      });
+      setCategories(enrichedCategories.categories);
+      setTotalProducts(enrichedCategories.totalProducts);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
-      setCategories(generateMockCategories());
+      const mockCategories = generateMockCategories();
+      setCategories(mockCategories);
+      setTotalProducts(mockCategories.reduce((sum, category) => sum + (category.products_count || 0), 0));
     } finally {
       setLoading(false);
     }
@@ -70,6 +163,7 @@ export default function CategoriesManagement() {
       }));
 
       setCategories([...categories, newCategory]);
+      setTotalProducts((currentTotal) => currentTotal + (newCategory.products_count || 0));
       setFormData({ name: '', description: '' });
       setIsCreating(false);
     } catch (error) {
@@ -127,8 +221,6 @@ export default function CategoriesManagement() {
     cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cat.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const totalProducts = categories.reduce((sum, cat) => sum + (cat.products_count || 0), 0);
 
   if (loading) {
     return (

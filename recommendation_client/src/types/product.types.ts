@@ -38,6 +38,7 @@ export interface Category {
   image_url?: string;
   sort_order: number;
   is_active: boolean;
+  products_count?: number;
   created_at: Date;
   updated_at: Date;
   deleted_at?: Date;

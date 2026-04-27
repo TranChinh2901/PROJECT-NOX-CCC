@@ -29,7 +29,8 @@ export class AdminCategoryService {
     let queryBuilder = this.categoryRepository
       .createQueryBuilder('category')
       .leftJoinAndSelect('category.parent', 'parent')
-      .withDeleted();
+      .withDeleted()
+      .andWhere('category.deleted_at IS NULL');
 
     if (search) {
       queryBuilder = queryBuilder.andWhere(
@@ -48,9 +49,10 @@ export class AdminCategoryService {
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
     const categories = await queryBuilder.getMany();
+    const productCountsByCategoryId = await this.getProductCountsByCategoryId();
 
     return {
-      data: categories.map(category => this.formatCategoryResponse(category)),
+      data: categories.map(category => this.formatCategoryResponse(category, false, productCountsByCategoryId)),
       pagination: {
         total,
         page,
@@ -75,7 +77,9 @@ export class AdminCategoryService {
       );
     }
 
-    return this.formatCategoryResponse(category, true);
+    const productCountsByCategoryId = await this.getProductCountsByCategoryId();
+
+    return this.formatCategoryResponse(category, true, productCountsByCategoryId);
   }
 
   async createCategory(data: CreateCategoryDto) {
@@ -253,6 +257,8 @@ export class AdminCategoryService {
       order: { sort_order: 'ASC', name: 'ASC' }
     });
 
+    const productCountsByCategoryId = await this.getProductCountsByCategoryId();
+
     // Build tree structure
     const categoryMap = new Map<number, any>();
     const rootCategories: any[] = [];
@@ -260,7 +266,7 @@ export class AdminCategoryService {
     // First pass: create map of all categories
     categories.forEach(category => {
       categoryMap.set(category.id, {
-        ...this.formatCategoryResponse(category),
+        ...this.formatCategoryResponse(category, false, productCountsByCategoryId),
         children: []
       });
     });
@@ -297,7 +303,66 @@ export class AdminCategoryService {
     return false;
   }
 
-  private formatCategoryResponse(category: Category, includeChildren: boolean = false) {
+  private async getProductCountsByCategoryId(): Promise<Map<number, number>> {
+    const categories = await this.categoryRepository.find({
+      where: { deleted_at: IsNull() },
+      select: ['id', 'parent_id'],
+    });
+
+    const directCountRows = await this.productRepository
+      .createQueryBuilder('product')
+      .select('product.category_id', 'category_id')
+      .addSelect('COUNT(product.id)', 'product_count')
+      .where('product.deleted_at IS NULL')
+      .groupBy('product.category_id')
+      .getRawMany<{ category_id: number | string; product_count: number | string }>();
+
+    const directCounts = new Map<number, number>();
+    directCountRows.forEach((row) => {
+      directCounts.set(Number(row.category_id), Number(row.product_count));
+    });
+
+    const childIdsByParentId = new Map<number, number[]>();
+    categories.forEach((category) => {
+      if (category.parent_id) {
+        const childIds = childIdsByParentId.get(category.parent_id) ?? [];
+        childIds.push(category.id);
+        childIdsByParentId.set(category.parent_id, childIds);
+      }
+    });
+
+    const totalCounts = new Map<number, number>();
+    const calculateTotal = (categoryId: number, visited = new Set<number>()): number => {
+      if (totalCounts.has(categoryId)) {
+        return totalCounts.get(categoryId)!;
+      }
+
+      if (visited.has(categoryId)) {
+        return directCounts.get(categoryId) ?? 0;
+      }
+
+      const nextVisited = new Set(visited).add(categoryId);
+      const childTotal = (childIdsByParentId.get(categoryId) ?? []).reduce(
+        (sum, childId) => sum + calculateTotal(childId, nextVisited),
+        0,
+      );
+      const total = (directCounts.get(categoryId) ?? 0) + childTotal;
+      totalCounts.set(categoryId, total);
+      return total;
+    };
+
+    categories.forEach((category) => {
+      calculateTotal(category.id);
+    });
+
+    return totalCounts;
+  }
+
+  private formatCategoryResponse(
+    category: Category,
+    includeChildren: boolean = false,
+    productCountsByCategoryId: Map<number, number> = new Map(),
+  ) {
     const response: any = {
       id: category.id,
       name: category.name,
@@ -312,6 +377,7 @@ export class AdminCategoryService {
       image_url: category.image_url,
       sort_order: category.sort_order,
       is_active: category.is_active,
+      products_count: productCountsByCategoryId.get(category.id) ?? 0,
       deleted_at: category.deleted_at,
       created_at: category.created_at,
       updated_at: category.updated_at
