@@ -31,6 +31,7 @@ const validStatusTransitions: Record<Exclude<OrderStatus, ''>, Array<Exclude<Ord
 export default function OrdersManagement() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus>('');
   const [paymentFilter, setPaymentFilter] = useState<PaymentStatus>('');
@@ -229,6 +230,119 @@ export default function OrdersManagement() {
     return true;
   });
 
+  const buildExportRows = useCallback((sourceOrders: AdminOrder[]) => {
+    const exportDateFormatter = new Intl.DateTimeFormat('vi-VN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const paymentStatusLabelMap: Record<string, string> = {
+      pending: 'Dang cho thanh toan',
+      paid: 'Da thanh toan',
+      failed: 'Thanh toan that bai',
+      refunded: 'Da hoan tien',
+    };
+
+    return sourceOrders.map((order, index) => ({
+      STT: index + 1,
+      'Ma don hang': order.order_number,
+      'Khach hang': order.customer?.fullname ?? 'Khach hang an danh',
+      Email: order.customer?.email ?? '',
+      'Ngay dat': exportDateFormatter.format(new Date(order.created_at)),
+      'So san pham': order.items_count,
+      'Tong tien (VND)': order.total_amount,
+      'Trang thai don': orderStatusLabels[order.status as Exclude<OrderStatus, ''>] ?? order.status,
+      'Thanh toan': paymentStatusLabelMap[order.payment_status] ?? order.payment_status,
+    }));
+  }, []);
+
+  const writeOrdersToExcel = useCallback(async (sourceOrders: AdminOrder[], filePrefix: string) => {
+    const XLSX = await import('xlsx');
+    const rows = buildExportRows(sourceOrders);
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'DonHang');
+
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    XLSX.writeFile(workbook, `${filePrefix}_${timestamp}.xlsx`);
+  }, [buildExportRows]);
+
+  const handleExportCurrentPage = useCallback(async () => {
+    if (filteredOrders.length === 0 || isExporting) {
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      await writeOrdersToExcel(filteredOrders, `don_hang_admin_trang_${currentPage}`);
+    } catch (error) {
+      console.error('Failed to export current page orders to Excel:', error);
+      alert('Xuất file Excel (trang hiện tại) thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [currentPage, filteredOrders, isExporting, writeOrdersToExcel]);
+
+  const handleExportAllPages = useCallback(async () => {
+    if (isExporting) {
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+
+      const baseParams: {
+        limit: number;
+        search?: string;
+        status?: OrderStatus;
+      } = {
+        limit: 10,
+        search: searchTerm || undefined,
+        status: statusFilter || undefined,
+      };
+
+      const firstPageResponse = await adminApi.getAllOrders({
+        ...baseParams,
+        page: 1,
+      });
+
+      let allOrders: AdminOrder[] = [...firstPageResponse.data];
+
+      if (firstPageResponse.totalPages > 1) {
+        const remainingPages = await Promise.all(
+          Array.from({ length: firstPageResponse.totalPages - 1 }, (_, index) =>
+            adminApi.getAllOrders({
+              ...baseParams,
+              page: index + 2,
+            })
+          )
+        );
+
+        allOrders = allOrders.concat(...remainingPages.map((response) => response.data));
+      }
+
+      const allFilteredOrders = paymentFilter
+        ? allOrders.filter((order) => order.payment_status === paymentFilter)
+        : allOrders;
+
+      if (allFilteredOrders.length === 0) {
+        alert('Không có dữ liệu phù hợp để xuất tất cả trang.');
+        return;
+      }
+
+      await writeOrdersToExcel(allFilteredOrders, 'don_hang_admin_tat_ca_trang');
+    } catch (error) {
+      console.error('Failed to export all orders to Excel:', error);
+      alert('Xuất file Excel (tất cả trang) thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isExporting, paymentFilter, searchTerm, statusFilter, writeOrdersToExcel]);
+
   if (loading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -324,12 +438,24 @@ export default function OrdersManagement() {
               <Filter className="w-4 h-4" />
               <span>Bộ lọc</span>
             </button>
-            <button
-              className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Xuất file</span>
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleExportCurrentPage}
+                disabled={filteredOrders.length === 0 || isExporting}
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExporting ? 'Đang xuất...' : 'Xuất trang hiện tại'}</span>
+              </button>
+              <button
+                onClick={handleExportAllPages}
+                disabled={isExporting}
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExporting ? 'Đang xuất...' : 'Xuất tất cả trang'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
