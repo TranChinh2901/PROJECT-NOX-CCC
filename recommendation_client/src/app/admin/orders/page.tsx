@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Filter, Download, Eye, Edit, Package, Clock, CheckCircle } from 'lucide-react';
+import { Search, Filter, Download, Eye, Edit, Package, Clock, CheckCircle, Trash2 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { adminApi, type AdminOrder } from '@/lib/api/admin.api';
 
@@ -41,6 +41,7 @@ export default function OrdersManagement() {
   const [pageInput, setPageInput] = useState('1');
   const [showFilters, setShowFilters] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
 
   const generateMockOrders = useCallback((): AdminOrder[] => {
     const statuses: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
@@ -151,6 +152,29 @@ export default function OrdersManagement() {
       alert('Cập nhật trạng thái đơn hàng thất bại. Vui lòng thử lại.');
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const handleDeleteOrder = async (order: AdminOrder) => {
+    if (deletingOrderId !== null) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Xóa đơn hàng ${order.order_number}? Thao tác này sẽ ẩn đơn khỏi danh sách quản trị.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingOrderId(order.id);
+      await adminApi.deleteOrder(order.id);
+      setOrders((currentOrders) => currentOrders.filter((currentOrder) => currentOrder.id !== order.id));
+      setTotalOrders((currentTotal) => Math.max(0, currentTotal - 1));
+    } catch (error) {
+      console.error('Failed to delete order:', error);
+      alert('Xóa đơn hàng thất bại. Vui lòng thử lại.');
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -580,6 +604,17 @@ export default function OrdersManagement() {
                         className="p-2 text-slate-400 rounded-lg cursor-not-allowed"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleDeleteOrder(order);
+                        }}
+                        disabled={deletingOrderId === order.id || updatingOrderId === order.id}
+                        title="Xóa đơn hàng"
+                        className="p-2 text-red-500 rounded-lg hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

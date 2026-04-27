@@ -293,6 +293,10 @@ export const adminApi = {
     return await apiClient.patch<AdminOrder>(`/admin/orders/${orderId}/status`, data);
   },
 
+  async deleteOrder(orderId: number): Promise<void> {
+    return await apiClient.delete(`/admin/orders/${orderId}`);
+  },
+
   // Product management
   async getProductStats(): Promise<AdminProductStats> {
     return await apiClient.get<AdminProductStats>('/admin/products/stats');

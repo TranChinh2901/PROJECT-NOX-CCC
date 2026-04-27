@@ -67,6 +67,19 @@ class AdminOrderController {
     }).sendResponse(res);
   }
 
+  async deleteOrder(req: Request, res: Response) {
+    const id = parseInt(req.params.id);
+    const adminEmail = (req as any).user?.email || 'admin';
+
+    await adminOrderService.deleteOrder(id, adminEmail);
+
+    return new AppResponse({
+      message: 'Order deleted successfully',
+      statusCode: HttpStatusCode.OK,
+      data: null
+    }).sendResponse(res);
+  }
+
   async addInternalNote(req: Request, res: Response) {
     const id = parseInt(req.params.id);
     const dto: AddInternalNoteDto = req.body;

@@ -72,7 +72,8 @@ export class AdminOrderService {
     const qb = this.orderRepository.createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.items', 'items')
-      .withDeleted();
+      .withDeleted()
+      .andWhere('order.deleted_at IS NULL');
 
     if (search) {
       qb.andWhere('order.order_number LIKE :search', { search: `%${search}%` });
@@ -252,6 +253,37 @@ export class AdminOrderService {
     });
 
     await OrderNotifications.orderCancelled(cancelledOrder.user_id, cancelledOrder.id, 'Cancelled by admin');
+  }
+
+  async deleteOrder(id: number, adminEmail: string): Promise<void> {
+    await this.dataSource.transaction(async manager => {
+      const order = await manager
+        .getRepository(Order)
+        .createQueryBuilder('order')
+        .setLock('pessimistic_write')
+        .where('order.id = :id', { id })
+        .andWhere('order.deleted_at IS NULL')
+        .getOne();
+
+      if (!order) {
+        throw new AppError(
+          'Order not found',
+          HttpStatusCode.NOT_FOUND,
+          ErrorCode.ORDER_NOT_FOUND
+        );
+      }
+
+      const statusHistory = manager.create(OrderStatusHistory, {
+        order_id: id,
+        status: order.status,
+        previous_status: order.status,
+        changed_by: adminEmail,
+        notes: 'Order deleted by admin',
+      });
+
+      await manager.save(statusHistory);
+      await manager.softDelete(Order, { id });
+    });
   }
 
   private async resolveInventoryForOrderItem(

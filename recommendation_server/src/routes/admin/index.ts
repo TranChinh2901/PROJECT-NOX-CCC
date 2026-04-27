@@ -323,6 +323,12 @@ router.post(
   asyncHandle(adminOrderController.cancelOrder)
 );
 
+router.delete(
+  '/orders/:id',
+  validateParams(idParamSchema),
+  asyncHandle(adminOrderController.deleteOrder)
+);
+
 router.post(
   '/orders/:id/notes',
   validateParams(idParamSchema),
