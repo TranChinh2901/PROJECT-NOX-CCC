@@ -32,6 +32,7 @@ type BackendNotification = {
 
 type BackendNotificationsResponse = {
   notifications: BackendNotification[];
+  unreadCount?: number;
   pagination: {
     page: number;
     limit: number;
@@ -233,7 +234,10 @@ export const mapNotificationFromBackend = (notification: BackendNotification): N
     notification.actionUrl?.startsWith('/orders/')
       ? notification.actionUrl.replace('/orders/', '/account/orders/')
       : notification.actionUrl,
-  metadata: notification.data,
+  metadata: {
+    ...(notification.data ?? {}),
+    backendType: notification.type,
+  },
   createdAt: new Date(notification.createdAt),
   readAt: notification.readAt ? new Date(notification.readAt) : undefined,
   expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : undefined,
@@ -268,6 +272,7 @@ export const notificationApi = {
       page: response.pagination.page,
       limit: response.pagination.limit,
       hasMore: response.pagination.hasMore,
+      unreadCount: response.unreadCount,
     };
   },
 

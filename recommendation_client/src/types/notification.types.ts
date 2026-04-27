@@ -93,6 +93,7 @@ export interface PaginatedNotifications {
   page: number;
   limit: number;
   hasMore: boolean;
+  unreadCount?: number;
 }
 
 export type WebSocketConnectionStatus =

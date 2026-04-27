@@ -14,6 +14,7 @@ export interface NotificationEvent {
   imageUrl?: string;
   referenceId?: number;
   referenceType?: string;
+  skipPreferenceCheck?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export async function publishNotification(event: NotificationEvent): Promise<voi
       imageUrl: event.imageUrl,
       referenceId: event.referenceId,
       referenceType: event.referenceType,
+      skipPreferenceCheck: event.skipPreferenceCheck,
     });
   } catch (error) {
     console.error('Failed to publish notification:', error);
@@ -56,6 +58,7 @@ export async function publishNotificationToMany(
       imageUrl: event.imageUrl,
       referenceId: event.referenceId,
       referenceType: event.referenceType,
+      skipPreferenceCheck: event.skipPreferenceCheck,
     });
   } catch (error) {
     console.error('Failed to publish bulk notification:', error);
@@ -249,7 +252,10 @@ export const AccountNotifications = {
       type: NotificationType.WELCOME,
       data: { userName },
       priority: NotificationPriority.NORMAL,
-      actionUrl: '/profile',
+      actionUrl: '/account/profile',
+      referenceId: userId,
+      referenceType: 'user',
+      skipPreferenceCheck: true,
     });
   },
 

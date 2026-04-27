@@ -27,6 +27,7 @@ import {
   WebSocketConnectionStatus,
   PaginatedNotifications,
 } from '@/types/notification.types';
+import { User } from '@/types/auth.types';
 import { notificationApi } from '@/lib/api/notification.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationSocket } from '@/lib/websocket/notificationSocket';
@@ -36,6 +37,78 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 const NOTIFICATIONS_PER_PAGE = 20;
 const MAX_CACHED_NOTIFICATIONS = 100;
+const CLIENT_WELCOME_ID_PREFIX = 'client-welcome-';
+
+type ClientWelcomeState = {
+  status: 'unread' | 'read' | 'archived' | 'deleted';
+  createdAt: string;
+  readAt?: string;
+};
+
+const getClientWelcomeId = (userId: number) => `${CLIENT_WELCOME_ID_PREFIX}${userId}`;
+const getClientWelcomeStorageKey = (userId: number) =>
+  `technova_welcome_notification_${userId}`;
+
+const isClientWelcomeNotification = (id: string) =>
+  id.startsWith(CLIENT_WELCOME_ID_PREFIX);
+
+const readClientWelcomeState = (userId: number): ClientWelcomeState | null => {
+  if (typeof window === 'undefined') return null;
+
+  const stored = localStorage.getItem(getClientWelcomeStorageKey(userId));
+  if (!stored) return null;
+
+  try {
+    return JSON.parse(stored) as ClientWelcomeState;
+  } catch {
+    localStorage.removeItem(getClientWelcomeStorageKey(userId));
+    return null;
+  }
+};
+
+const writeClientWelcomeState = (userId: number, state: ClientWelcomeState) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(getClientWelcomeStorageKey(userId), JSON.stringify(state));
+};
+
+const createClientWelcomeNotification = (user: User): Notification | null => {
+  if (typeof window === 'undefined') return null;
+
+  const existingState = readClientWelcomeState(user.id);
+  if (existingState?.status === 'deleted' || existingState?.status === 'archived') {
+    return null;
+  }
+
+  const state: ClientWelcomeState =
+    existingState ?? {
+      status: 'unread',
+      createdAt: new Date().toISOString(),
+    };
+
+  if (!existingState) {
+    writeClientWelcomeState(user.id, state);
+  }
+
+  const status: Notification['status'] = state.status === 'read' ? 'read' : 'unread';
+
+  return {
+    id: getClientWelcomeId(user.id),
+    type: 'user',
+    priority: 'medium',
+    status,
+    title: 'Xin chào!',
+    message: `Chào mừng ${user.fullname} đến với TechNova. Chúc bạn có trải nghiệm mua sắm thật tốt tại website của chúng tôi.`,
+    summary: 'Chào mừng bạn đến với TechNova.',
+    href: '/',
+    metadata: {
+      backendType: 'welcome',
+      source: 'client-fallback',
+      userName: user.fullname,
+    },
+    createdAt: new Date(state.createdAt),
+    readAt: state.readAt ? new Date(state.readAt) : undefined,
+  };
+};
 
 interface NotificationProviderProps {
   children: React.ReactNode;
@@ -221,8 +294,24 @@ export function NotificationProvider({
         limit: NOTIFICATIONS_PER_PAGE,
       });
 
-      setNotifications(response.data);
-      setTotalCount(response.total);
+      const hasWelcomeNotification = response.data.some(
+        (notification) => notification.metadata?.backendType === 'welcome'
+      );
+      const clientWelcome =
+        user && !hasWelcomeNotification ? createClientWelcomeNotification(user) : null;
+      const mergedNotifications = clientWelcome
+        ? [clientWelcome, ...response.data]
+        : response.data;
+      const clientWelcomeUnread =
+        clientWelcome?.status === 'unread' ? 1 : 0;
+
+      setNotifications(mergedNotifications);
+      setUnreadCount(
+        response.unreadCount !== undefined
+          ? response.unreadCount + clientWelcomeUnread
+          : mergedNotifications.filter((notification) => notification.status === 'unread').length
+      );
+      setTotalCount(response.total + (clientWelcome ? 1 : 0));
       setHasMore(response.hasMore);
       setCurrentPage(1);
       setCurrentFilters(filters || {});
@@ -231,7 +320,7 @@ export function NotificationProvider({
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Fetch more (pagination)
   const fetchMore = useCallback(async () => {
@@ -260,19 +349,28 @@ export function NotificationProvider({
   // Refresh notifications
   const refresh = useCallback(async () => {
     await fetchNotifications(currentFilters);
-    // Also fetch fresh unread count
-    try {
-      const count = await notificationApi.getUnreadCount();
-      setUnreadCount(count);
-    } catch (err) {
-      console.error('Failed to fetch unread count:', err);
-    }
   }, [fetchNotifications, currentFilters]);
 
   // Mark single notification as read
   const markAsRead = useCallback(async (id: string) => {
     const notification = notifications.find((n) => n.id === id);
     if (!notification || notification.status === 'read') return;
+
+    if (isClientWelcomeNotification(id) && user) {
+      const readAt = new Date();
+      writeClientWelcomeState(user.id, {
+        status: 'read',
+        createdAt: notification.createdAt.toISOString(),
+        readAt: readAt.toISOString(),
+      });
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id ? { ...n, status: 'read' as const, readAt } : n
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      return;
+    }
 
     // Optimistic update
     setNotifications((prev) =>
@@ -295,12 +393,24 @@ export function NotificationProvider({
       toast.error('Failed to mark notification as read');
       throw err;
     }
-  }, [notifications]);
+  }, [notifications, user]);
 
   // Mark all as read
   const markAllAsRead = useCallback(async () => {
     const previousNotifications = notifications;
     const previousUnreadCount = unreadCount;
+    const clientWelcome = notifications.find((notification) =>
+      isClientWelcomeNotification(notification.id)
+    );
+
+    if (clientWelcome && user) {
+      const readAt = new Date();
+      writeClientWelcomeState(user.id, {
+        status: 'read',
+        createdAt: clientWelcome.createdAt.toISOString(),
+        readAt: readAt.toISOString(),
+      });
+    }
 
     // Optimistic update
     setNotifications((prev) =>
@@ -318,14 +428,29 @@ export function NotificationProvider({
       toast.error('Failed to mark all as read');
       throw err;
     }
-  }, [notifications, unreadCount]);
+  }, [notifications, unreadCount, user]);
 
   // Mark multiple as read
   const markMultipleAsRead = useCallback(async (ids: string[]) => {
     const idsSet = new Set(ids);
+    const clientWelcome = notifications.find(
+      (notification) =>
+        idsSet.has(notification.id) && isClientWelcomeNotification(notification.id)
+    );
+
+    if (clientWelcome && user) {
+      const readAt = new Date();
+      writeClientWelcomeState(user.id, {
+        status: 'read',
+        createdAt: clientWelcome.createdAt.toISOString(),
+        readAt: readAt.toISOString(),
+      });
+    }
+
     const unreadIds = notifications
       .filter((n) => idsSet.has(n.id) && n.status === 'unread')
       .map((n) => n.id);
+    const serverIds = ids.filter((id) => !isClientWelcomeNotification(id));
 
     // Optimistic update
     setNotifications((prev) =>
@@ -336,18 +461,34 @@ export function NotificationProvider({
     setUnreadCount((prev) => Math.max(0, prev - unreadIds.length));
 
     try {
-      await notificationApi.markMultipleAsRead(ids);
+      if (serverIds.length > 0) {
+        await notificationApi.markMultipleAsRead(serverIds);
+      }
     } catch (err) {
       // Refresh to get correct state
       await refresh();
       toast.error('Failed to mark notifications as read');
       throw err;
     }
-  }, [notifications, refresh]);
+  }, [notifications, refresh, user]);
 
   // Delete notification
   const deleteNotification = useCallback(async (id: string) => {
     const notification = notifications.find((n) => n.id === id);
+
+    if (isClientWelcomeNotification(id) && user && notification) {
+      writeClientWelcomeState(user.id, {
+        status: 'deleted',
+        createdAt: notification.createdAt.toISOString(),
+        readAt: notification.readAt?.toISOString(),
+      });
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (notification.status === 'unread') {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      setTotalCount((prev) => Math.max(0, prev - 1));
+      return;
+    }
 
     // Optimistic update
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -373,13 +514,25 @@ export function NotificationProvider({
       toast.error('Failed to delete notification');
       throw err;
     }
-  }, [notifications]);
+  }, [notifications, user]);
 
   // Delete multiple
   const deleteMultiple = useCallback(async (ids: string[]) => {
     const idsSet = new Set(ids);
     const toDelete = notifications.filter((n) => idsSet.has(n.id));
     const unreadToDelete = toDelete.filter((n) => n.status === 'unread').length;
+    const clientWelcome = toDelete.find((notification) =>
+      isClientWelcomeNotification(notification.id)
+    );
+    const serverIds = ids.filter((id) => !isClientWelcomeNotification(id));
+
+    if (clientWelcome && user) {
+      writeClientWelcomeState(user.id, {
+        status: 'deleted',
+        createdAt: clientWelcome.createdAt.toISOString(),
+        readAt: clientWelcome.readAt?.toISOString(),
+      });
+    }
 
     // Optimistic update
     setNotifications((prev) => prev.filter((n) => !idsSet.has(n.id)));
@@ -387,18 +540,33 @@ export function NotificationProvider({
     setTotalCount((prev) => prev - toDelete.length);
 
     try {
-      await notificationApi.deleteMultiple(ids);
+      if (serverIds.length > 0) {
+        await notificationApi.deleteMultiple(serverIds);
+      }
       toast.success(`${ids.length} notifications deleted`);
     } catch (err) {
       await refresh();
       toast.error('Failed to delete notifications');
       throw err;
     }
-  }, [notifications, refresh]);
+  }, [notifications, refresh, user]);
 
   // Archive notification
   const archiveNotification = useCallback(async (id: string) => {
     const notification = notifications.find((n) => n.id === id);
+
+    if (isClientWelcomeNotification(id) && user && notification) {
+      writeClientWelcomeState(user.id, {
+        status: 'archived',
+        createdAt: notification.createdAt.toISOString(),
+        readAt: notification.readAt?.toISOString(),
+      });
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (notification.status === 'unread') {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      return;
+    }
 
     // Optimistic update
     setNotifications((prev) =>
@@ -418,7 +586,7 @@ export function NotificationProvider({
       toast.error('Failed to archive notification');
       throw err;
     }
-  }, [notifications, refresh]);
+  }, [notifications, refresh, user]);
 
   // Update preferences
   const updatePreferences = useCallback(async (newPreferences: Partial<NotificationPreferences>) => {
@@ -461,10 +629,6 @@ export function NotificationProvider({
         .then(setPreferences)
         .catch((err) => console.error('Failed to fetch notification preferences:', err));
 
-      // Fetch unread count
-      notificationApi.getUnreadCount()
-        .then(setUnreadCount)
-        .catch((err) => console.error('Failed to fetch unread count:', err));
     } else {
       // Clear state on logout
       setNotifications([]);

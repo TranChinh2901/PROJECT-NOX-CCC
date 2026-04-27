@@ -1,5 +1,5 @@
 
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { compare, hash } from "bcryptjs";
 
 import { AppDataSource } from "@/config/database.config";
@@ -14,6 +14,8 @@ import { SignupDto } from "./dto/signup.dto";
 import { ErrorMessages, SuccessMessages } from "@/constants/message";
 import { ChangePasswordDto, UpdateProfileDto } from "./dto/auth.dto";
 import { GenderType } from "../users/enum/user.enum";
+import { Notification } from "@/modules/notification/entity/notification";
+import { NotificationPriority, NotificationType } from "@/modules/notification/enum/notification.enum";
 
 export class AuthService {
   private userRepository: Repository<User>;
@@ -45,6 +47,8 @@ export class AuthService {
         ErrorCode.UNAUTHORIZED
       );
     }
+
+    await this.ensureWelcomeNotification(user);
 
     const tokens = this.generateToken(user);
     return {
@@ -88,19 +92,28 @@ export class AuthService {
       ? new Date(date_of_birth) 
       : date_of_birth;
     
-    const newUser = this.userRepository.create({
-      fullname,
-      email,
-      phone_number,
-      address,
-      password: hashedPassword,
-      gender: gender as GenderType,
-      date_of_birth: birthDate,
-      role: RoleType.USER,
-      is_verified: false,
-     
+    const savedUser = await AppDataSource.transaction(async (manager) => {
+      const userRepository = manager.getRepository(User);
+
+      const newUser = userRepository.create({
+        fullname,
+        email,
+        phone_number,
+        address,
+        password: hashedPassword,
+        gender: gender as GenderType,
+        date_of_birth: birthDate,
+        role: RoleType.USER,
+        is_verified: false,
+      });
+
+      const user = await userRepository.save(newUser);
+
+      await this.createWelcomeNotification(manager, user);
+
+      return user;
     });
-    const savedUser = await this.userRepository.save(newUser);
+
     const tokens = this.generateToken(savedUser);
     return {
       message: "Registration successful",
@@ -143,6 +156,43 @@ export class AuthService {
     } catch (error) {
       return null;
     }
+  }
+
+  private async ensureWelcomeNotification(user: User): Promise<void> {
+    const notificationRepository = AppDataSource.getRepository(Notification);
+    const welcomeCount = await notificationRepository.count({
+      where: {
+        user_id: user.id,
+        type: NotificationType.WELCOME,
+      },
+    });
+
+    if (welcomeCount === 0) {
+      await this.createWelcomeNotification(AppDataSource.manager, user);
+    }
+  }
+
+  private async createWelcomeNotification(
+    manager: EntityManager,
+    user: User
+  ): Promise<void> {
+    const notificationRepository = manager.getRepository(Notification);
+
+    await notificationRepository.save(
+      notificationRepository.create({
+        user_id: user.id,
+        type: NotificationType.WELCOME,
+        title: "Xin chào!",
+        message: `Chào mừng ${user.fullname} đến với TechNova. Chúc bạn có trải nghiệm mua sắm thật tốt tại website của chúng tôi.`,
+        priority: NotificationPriority.NORMAL,
+        data: { userName: user.fullname },
+        action_url: "/",
+        reference_id: user.id,
+        reference_type: "user",
+        is_read: false,
+        is_archived: false,
+      })
+    );
   }
 
   verifyRefreshToken(token: string) {

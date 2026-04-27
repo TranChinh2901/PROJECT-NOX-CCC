@@ -34,12 +34,13 @@ export function NotificationBell({
 }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { unreadCount } = useNotifications();
+  const { unreadCount, refresh } = useNotifications();
 
   const handleToggle = () => {
     const newState = !isOpen;
     setIsOpen(newState);
     if (newState) {
+      void refresh();
       onOpen?.();
     } else {
       onClose?.();
