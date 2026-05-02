@@ -557,7 +557,7 @@ function SearchPageContent() {
       <Header />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-4 pb-16 pt-8 sm:px-6 lg:px-8">
           {/* Search header */}
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">

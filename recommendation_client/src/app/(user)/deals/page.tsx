@@ -101,7 +101,7 @@ export default function DealsPage() {
 
       <main className="pb-16 pt-28 sm:pt-32">
         <section className="px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[1280px]">
+          <div className="mx-auto max-w-[1200px]">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">
@@ -197,7 +197,7 @@ export default function DealsPage() {
         </section>
 
         <section className="px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[1280px]">
+          <div className="mx-auto max-w-[1200px]">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="font-heading text-xl font-bold text-gray-900">Ưu đãi theo danh mục</h2>
@@ -242,7 +242,7 @@ export default function DealsPage() {
         </section>
 
         <section className="px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[1280px]">
+          <div className="mx-auto max-w-[1200px]">
             <div className="mb-5">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">
                 Đáng chú ý
@@ -292,7 +292,7 @@ export default function DealsPage() {
         </section>
 
         <section className="px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[1280px]">
+          <div className="mx-auto max-w-[1200px]">
             <div className="rounded-[28px] bg-slate-950 px-6 py-8 text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.65)] sm:px-8">
               <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-start">
                 <div>

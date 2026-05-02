@@ -338,7 +338,7 @@ function HeroSection() {
   const banner = heroBanners[0];
   return (
     <section className="mt-6 px-4 pb-8 pt-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
           {/* Main banner */}
           <div
@@ -419,7 +419,7 @@ function CategorySection({
 
   return (
     <section className="px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-[1200px]">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="font-heading text-xl font-bold text-gray-900">Danh mục thịnh hành</h2>
@@ -487,7 +487,7 @@ function PersonalizedSection({
 
   return (
     <section className="px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-[1200px]">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">{title}</p>
           <h2 className="mt-1.5 font-heading text-xl font-bold text-gray-900">{subtitle}</h2>
@@ -537,7 +537,7 @@ function CatalogToolbar({
 }) {
   return (
     <div className="sticky top-[68px] z-40 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Category pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -808,7 +808,7 @@ function HomePageContent() {
 
         {/* Catalog grid */}
         <section id="catalog" className="scroll-mt-32 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[1280px]">
+          <div className="mx-auto max-w-[1200px]">
             <div className="mb-6">
               <h2 className="font-heading text-xl font-bold text-gray-900">{catalogTitle}</h2>
               {!deferredSearchQuery && (
@@ -854,7 +854,7 @@ function HomePageContent() {
 
         {/* Trust signals footer strip */}
         <section className="border-t border-gray-100 bg-white px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-[1280px] gap-6 sm:grid-cols-3">
+          <div className="mx-auto grid max-w-[1200px] gap-6 sm:grid-cols-3">
             {[
               { icon: Zap, title: 'Giao hàng cao cấp miễn phí', desc: 'Cho đơn hàng từ 500.000₫ trở lên, giao trong 3 ngày làm việc.' },
               { icon: ShoppingCart, title: 'Đổi trả dễ dàng', desc: 'Hoàn tiền 100% trong vòng 30 ngày nếu sản phẩm không như mô tả.' },
